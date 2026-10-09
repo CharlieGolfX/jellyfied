@@ -1,0 +1,1273 @@
+import clsx from 'clsx';
+import Hls, { ErrorTypes, Events } from 'hls.js';
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Maximize,
+  Maximize2,
+  Minimize,
+  Pause,
+  Play,
+  RotateCcw,
+  RotateCw,
+  Settings2,
+  SkipForward,
+  Subtitles,
+  Volume1,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { generateId } from '@/api/device';
+import { cardImage, imageSrc } from '@/api/images';
+import { useItem, useMediaSegments } from '@/api/queries';
+import type { BaseItemDto, ItemsResult, MediaSourceInfo, MediaStream, PlaybackInfoResponse } from '@/api/types';
+import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import { Img } from '@/components/ui/States';
+import { Spinner } from '@/components/ui/Spinner';
+import { errorMessage } from '@/components/ui/Toast';
+import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { useAudioPlayer } from './AudioPlayerProvider';
+import { buildDeviceProfile, MAX_BITRATE } from './deviceProfile';
+import {
+  reportPlaybackProgress,
+  reportPlaybackStart,
+  reportPlaybackStopped,
+  stopTranscoding,
+  type PlayMethod,
+} from './reporting';
+import { SeekBar } from './SeekBar';
+import type { VideoPlayerState } from './usePlay';
+import { isPlayPath, useVideoSession } from './VideoSession';
+
+const BITRATE_KEY = 'jellyplex.maxBitrate';
+const VOLUME_KEY = 'jellyplex.volume';
+
+const QUALITY_OPTIONS: { label: string; value: number }[] = [
+  { label: 'Original / Auto', value: MAX_BITRATE },
+  { label: '40 Mbps 4K', value: 40_000_000 },
+  { label: '20 Mbps 1080p', value: 20_000_000 },
+  { label: '12 Mbps 1080p', value: 12_000_000 },
+  { label: '8 Mbps 1080p', value: 8_000_000 },
+  { label: '4 Mbps 720p', value: 4_000_000 },
+  { label: '3 Mbps 720p', value: 3_000_000 },
+  { label: '2 Mbps 480p', value: 2_000_000 },
+  { label: '1 Mbps 480p', value: 1_000_000 },
+  { label: '720 kbps 360p', value: 720_000 },
+];
+
+interface ActiveStream {
+  url: string;
+  isHls: boolean;
+  method: PlayMethod;
+  playSessionId: string;
+  source: MediaSourceInfo;
+  audioIndex?: number;
+  subIndex: number;
+  burnedSub: boolean;
+  transcodeReasons: string[];
+}
+
+interface LoadOptions {
+  start: number;
+  audioIndex?: number;
+  /** undefined = let the server pick based on user preferences; -1 = off. */
+  subIndex?: number;
+  bitrate: number;
+  mediaSourceId?: string;
+  forceTranscode?: boolean;
+}
+
+const SEGMENT_LABELS: Record<string, string> = {
+  Intro: 'Skip Intro',
+  Recap: 'Skip Recap',
+  Preview: 'Skip Preview',
+  Outro: 'Skip Credits',
+  Commercial: 'Skip Ad',
+};
+
+function streamName(s: MediaStream): string {
+  return s.DisplayTitle || [s.Language, s.Codec?.toUpperCase()].filter(Boolean).join(' ') || `Track ${s.Index}`;
+}
+
+function readNumber(key: string, fallback: number): number {
+  try {
+    const v = Number(localStorage.getItem(key));
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** App-level player: renders the current video session full screen or as the mini player. */
+export default function GlobalVideoPlayer() {
+  const { session } = useVideoSession();
+  if (!session) return null;
+  // Remount per session so each playback is fully isolated.
+  return <VideoPlayer key={session.key} itemId={session.itemId} navState={session.state} />;
+}
+
+function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlayerState }) {
+  const api = useApi();
+  const { userId } = useSession();
+  const navigate = useNavigate();
+  const { mode, start, close, expand, minimize } = useVideoSession();
+  const isFull = mode === 'full';
+  const audioPlayer = useAudioPlayer();
+  const { data: item, error: itemError } = useItem(itemId);
+  const { data: user } = useCurrentUser();
+  const segments = useMediaSegments(itemId);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const streamRef = useRef<ActiveStream | null>(null);
+  const startedRef = useRef(false);
+  const loadToken = useRef(0);
+  const fallbackTried = useRef(false);
+  const subtitleUrlRef = useRef<string | null>(null);
+
+  const [stream, setStream] = useState<ActiveStream | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
+  const [volume, setVolume] = useState(() => Math.min(1, readNumber(VOLUME_KEY, 1)));
+  const [muted, setMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles'>('none');
+  const [maxBitrate, setMaxBitrate] = useState(() => readNumber(BITRATE_KEY, MAX_BITRATE));
+  const [upNextDismissed, setUpNextDismissed] = useState(false);
+
+  // ---- Up next -----------------------------------------------------------
+  const queue = navState.queue;
+  const queueIndex = queue ? queue.indexOf(itemId) : -1;
+  const nextFromQueue = queue && queueIndex >= 0 && queueIndex < queue.length - 1 ? queue[queueIndex + 1] : undefined;
+  const nextEpisode = useQuery({
+    queryKey: ['next-episode', itemId],
+    queryFn: () =>
+      api.get<ItemsResult>(`/Shows/${item!.SeriesId}/Episodes`, {
+        userId,
+        startItemId: itemId,
+        limit: 2,
+        isMissing: false,
+        fields: ['PrimaryImageAspectRatio'],
+      }),
+    enabled: !nextFromQueue && item?.Type === 'Episode' && Boolean(item.SeriesId),
+    staleTime: Infinity,
+  });
+  const nextId = nextFromQueue ?? nextEpisode.data?.Items.find((i) => i.Id !== itemId)?.Id;
+  const { data: nextItem } = useItem(nextId);
+  // Honour the user's "Automatically play the next episode" preference for TV episodes.
+  const autoAdvance = item?.Type !== 'Episode' || user?.Configuration?.EnableNextEpisodeAutoPlay !== false;
+
+  /** Stop playback entirely (leaving the full-screen route if we're on it). */
+  const exit = useCallback(() => {
+    minimize();
+    close();
+  }, [minimize, close]);
+
+  const goNext = useCallback(() => {
+    if (!nextId) return;
+    const state: VideoPlayerState = { queue, token: generateId() };
+    start(nextId, state);
+    if (isPlayPath(window.location.pathname)) navigate(`/play/${nextId}`, { replace: true, state });
+  }, [nextId, queue, start, navigate]);
+
+  // ---- Session lifecycle -------------------------------------------------
+  const endSession = useCallback(
+    (keepalive: boolean) => {
+      const s = streamRef.current;
+      const video = videoRef.current;
+      if (!s) return;
+      streamRef.current = null;
+      if (startedRef.current) {
+        startedRef.current = false;
+        void reportPlaybackStopped(
+          api,
+          {
+            ItemId: itemId,
+            MediaSourceId: s.source.Id,
+            PlaySessionId: s.playSessionId,
+            PositionTicks: secondsToTicks(video?.currentTime ?? 0),
+          },
+          keepalive,
+        );
+      }
+      if (s.method === 'Transcode') void stopTranscoding(api, s.playSessionId, keepalive);
+    },
+    [api, itemId],
+  );
+
+  const clearSubtitles = useCallback(() => {
+    const video = videoRef.current;
+    if (video) video.querySelectorAll('track').forEach((t) => t.remove());
+    if (subtitleUrlRef.current) {
+      URL.revokeObjectURL(subtitleUrlRef.current);
+      subtitleUrlRef.current = null;
+    }
+  }, []);
+
+  const attachSubtitle = useCallback(
+    async (s: MediaStream, token: number) => {
+      const video = videoRef.current;
+      if (!video || !s.DeliveryUrl) return;
+      const url = /^https?:\/\//i.test(s.DeliveryUrl) ? s.DeliveryUrl : api.serverUrl + s.DeliveryUrl;
+      try {
+        const res = await fetch(url, { headers: { Authorization: api.authorizationHeader() } });
+        if (!res.ok) throw new Error(`Subtitle request failed (${res.status})`);
+        const text = await res.text();
+        if (token !== loadToken.current) return;
+        clearSubtitles();
+        const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/vtt' }));
+        subtitleUrlRef.current = blobUrl;
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = streamName(s);
+        if (s.Language) track.srclang = s.Language;
+        track.src = blobUrl;
+        track.default = true;
+        video.appendChild(track);
+        track.track.mode = 'showing';
+      } catch (err) {
+        console.warn('Failed to load subtitles', err);
+      }
+    },
+    [api, clearSubtitles],
+  );
+
+  const destroyHls = useCallback(() => {
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+  }, []);
+
+  const load = useCallback(
+    async (opts: LoadOptions) => {
+      const video = videoRef.current;
+      if (!video || !item) return;
+      const token = ++loadToken.current;
+      setLoading(true);
+      setError(null);
+      endSession(false);
+
+      try {
+        const info = await api.post<PlaybackInfoResponse>(`/Items/${item.Id}/PlaybackInfo`, {
+          UserId: userId,
+          StartTimeTicks: 0,
+          IsPlayback: true,
+          AutoOpenLiveStream: true,
+          MaxStreamingBitrate: opts.bitrate,
+          AudioStreamIndex: opts.audioIndex,
+          SubtitleStreamIndex: opts.subIndex,
+          MediaSourceId: opts.mediaSourceId,
+          EnableDirectPlay: !opts.forceTranscode,
+          EnableDirectStream: !opts.forceTranscode,
+          EnableTranscoding: true,
+          AllowVideoStreamCopy: true,
+          AllowAudioStreamCopy: true,
+          DeviceProfile: buildDeviceProfile(opts.bitrate),
+        });
+        if (token !== loadToken.current) return;
+        if (info.ErrorCode) {
+          throw new Error(
+            info.ErrorCode === 'NotAllowed'
+              ? 'You are not allowed to play this item.'
+              : info.ErrorCode === 'RateLimitExceeded'
+                ? 'The server’s bitrate limit was exceeded.'
+                : 'No compatible stream is available for this browser.',
+          );
+        }
+        const source = info.MediaSources.find((s) => s.Id === opts.mediaSourceId) ?? info.MediaSources[0];
+        if (!source) throw new Error('No playable media source was found.');
+
+        const playSessionId = info.PlaySessionId ?? generateId();
+        const staticUrl = () =>
+          api.url(
+            `/Videos/${item.Id}/stream`,
+            {
+              static: true,
+              mediaSourceId: source.Id,
+              deviceId: api.deviceId,
+              playSessionId,
+              Tag: source.ETag ?? undefined,
+              LiveStreamId: source.LiveStreamId ?? undefined,
+            },
+            true,
+          );
+
+        let url: string;
+        let method: PlayMethod;
+        let isHls = false;
+        if (!opts.forceTranscode && source.SupportsDirectPlay) {
+          url = staticUrl();
+          method = 'DirectPlay';
+        } else if (source.TranscodingUrl) {
+          url = /^https?:\/\//i.test(source.TranscodingUrl) ? source.TranscodingUrl : api.serverUrl + source.TranscodingUrl;
+          isHls = source.TranscodingSubProtocol === 'hls' || /\.m3u8/i.test(source.TranscodingUrl);
+          method = 'Transcode';
+        } else if (!opts.forceTranscode && source.SupportsDirectStream) {
+          url = staticUrl();
+          method = 'DirectStream';
+        } else {
+          throw new Error('This item can’t be played in this browser, and the server could not provide a transcode.');
+        }
+
+        const reasons = (() => {
+          if (!source.TranscodingUrl) return [];
+          const m = /[?&]TranscodeReasons=([^&]*)/i.exec(source.TranscodingUrl);
+          return m ? decodeURIComponent(m[1]).split(',').filter(Boolean) : [];
+        })();
+
+        const audioIndex = opts.audioIndex ?? source.DefaultAudioStreamIndex ?? undefined;
+        const subIndex = opts.subIndex ?? source.DefaultSubtitleStreamIndex ?? -1;
+        const subStream = source.MediaStreams?.find((s) => s.Type === 'Subtitle' && s.Index === subIndex);
+        const active: ActiveStream = {
+          url,
+          isHls,
+          method,
+          playSessionId,
+          source,
+          audioIndex,
+          subIndex,
+          burnedSub: Boolean(subStream && subStream.DeliveryMethod === 'Encode'),
+          transcodeReasons: reasons,
+        };
+
+        // Attach the new source.
+        destroyHls();
+        clearSubtitles();
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        streamRef.current = active;
+        startedRef.current = false;
+        setStream(active);
+
+        const start = Math.max(0, opts.start);
+        if (isHls && Hls.isSupported()) {
+          const hls = new Hls({
+            startPosition: start,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 120,
+            backBufferLength: 90,
+            manifestLoadingTimeOut: 30_000,
+            enableWorker: true,
+          });
+          hlsRef.current = hls;
+          let mediaRecoveries = 0;
+          hls.on(Events.ERROR, (_e, data) => {
+            if (!data.fatal || token !== loadToken.current) return;
+            if (data.type === ErrorTypes.MEDIA_ERROR && mediaRecoveries < 2) {
+              mediaRecoveries++;
+              hls.recoverMediaError();
+              return;
+            }
+            setLoading(false);
+            setError(
+              data.type === ErrorTypes.NETWORK_ERROR
+                ? 'Lost connection to the stream. The server may have stopped transcoding.'
+                : `Playback error: ${data.details}`,
+            );
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+        } else {
+          video.src = url;
+          if (start > 0) {
+            video.addEventListener(
+              'loadedmetadata',
+              () => {
+                if (token === loadToken.current) video.currentTime = start;
+              },
+              { once: true },
+            );
+          }
+        }
+
+        if (subStream && subStream.DeliveryMethod === 'External' && subStream.DeliveryUrl) {
+          void attachSubtitle(subStream, token);
+        }
+
+        video.play().catch((err: Error) => {
+          // Autoplay may be blocked; the user can press play.
+          if (err.name === 'NotAllowedError') {
+            setLoading(false);
+            setPlaying(false);
+          }
+        });
+      } catch (err) {
+        if (token !== loadToken.current) return;
+        setLoading(false);
+        setError(errorMessage(err));
+      }
+    },
+    [api, item, userId, endSession, destroyHls, clearSubtitles, attachSubtitle],
+  );
+
+  // Initial load once the item is known.
+  const initialised = useRef(false);
+  useEffect(() => {
+    if (!item || initialised.current) return;
+    initialised.current = true;
+    audioPlayer.pause();
+    const resumeAt = navState.fromStart ? 0 : ticksToSeconds(item.UserData?.PlaybackPositionTicks);
+    setDuration(ticksToSeconds(item.RunTimeTicks));
+    void load({
+      start: resumeAt,
+      audioIndex: navState.audioStreamIndex,
+      subIndex: navState.subtitleStreamIndex,
+      bitrate: maxBitrate,
+      mediaSourceId: navState.mediaSourceId,
+    });
+  }, [item, load, navState, maxBitrate, audioPlayer]);
+
+  // Teardown on unmount / tab close.
+  useEffect(() => {
+    const video = videoRef.current;
+    const onHide = () => endSession(true);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      loadToken.current++;
+      // Allow a fresh initial load if React re-mounts this component (StrictMode).
+      initialised.current = false;
+      endSession(true);
+      destroyHls();
+      clearSubtitles();
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+    };
+  }, [endSession, destroyHls, clearSubtitles]);
+
+  // ---- Video element events ---------------------------------------------
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const progress = (eventName?: string) => {
+      const s = streamRef.current;
+      if (!s || !startedRef.current) return;
+      void reportPlaybackProgress(api, {
+        ItemId: itemId,
+        MediaSourceId: s.source.Id,
+        PlaySessionId: s.playSessionId,
+        PositionTicks: secondsToTicks(video.currentTime),
+        IsPaused: video.paused,
+        IsMuted: video.muted,
+        VolumeLevel: Math.round(video.volume * 100),
+        PlayMethod: s.method,
+        AudioStreamIndex: s.audioIndex,
+        SubtitleStreamIndex: s.subIndex,
+        EventName: eventName,
+      });
+    };
+    const onPlaying = () => {
+      setPlaying(true);
+      setLoading(false);
+      const s = streamRef.current;
+      if (s && !startedRef.current) {
+        startedRef.current = true;
+        void reportPlaybackStart(api, {
+          ItemId: itemId,
+          MediaSourceId: s.source.Id,
+          PlaySessionId: s.playSessionId,
+          PositionTicks: secondsToTicks(video.currentTime),
+          IsPaused: false,
+          PlayMethod: s.method,
+          AudioStreamIndex: s.audioIndex,
+          SubtitleStreamIndex: s.subIndex,
+        });
+      }
+    };
+    const onPlay = () => {
+      setPlaying(true);
+      progress('unpause');
+    };
+    const onPause = () => {
+      setPlaying(false);
+      progress('pause');
+    };
+    const onTime = () => setCurrentTime(video.currentTime);
+    const onDuration = () => {
+      if (Number.isFinite(video.duration) && video.duration > 0) setDuration(video.duration);
+    };
+    const onProgress = () => {
+      const b = video.buffered;
+      for (let i = 0; i < b.length; i++) {
+        if (b.start(i) <= video.currentTime + 0.5 && b.end(i) >= video.currentTime) {
+          setBuffered(b.end(i));
+          return;
+        }
+      }
+    };
+    const onWaiting = () => setLoading(true);
+    const onCanPlay = () => setLoading(false);
+    const onSeeked = () => progress('timeupdate');
+    const onError = () => {
+      const s = streamRef.current;
+      if (!s || hlsRef.current) return; // hls.js reports its own errors
+      const mediaError = video.error;
+      if (!mediaError) return;
+      if (s.method !== 'Transcode' && !fallbackTried.current) {
+        // Direct play failed (unsupported codec in practice) – fall back to a server transcode.
+        fallbackTried.current = true;
+        void load({
+          start: video.currentTime,
+          audioIndex: s.audioIndex,
+          subIndex: s.subIndex,
+          bitrate: maxBitrate,
+          mediaSourceId: s.source.Id,
+          forceTranscode: true,
+        });
+        return;
+      }
+      setLoading(false);
+      setError(`The video could not be played (${mediaError.message || `code ${mediaError.code}`}).`);
+    };
+
+    video.addEventListener('playing', onPlaying);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('timeupdate', onTime);
+    video.addEventListener('durationchange', onDuration);
+    video.addEventListener('loadedmetadata', onDuration);
+    video.addEventListener('progress', onProgress);
+    video.addEventListener('timeupdate', onProgress);
+    video.addEventListener('waiting', onWaiting);
+    video.addEventListener('canplay', onCanPlay);
+    video.addEventListener('seeked', onSeeked);
+    video.addEventListener('error', onError);
+    const timer = window.setInterval(() => {
+      if (!video.paused) progress('timeupdate');
+    }, 10_000);
+    return () => {
+      window.clearInterval(timer);
+      video.removeEventListener('playing', onPlaying);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      video.removeEventListener('timeupdate', onTime);
+      video.removeEventListener('durationchange', onDuration);
+      video.removeEventListener('loadedmetadata', onDuration);
+      video.removeEventListener('progress', onProgress);
+      video.removeEventListener('timeupdate', onProgress);
+      video.removeEventListener('waiting', onWaiting);
+      video.removeEventListener('canplay', onCanPlay);
+      video.removeEventListener('seeked', onSeeked);
+      video.removeEventListener('error', onError);
+    };
+  }, [api, itemId, load, maxBitrate]);
+
+  // Auto-advance at the end.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onEnded = () => {
+      if (nextId && autoAdvance && !upNextDismissed) goNext();
+      else exit();
+    };
+    video.addEventListener('ended', onEnded);
+    return () => video.removeEventListener('ended', onEnded);
+  }, [nextId, autoAdvance, upNextDismissed, goNext, exit]);
+
+  // Volume
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = volume;
+    video.muted = muted;
+    try {
+      localStorage.setItem(VOLUME_KEY, String(volume));
+    } catch {
+      /* ignore */
+    }
+  }, [volume, muted]);
+
+  // ---- Controls ------------------------------------------------------------
+  const pauseAudio = audioPlayer.pause;
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      pauseAudio();
+      void video.play().catch(() => {});
+    } else video.pause();
+  }, [pauseAudio]);
+
+  const seekTo = useCallback((t: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const max = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity;
+    video.currentTime = Math.min(Math.max(0, t), max - 0.25);
+    setCurrentTime(video.currentTime);
+  }, []);
+
+  const skip = useCallback((delta: number) => seekTo((videoRef.current?.currentTime ?? 0) + delta), [seekTo]);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    const video = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else if (el?.requestFullscreen) {
+      void el.requestFullscreen().catch(() => {});
+    } else if (video?.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  // Auto-hide controls.
+  const hideTimer = useRef<number | undefined>(undefined);
+  const poke = useCallback(() => {
+    setControlsVisible(true);
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setControlsVisible(false), 3000);
+  }, []);
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+  const showControls = controlsVisible || !playing || panel !== 'none' || Boolean(error);
+
+  // Keyboard shortcuts (full-screen player only; the mini player must not hijack page keys).
+  useEffect(() => {
+    if (!isFull) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      let handled = true;
+      switch (e.key) {
+        case ' ':
+        case 'k':
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+        case 'j':
+          skip(-10);
+          break;
+        case 'ArrowRight':
+        case 'l':
+          skip(30);
+          break;
+        case 'ArrowUp':
+          setVolume((v) => Math.min(1, v + 0.05));
+          setMuted(false);
+          break;
+        case 'ArrowDown':
+          setVolume((v) => Math.max(0, v - 0.05));
+          break;
+        case 'm':
+          setMuted((m) => !m);
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'n':
+          if (nextId) goNext();
+          break;
+        case 'Escape':
+          if (panel !== 'none') setPanel('none');
+          else if (!document.fullscreenElement) minimize();
+          else handled = false;
+          break;
+        default:
+          handled = false;
+      }
+      if (handled) {
+        e.preventDefault();
+        poke();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFull, togglePlay, skip, toggleFullscreen, minimize, goNext, nextId, panel, poke]);
+
+  // Collapsing into the mini player: close menus and leave browser full screen.
+  useEffect(() => {
+    if (isFull) return;
+    setPanel('none');
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  }, [isFull]);
+
+  // Starting music pauses the video (only one thing plays at a time).
+  useEffect(() => {
+    if (audioPlayer.isPlaying) videoRef.current?.pause();
+  }, [audioPlayer.isPlaying]);
+
+  // Single click toggles playback, double click toggles fullscreen.
+  const clickTimer = useRef<number | undefined>(undefined);
+  const onSurfaceClick = () => {
+    if (!isFull) {
+      expand();
+      return;
+    }
+    if (panel !== 'none') {
+      setPanel('none');
+      return;
+    }
+    window.clearTimeout(clickTimer.current);
+    clickTimer.current = window.setTimeout(togglePlay, 220);
+  };
+  const onSurfaceDoubleClick = () => {
+    window.clearTimeout(clickTimer.current);
+    if (!isFull) return;
+    toggleFullscreen();
+  };
+
+  // ---- Track switching -----------------------------------------------------
+  const sourceStreams = stream?.source.MediaStreams ?? [];
+  const audioStreams = sourceStreams.filter((s) => s.Type === 'Audio');
+  const subtitleStreams = sourceStreams.filter((s) => s.Type === 'Subtitle');
+
+  const changeAudio = (index: number) => {
+    if (!stream || index === stream.audioIndex) return;
+    setPanel('none');
+    void load({
+      start: videoRef.current?.currentTime ?? 0,
+      audioIndex: index,
+      subIndex: stream.subIndex,
+      bitrate: maxBitrate,
+      mediaSourceId: stream.source.Id,
+    });
+  };
+
+  const changeSubtitle = (index: number) => {
+    if (!stream || index === stream.subIndex) return;
+    setPanel('none');
+    const target = subtitleStreams.find((s) => s.Index === index);
+    const canSwapLocally = !stream.burnedSub && (index === -1 || target?.DeliveryMethod === 'External');
+    if (canSwapLocally) {
+      const token = loadToken.current;
+      clearSubtitles();
+      if (target) void attachSubtitle(target, token);
+      const updated = { ...stream, subIndex: index };
+      streamRef.current = updated;
+      setStream(updated);
+      return;
+    }
+    void load({
+      start: videoRef.current?.currentTime ?? 0,
+      audioIndex: stream.audioIndex,
+      subIndex: index,
+      bitrate: maxBitrate,
+      mediaSourceId: stream.source.Id,
+    });
+  };
+
+  const changeQuality = (bitrate: number) => {
+    setPanel('none');
+    setMaxBitrate(bitrate);
+    try {
+      localStorage.setItem(BITRATE_KEY, String(bitrate));
+    } catch {
+      /* ignore */
+    }
+    if (!stream) return;
+    void load({
+      start: videoRef.current?.currentTime ?? 0,
+      audioIndex: stream.audioIndex,
+      subIndex: stream.subIndex,
+      bitrate,
+      mediaSourceId: stream.source.Id,
+    });
+  };
+
+  const retry = () => {
+    fallbackTried.current = false;
+    void load({
+      start: videoRef.current?.currentTime || currentTime,
+      audioIndex: stream?.audioIndex,
+      subIndex: stream?.subIndex,
+      bitrate: maxBitrate,
+      mediaSourceId: stream?.source.Id,
+    });
+  };
+
+  const retryTranscode = () => {
+    fallbackTried.current = true;
+    void load({
+      start: videoRef.current?.currentTime || currentTime,
+      audioIndex: stream?.audioIndex,
+      subIndex: stream?.subIndex,
+      bitrate: maxBitrate,
+      mediaSourceId: stream?.source.Id,
+      forceTranscode: true,
+    });
+  };
+
+  // ---- Derived UI state ------------------------------------------------------
+  const activeSegment = useMemo(() => {
+    const list = segments.data?.Items ?? [];
+    return list.find((s) => {
+      const start = ticksToSeconds(s.StartTicks);
+      const end = ticksToSeconds(s.EndTicks);
+      return SEGMENT_LABELS[s.Type] && currentTime >= start && currentTime < end - 1;
+    });
+  }, [segments.data, currentTime]);
+
+  const remaining = duration - currentTime;
+  const inOutro = activeSegment?.Type === 'Outro';
+  const showUpNext = Boolean(nextItem) && !upNextDismissed && duration > 60 && (remaining <= 25 || inOutro) && !error;
+  const chapterMarks = useMemo(
+    () => (item?.Chapters ?? []).map((c) => ticksToSeconds(c.StartPositionTicks)).filter((t) => t > 0),
+    [item?.Chapters],
+  );
+
+  const miniBottom = audioPlayer.current ? 'bottom-[92px]' : 'bottom-4';
+  const frameClass = isFull
+    ? 'fixed inset-0 z-50 bg-black'
+    : clsx(
+        'group/mini fixed right-4 z-[60] aspect-video w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-lg bg-black shadow-2xl ring-1 ring-white/15',
+        miniBottom,
+      );
+
+  if (itemError) {
+    return (
+      <div className={clsx(frameClass, 'flex flex-col items-center justify-center gap-3 p-4 text-center')}>
+        <p className="text-sm text-muted">{errorMessage(itemError)}</p>
+        <button onClick={exit} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
+          {isFull ? 'Go back' : 'Close'}
+        </button>
+      </div>
+    );
+  }
+
+  const title = item?.Type === 'Episode' ? item.SeriesName : item?.Name;
+  const subtitle =
+    item?.Type === 'Episode'
+      ? `${episodeLabel(item)}${item.Name ? ` · ${item.Name}` : ''}`
+      : item?.ProductionYear
+        ? String(item.ProductionYear)
+        : '';
+  const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
+  return (
+    <div
+      ref={containerRef}
+      className={clsx(frameClass, 'select-none', isFull && !showControls && 'cursor-none')}
+      onMouseMove={isFull ? poke : undefined}
+      onTouchStart={isFull ? poke : undefined}
+    >
+      <video
+        ref={videoRef}
+        className={clsx('absolute inset-0 h-full w-full bg-black object-contain', !isFull && 'cursor-pointer')}
+        playsInline
+        preload="auto"
+        onClick={onSurfaceClick}
+        onDoubleClick={onSurfaceDoubleClick}
+      />
+
+      {(loading || !item) && !error && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-accent">
+          <Spinner size={isFull ? 56 : 32} />
+        </div>
+      )}
+
+      {error && (
+        <div
+          className={clsx(
+            'absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 text-center',
+            isFull ? 'gap-4 px-6' : 'gap-2 px-3 text-sm',
+          )}
+        >
+          <p className={clsx('max-w-lg text-fg', !isFull && 'line-clamp-3')}>{error}</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button onClick={retry} className="rounded-md bg-accent px-4 py-2 font-semibold text-accent-ink hover:bg-accent-hover">
+              Retry
+            </button>
+            {isFull && stream?.method !== 'Transcode' && (
+              <button onClick={retryTranscode} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
+                Try transcoding
+              </button>
+            )}
+            <button onClick={exit} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
+              {isFull ? 'Go back' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isFull && (
+        <>
+      {/* Skip intro / credits */}
+      {activeSegment && !showUpNext && !error && (
+        <button
+          onClick={() => seekTo(ticksToSeconds(activeSegment.EndTicks))}
+          className={clsx(
+            'absolute right-8 z-10 rounded-md bg-white/90 px-5 py-2.5 font-semibold text-black shadow-xl transition-all hover:bg-white',
+            showControls ? 'bottom-32' : 'bottom-10',
+          )}
+        >
+          {SEGMENT_LABELS[activeSegment.Type]}
+        </button>
+      )}
+
+      {/* Up next */}
+      {showUpNext && nextItem && (
+        <UpNextCard
+          item={nextItem}
+          seconds={autoAdvance ? Math.max(0, Math.ceil(remaining)) : null}
+          raised={showControls}
+          onPlay={goNext}
+          onCancel={() => setUpNextDismissed(true)}
+        />
+      )}
+
+      {/* Top bar */}
+      <div
+        className={clsx(
+          'absolute inset-x-0 top-0 z-10 flex items-center gap-4 bg-gradient-to-b from-black/80 to-transparent px-4 pt-4 pb-12 transition-opacity duration-300 sm:px-6',
+          showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+      >
+        <button
+          onClick={minimize}
+          className="rounded-full p-2 text-white hover:bg-white/15"
+          aria-label="Back"
+          title="Back (keeps playing in the mini player)"
+        >
+          <ArrowLeft size={26} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-lg font-semibold">{title}</div>
+          {subtitle && <div className="truncate text-sm text-white/70">{subtitle}</div>}
+        </div>
+        <button
+          onClick={minimize}
+          className="rounded-full p-2 text-white hover:bg-white/15"
+          aria-label="Minimize player"
+          title="Minimize player"
+        >
+          <ChevronDown size={26} />
+        </button>
+        <button onClick={exit} className="rounded-full p-2 text-white hover:bg-white/15" aria-label="Stop playback" title="Stop playback">
+          <X size={26} />
+        </button>
+      </div>
+
+      {/* Bottom controls */}
+      <div
+        className={clsx(
+          'absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-4 pt-16 pb-4 transition-opacity duration-300 sm:px-6',
+          showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+      >
+        <div className="flex items-center gap-3 text-sm text-white/80 tabular-nums">
+          <span className="w-16">{formatClock(currentTime)}</span>
+          <SeekBar
+            className="flex-1"
+            current={currentTime}
+            duration={duration}
+            buffered={buffered}
+            onSeek={seekTo}
+            markers={chapterMarks}
+          />
+          <span className="w-16 text-right">-{formatClock(Math.max(0, remaining))}</span>
+        </div>
+        <div className="mt-2 flex items-center gap-1 sm:gap-2">
+          <ControlButton label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
+            {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+          </ControlButton>
+          <ControlButton label="Back 10 seconds" onClick={() => skip(-10)}>
+            <span className="relative">
+              <RotateCcw size={24} />
+              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">10</span>
+            </span>
+          </ControlButton>
+          <ControlButton label="Forward 30 seconds" onClick={() => skip(30)}>
+            <span className="relative">
+              <RotateCw size={24} />
+              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">30</span>
+            </span>
+          </ControlButton>
+          {nextId && (
+            <ControlButton label="Next" onClick={goNext}>
+              <SkipForward size={24} fill="currentColor" />
+            </ControlButton>
+          )}
+          <div className="group/vol ml-1 flex items-center">
+            <ControlButton label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((m) => !m)}>
+              <VolumeIcon size={24} />
+            </ControlButton>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={muted ? 0 : volume}
+              onChange={(e) => {
+                setVolume(Number(e.target.value));
+                setMuted(false);
+              }}
+              className="w-0 opacity-0 transition-all group-hover/vol:w-24 group-hover/vol:opacity-100 focus:w-24 focus:opacity-100"
+              aria-label="Volume"
+            />
+          </div>
+
+          <div className="flex-1" />
+
+          {stream && (
+            <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">
+              {stream.method === 'DirectPlay' ? 'Direct Play' : stream.method === 'DirectStream' ? 'Direct Stream' : 'Transcode'}
+            </span>
+          )}
+          <div className="relative">
+            <ControlButton
+              label="Subtitles"
+              onClick={() => setPanel((p) => (p === 'subtitles' ? 'none' : 'subtitles'))}
+              active={panel === 'subtitles' || (stream?.subIndex ?? -1) >= 0}
+            >
+              <Subtitles size={24} />
+            </ControlButton>
+            {panel === 'subtitles' && (
+              <Panel>
+                <PanelSection title="Subtitles">
+                  <PanelOption selected={(stream?.subIndex ?? -1) === -1} onClick={() => changeSubtitle(-1)}>
+                    None
+                  </PanelOption>
+                  {subtitleStreams.map((s) => (
+                    <PanelOption key={s.Index} selected={stream?.subIndex === s.Index} onClick={() => changeSubtitle(s.Index)}>
+                      {streamName(s)}
+                      {s.DeliveryMethod === 'Encode' && <span className="ml-2 text-xs text-white/40">burn-in</span>}
+                    </PanelOption>
+                  ))}
+                </PanelSection>
+              </Panel>
+            )}
+          </div>
+          <div className="relative">
+            <ControlButton
+              label="Settings"
+              onClick={() => setPanel((p) => (p === 'settings' ? 'none' : 'settings'))}
+              active={panel === 'settings'}
+            >
+              <Settings2 size={24} />
+            </ControlButton>
+            {panel === 'settings' && (
+              <Panel>
+                {audioStreams.length > 0 && (
+                  <PanelSection title="Audio">
+                    {audioStreams.map((s) => (
+                      <PanelOption key={s.Index} selected={stream?.audioIndex === s.Index} onClick={() => changeAudio(s.Index)}>
+                        {streamName(s)}
+                      </PanelOption>
+                    ))}
+                  </PanelSection>
+                )}
+                <PanelSection title="Quality">
+                  {QUALITY_OPTIONS.map((q) => (
+                    <PanelOption key={q.value} selected={maxBitrate === q.value} onClick={() => changeQuality(q.value)}>
+                      {q.label}
+                    </PanelOption>
+                  ))}
+                </PanelSection>
+                {stream && (
+                  <div className="border-t border-white/10 px-4 py-3 text-xs leading-relaxed text-white/50">
+                    <div>
+                      {stream.method === 'Transcode' ? 'Transcoding' : stream.method === 'DirectPlay' ? 'Direct playing' : 'Direct streaming'}{' '}
+                      {stream.source.Container?.toUpperCase()}
+                    </div>
+                    {stream.transcodeReasons.length > 0 && <div>Reason: {stream.transcodeReasons.join(', ')}</div>}
+                  </div>
+                )}
+              </Panel>
+            )}
+          </div>
+          <ControlButton label={isFullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
+            {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+          </ControlButton>
+        </div>
+      </div>
+        </>
+      )}
+
+      {!isFull && (
+        <MiniOverlay
+          title={title ?? ''}
+          subtitle={subtitle}
+          itemId={itemId}
+          playing={playing}
+          progress={duration > 0 ? currentTime / duration : 0}
+          onToggle={togglePlay}
+          onExpand={expand}
+          onClose={exit}
+        />
+      )}
+    </div>
+  );
+}
+
+function MiniOverlay({
+  title,
+  subtitle,
+  itemId,
+  playing,
+  progress,
+  onToggle,
+  onExpand,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  itemId: string;
+  playing: boolean;
+  progress: number;
+  onToggle: () => void;
+  onExpand: () => void;
+  onClose: () => void;
+}) {
+  const btn = 'flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20';
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-black/80 via-black/20 to-black/70 opacity-0 transition-opacity group-hover/mini:opacity-100 group-focus-within/mini:opacity-100" />
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-2 opacity-0 transition-opacity group-hover/mini:opacity-100 group-focus-within/mini:opacity-100">
+        <Link to={`/item/${itemId}`} className="min-w-0 flex-1 rounded px-1 hover:bg-white/10" title="Show details">
+          <div className="truncate text-sm font-semibold">{title}</div>
+          {subtitle && <div className="truncate text-xs text-white/70">{subtitle}</div>}
+        </Link>
+        <button onClick={onExpand} className={btn} aria-label="Expand player" title="Expand">
+          <Maximize2 size={18} />
+        </button>
+        <button onClick={onClose} className={btn} aria-label="Stop playback" title="Stop playback">
+          <X size={18} />
+        </button>
+      </div>
+      <button
+        onClick={onToggle}
+        aria-label={playing ? 'Pause' : 'Play'}
+        className="absolute top-1/2 left-1/2 z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/mini:opacity-100 group-focus-within/mini:opacity-100 hover:bg-accent"
+      >
+        {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" className="ml-0.5" />}
+      </button>
+      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-white/20">
+        <div className="h-full bg-accent" style={{ width: `${Math.min(100, progress * 100)}%` }} />
+      </div>
+    </>
+  );
+}
+
+function ControlButton({
+  label,
+  onClick,
+  children,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className={clsx(
+        'flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-white/15',
+        active ? 'text-accent' : 'text-white',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Panel({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="animate-pop-in absolute right-0 bottom-14 max-h-[60vh] w-72 overflow-y-auto rounded-lg bg-base-850/95 py-1 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PanelSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="py-1">
+      <div className="px-4 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-white/40 uppercase">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function PanelOption({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        'flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/10',
+        selected ? 'text-accent' : 'text-white/90',
+      )}
+    >
+      <Check size={16} className={clsx('shrink-0', !selected && 'invisible')} />
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </button>
+  );
+}
+
+function UpNextCard({
+  item,
+  seconds,
+  raised,
+  onPlay,
+  onCancel,
+}: {
+  item: BaseItemDto;
+  /** Countdown until auto-play, or null when auto-play is off. */
+  seconds: number | null;
+  raised: boolean;
+  onPlay: () => void;
+  onCancel: () => void;
+}) {
+  const api = useApi();
+  const src = imageSrc(api, cardImage(item, 'landscape'), 480);
+  return (
+    <div
+      className={clsx(
+        'animate-pop-in absolute right-6 z-20 w-80 overflow-hidden rounded-lg bg-base-850/95 shadow-2xl ring-1 ring-white/10 backdrop-blur transition-all',
+        raised ? 'bottom-36' : 'bottom-8',
+      )}
+    >
+      <div className="relative aspect-video bg-base-800">
+        <Img src={src} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute bottom-2 left-3 text-xs font-semibold tracking-wider text-accent uppercase">
+          {seconds === null ? 'Up next' : `Up next in ${seconds}s`}
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="truncate font-semibold">{item.Type === 'Episode' ? item.SeriesName : item.Name}</div>
+        {item.Type === 'Episode' && (
+          <div className="truncate text-sm text-muted">
+            {episodeLabel(item)} · {item.Name}
+          </div>
+        )}
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={onPlay}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-accent py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover"
+          >
+            <Play size={16} fill="currentColor" /> Play now
+          </button>
+          <button onClick={onCancel} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

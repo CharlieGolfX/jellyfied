@@ -1,0 +1,88 @@
+import clsx from 'clsx';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+
+type ToastKind = 'success' | 'error' | 'info';
+
+interface ToastItem {
+  id: number;
+  kind: ToastKind;
+  message: string;
+}
+
+interface ToastApi {
+  success: (message: string) => void;
+  error: (message: unknown) => void;
+  info: (message: string) => void;
+}
+
+const ToastContext = createContext<ToastApi | null>(null);
+
+export function errorMessage(err: unknown): string {
+  if (!err) return 'Something went wrong';
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message || 'Something went wrong';
+  return 'Something went wrong';
+}
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const nextId = useRef(1);
+
+  const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+
+  const push = useCallback(
+    (kind: ToastKind, message: string) => {
+      const id = nextId.current++;
+      setToasts((t) => [...t.slice(-4), { id, kind, message }]);
+      window.setTimeout(() => dismiss(id), kind === 'error' ? 6000 : 3500);
+    },
+    [dismiss],
+  );
+
+  const api = useMemo<ToastApi>(
+    () => ({
+      success: (m) => push('success', m),
+      error: (e) => push('error', errorMessage(e)),
+      info: (m) => push('info', m),
+    }),
+    [push],
+  );
+
+  return (
+    <ToastContext.Provider value={api}>
+      {children}
+      {createPortal(
+        <div className="pointer-events-none fixed right-4 bottom-4 z-[300] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className={clsx(
+                'animate-pop-in pointer-events-auto flex items-start gap-3 rounded-md bg-base-750 px-4 py-3 text-sm shadow-xl ring-1',
+                t.kind === 'error' && 'ring-danger/50',
+                t.kind === 'success' && 'ring-success/40',
+                t.kind === 'info' && 'ring-white/10',
+              )}
+            >
+              {t.kind === 'success' && <CheckCircle2 size={18} className="mt-px shrink-0 text-success" />}
+              {t.kind === 'error' && <AlertCircle size={18} className="mt-px shrink-0 text-danger" />}
+              {t.kind === 'info' && <Info size={18} className="mt-px shrink-0 text-info" />}
+              <span className="min-w-0 flex-1 break-words">{t.message}</span>
+              <button onClick={() => dismiss(t.id)} className="text-faint hover:text-fg" aria-label="Dismiss">
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </ToastContext.Provider>
+  );
+}
+
+export function useToast(): ToastApi {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error('useToast must be used inside ToastProvider');
+  return ctx;
+}

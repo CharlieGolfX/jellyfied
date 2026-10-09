@@ -1,0 +1,144 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Jellyfin's dark theme: background #101010, paper #202020. */
+  --color-base-950: #0a0a0a;
+  --color-base-900: #101010;
+  --color-base-850: #181818;
+  --color-base-800: #202020;
+  --color-base-750: #292929;
+  --color-base-700: #333333;
+  --color-base-600: #4a4a4a;
+  --color-base-500: #6a6a6a;
+
+  --color-fg: #eeeeee;
+  --color-muted: #a6a6a6;
+  --color-faint: #747474;
+
+  /* Jellyfin brand: primary blue, secondary purple (the logo gradient runs purple to blue). */
+  --color-accent: #00a4dc;
+  --color-accent-hover: #1fb5ea;
+  --color-accent-ink: #ffffff;
+  --color-brand-purple: #aa5cc3;
+  --color-star: #f2b01e;
+
+  --color-danger: #e5484d;
+  --color-success: #3dbb6b;
+  --color-info: #3b9eff;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-base-900);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  input[type='range'] {
+    accent-color: var(--color-accent);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-base-600) transparent;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility bg-app-gradient {
+  background:
+    radial-gradient(ellipse at top, rgb(255 255 255 / 0.035), transparent 60%),
+    var(--color-base-900);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 180ms ease-out both;
+}
+
+@utility animate-pop-in {
+  animation: pop-in 140ms ease-out both;
+}
+
+video::cue {
+  font-family: var(--font-sans);
+  font-size: clamp(16px, 2.6vw, 34px);
+  line-height: 1.3;
+  color: #fff;
+  background: rgb(0 0 0 / 0.55);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.9);
+}
+
+/* Card sizes: responsive base width multiplied by the user's poster-size setting (see lib/cardScale.ts). */
+:root {
+  --card-scale: 1;
+  --hub-poster: 124px;
+  --hub-landscape: 224px;
+  --hub-square: 136px;
+  --hub-person: 112px;
+}
+@media (min-width: 640px) {
+  :root {
+    --hub-poster: 148px;
+    --hub-landscape: 260px;
+    --hub-square: 156px;
+    --hub-person: 128px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --hub-poster: 164px;
+    --hub-landscape: 292px;
+    --hub-square: 172px;
+  }
+}
