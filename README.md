@@ -190,6 +190,25 @@ docker/         container entrypoint that writes config.js and the nginx site
 - Which formats play directly depends on the browser. Jellyplex tells the server exactly what the
   current browser can decode, and the server transcodes everything else.
 
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome.
+
+- **Bugs:** open an issue and include your Jellyfin server version, the browser you use, and the steps
+  to reproduce the problem. For playback problems, also say whether the player showed direct play
+  or transcode, and include the media info for the file if you can.
+- **Features:** open an issue to discuss larger changes before you start, so we can agree on the
+  approach first.
+- **Pull requests:**
+  1. Fork the repository and create a branch from `main`.
+  2. Set up the development environment as described under [Development](#development).
+  3. Keep each pull request focused on one change, and follow the existing code style.
+  4. Run `npm run build` before you submit. It type-checks the project and must pass.
+  5. Describe what you changed and how you tested it. For UI changes, add a screenshot.
+
+By submitting a contribution you agree that it is licensed under the GPLv2, the same license as the
+rest of the project.
+
 ## Credits
 
 The Jellyfin logo and colour scheme (purple `#AA5CC3` → blue `#00A4DC`) come from
@@ -197,3 +216,8 @@ The Jellyfin logo and colour scheme (purple `#AA5CC3` → blue `#00A4DC`) come f
 to the Jellyfin contributors, and it is licensed under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Jellyplex is an unofficial client
 and is not affiliated with or endorsed by the Jellyfin project.
+
+## License
+
+Jellyplex is licensed under the [GNU General Public License v2.0](LICENSE). The Jellyfin artwork
+mentioned under [Credits](#credits) keeps its own CC BY-SA 4.0 license.

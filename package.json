@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A Plex-style web frontend for Jellyfin",
+  "license": "GPL-2.0-only",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
