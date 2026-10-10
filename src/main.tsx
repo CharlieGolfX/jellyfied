@@ -6,6 +6,8 @@ import { ApiError } from '@/api/client';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AudioPlayerProvider } from '@/player/AudioPlayerProvider';
+import { SyncPlayProvider } from '@/player/SyncPlayProvider';
+import { RealtimeProvider } from '@/realtime/RealtimeProvider';
 import { VideoSessionProvider } from '@/player/VideoSession';
 import App from './App';
 import './index.css';
@@ -29,11 +31,15 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
-            <AudioPlayerProvider>
-              <VideoSessionProvider>
-                <App />
-              </VideoSessionProvider>
-            </AudioPlayerProvider>
+            <RealtimeProvider>
+              <AudioPlayerProvider>
+                <VideoSessionProvider>
+                  <SyncPlayProvider>
+                    <App />
+                  </SyncPlayProvider>
+                </VideoSessionProvider>
+              </AudioPlayerProvider>
+            </RealtimeProvider>
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>

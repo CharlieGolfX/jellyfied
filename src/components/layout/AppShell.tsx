@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useIsAdmin } from '@/auth/AuthProvider';
 import { AudioBar } from '@/player/AudioBar';
+import { CastButton, RemoteBar } from '@/player/RemoteControl';
+import { SyncPlayButton } from '@/player/SyncPlayProvider';
 import { useVideoSession } from '@/player/VideoSession';
 import { CardSizeButton } from './CardSizeButton';
 import { JellyfinIcon, Logo } from './Logo';
@@ -68,6 +70,8 @@ export function AppShell() {
           <SearchBox />
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
+          <SyncPlayButton />
+          <CastButton />
           <CardSizeButton />
           {isAdmin && (
             <Link
@@ -114,6 +118,7 @@ export function AppShell() {
       </div>
 
       <AudioBar />
+      <RemoteBar />
     </div>
   );
 }

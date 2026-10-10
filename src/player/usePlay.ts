@@ -6,7 +6,9 @@ import type { BaseItemDto, ItemsResult } from '@/api/types';
 import { useToast } from '@/components/ui/Toast';
 import { generateId } from '@/api/device';
 import { useAudioPlayer } from './AudioPlayerProvider';
-import { useVideoSession } from './VideoSession';
+import { getCastTarget, sendRemotePlay } from './castTarget';
+import { useSyncPlayManager } from './SyncPlayProvider';
+import { isPlayPath, useVideoSession } from './VideoSession';
 
 export interface PlayOptions {
   shuffle?: boolean;
@@ -25,6 +27,10 @@ export interface VideoPlayerState {
   audioStreamIndex?: number;
   subtitleStreamIndex?: number;
   mediaSourceId?: string;
+  /** Start here instead of at the saved resume position (remote control, SyncPlay). */
+  startPositionTicks?: number;
+  /** Set when the item is played as part of a SyncPlay group: its entry in the group's queue. */
+  syncPlaylistItemId?: string;
 }
 
 const CONTAINER_TYPES = new Set([
@@ -61,14 +67,43 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Returns a function that plays any item: videos open the player, audio goes to the music queue. */
+/**
+ * Returns a function that plays any item. Normally that happens in this browser; while another
+ * device is selected with "Play on", the item is sent there instead.
+ */
 export function usePlay() {
+  const api = useApi();
+  const local = useLocalPlay();
+  const toast = useToast();
+  return useCallback(
+    async (item: BaseItemDto, opts: PlayOptions = {}) => {
+      const target = getCastTarget();
+      if (!target) return local(item, opts);
+      try {
+        // Containers (shows, albums, playlists…) are sent as they are; the receiving app expands them.
+        const single = !item.IsFolder && !CONTAINER_TYPES.has(item.Type);
+        await sendRemotePlay(api, target, [item.Id], {
+          command: opts.shuffle ? 'PlayShuffle' : 'PlayNow',
+          startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
+        });
+        toast.info(`Playing on ${target.deviceName}`);
+      } catch (err) {
+        toast.error(err);
+      }
+    },
+    [api, local, toast],
+  );
+}
+
+/** Plays any item in this browser: videos open the player, audio goes to the music queue. */
+export function useLocalPlay() {
   const api = useApi();
   const { userId } = useSession();
   const navigate = useNavigate();
   const audio = useAudioPlayer();
   const videoSession = useVideoSession();
   const toast = useToast();
+  const sync = useSyncPlayManager();
 
   const fetchChildren = useCallback(
     async (item: BaseItemDto, shuffleItems: boolean): Promise<BaseItemDto[]> => {
@@ -151,6 +186,22 @@ export function usePlay() {
         videoSession.expand();
         return;
       }
+      if (sync?.inGroup) {
+        // In a SyncPlay group the video starts for everyone, at the same position.
+        void (async () => {
+          try {
+            let ticks = 0;
+            if (!opts.fromStart) {
+              const data = await api.get<{ PlaybackPositionTicks?: number }>(`/UserItems/${ids[startIndex]}/UserData`, { userId });
+              ticks = data.PlaybackPositionTicks ?? 0;
+            }
+            await sync.setQueue(ids, startIndex, ticks);
+          } catch (err) {
+            toast.error(err);
+          }
+        })();
+        return;
+      }
       const state: VideoPlayerState = {
         token: generateId(),
         queue: ids.length > 1 ? ids : undefined,
@@ -159,9 +210,10 @@ export function usePlay() {
         subtitleStreamIndex: opts.subtitleStreamIndex,
         mediaSourceId: opts.mediaSourceId,
       };
-      navigate(`/play/${ids[startIndex]}`, { state });
+      // Replacing another video (e.g. started by remote control): don't stack player pages in the history.
+      navigate(`/play/${ids[startIndex]}`, { state, replace: isPlayPath(window.location.pathname) });
     },
-    [audio, navigate, videoSession],
+    [audio, navigate, videoSession, sync, api, userId, toast],
   );
 
   return useCallback(

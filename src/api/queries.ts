@@ -251,6 +251,17 @@ export function useSetFavorite() {
   });
 }
 
+/** Clears the resume position, which takes the item out of Continue Watching. */
+export function useClearProgress() {
+  const api = useApi();
+  const { userId } = useSession();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/UserItems/${id}/UserData`, { PlaybackPositionTicks: 0 }, { userId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
+  });
+}
+
 export function useRefreshItem() {
   const api = useApi();
   return useMutation({

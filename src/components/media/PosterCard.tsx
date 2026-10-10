@@ -5,10 +5,14 @@ import {
   Clapperboard,
   Film,
   Folder,
+  FolderMinus,
+  FolderPlus,
+  History,
   Heart,
   Image as ImageIcon,
   ListMusic,
   MoreHorizontal,
+  Pencil,
   Music,
   Play,
   Radio,
@@ -16,17 +20,21 @@ import {
   Tv,
   User,
 } from 'lucide-react';
-import { memo, type CSSProperties, type ReactNode } from 'react';
+import { lazy, memo, Suspense, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cardImage, defaultShape, imageSrc, type CardShape } from '@/api/images';
-import { useSetFavorite, useSetPlayed } from '@/api/queries';
+import { useClearProgress, useSetFavorite, useSetPlayed } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
-import { useApi } from '@/auth/AuthProvider';
+import { useApi, useIsAdmin } from '@/auth/AuthProvider';
 import { Img } from '@/components/ui/States';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
+import { supportsMetadataEditing } from './metadataEditing';
+import { AddToCollectionDialog, supportsCollections, useCanManageCollections, useRemoveFromCollection } from './AddToCollection';
 import { useToast } from '@/components/ui/Toast';
 import { episodeLabel, playedPercent } from '@/lib/format';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay } from '@/player/usePlay';
+
+const MetadataEditor = lazy(() => import('./MetadataEditor'));
 
 const aspect: Record<CardShape, string> = {
   poster: 'aspect-[2/3]',
@@ -112,6 +120,8 @@ export interface PosterCardProps {
   /** Context hint for labels: inside a series, episodes are titled by their own name. */
   context?: 'series';
   hideText?: boolean;
+  /** Set on a collection's page: adds "Remove from collection" to the card menu. */
+  collectionId?: string;
 }
 
 export const PosterCard = memo(function PosterCard({
@@ -123,6 +133,7 @@ export const PosterCard = memo(function PosterCard({
   subtitle,
   context,
   hideText,
+  collectionId,
 }: PosterCardProps) {
   const api = useApi();
   const navigate = useNavigate();
@@ -131,6 +142,12 @@ export const PosterCard = memo(function PosterCard({
   const toast = useToast();
   const setPlayed = useSetPlayed();
   const setFavorite = useSetFavorite();
+  const clearProgress = useClearProgress();
+  const removeFromCollection = useRemoveFromCollection();
+  const canManageCollections = useCanManageCollections();
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const isAdmin = useIsAdmin();
+  const [editing, setEditing] = useState(false);
 
   const s = shape ?? defaultShape(item);
   const src = imageSrc(api, cardImage(item, s), imageWidth[s]);
@@ -175,6 +192,36 @@ export const PosterCard = memo(function PosterCard({
           { onError: (e) => toast.error(e) },
         ),
     });
+  }
+  // Based on the saved position, not the progress bar: a watched item that is being rewatched has both.
+  if ((item.UserData?.PlaybackPositionTicks ?? 0) > 0 && item.MediaType === 'Video' && !item.IsFolder) {
+    menuItems.push({
+      label: 'Remove from Continue Watching',
+      icon: <History size={16} />,
+      // The card may be gone by the time the lists have refreshed, so don't rely on mutate() callbacks.
+      onSelect: () =>
+        void clearProgress.mutateAsync(item.Id).then(
+          () => toast.success('Removed from Continue Watching'),
+          (e) => toast.error(e),
+        ),
+    });
+  }
+  if (canManageCollections && supportsCollections(item)) {
+    menuItems.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
+    if (collectionId) {
+      menuItems.push({
+        label: 'Remove from collection',
+        icon: <FolderMinus size={16} />,
+        onSelect: () =>
+          void removeFromCollection.mutateAsync({ collectionId, itemId: item.Id }).then(
+            () => toast.success('Removed from collection'),
+            (e) => toast.error(e),
+          ),
+      });
+    }
+  }
+  if (isAdmin && supportsMetadataEditing(item) && item.Type !== 'Person') {
+    menuItems.push({ label: 'Edit metadata', icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
   }
   if (item.Type === 'Episode' && item.SeriesId) {
     menuItems.push({ divider: true, label: '' });
@@ -306,6 +353,12 @@ export const PosterCard = memo(function PosterCard({
             </div>
           )}
         </div>
+      )}
+      {addingToCollection && <AddToCollectionDialog item={item} onClose={() => setAddingToCollection(false)} />}
+      {editing && (
+        <Suspense fallback={null}>
+          <MetadataEditor itemId={item.Id} onClose={() => setEditing(false)} />
+        </Suspense>
       )}
     </div>
   );

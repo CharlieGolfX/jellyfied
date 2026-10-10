@@ -3,8 +3,11 @@ import {
   Check,
   Download,
   Film,
+  FolderPlus,
   Heart,
+  History,
   MoreHorizontal,
+  Pencil,
   Play,
   Radio,
   RefreshCw,
@@ -13,10 +16,11 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import { useState, type MouseEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { backdropSrc, cardImage, imageSrc, type CardShape } from '@/api/images';
 import {
+  useClearProgress,
   useDeleteItem,
   useLocalTrailers,
   useRefreshItem,
@@ -27,7 +31,9 @@ import type { BaseItemDto, BaseItemPerson } from '@/api/types';
 import { useApi, useIsAdmin } from '@/auth/AuthProvider';
 import { HubRow } from '@/components/media/Hub';
 import { PersonCard } from '@/components/media/PersonCard';
+import { AddToCollectionDialog, supportsCollections, useCanManageCollections } from '@/components/media/AddToCollection';
 import { fallbackIcon } from '@/components/media/PosterCard';
+import { supportsMetadataEditing } from '@/components/media/metadataEditing';
 import { Button } from '@/components/ui/Button';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { ConfirmDialog } from '@/components/ui/Modal';
@@ -35,6 +41,8 @@ import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, formatRemaining, formatRuntime, playedPercent, ticksToSeconds, yearRange } from '@/lib/format';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay, type PlayOptions } from '@/player/usePlay';
+
+const MetadataEditor = lazy(() => import('@/components/media/MetadataEditor'));
 
 /** Full-bleed blurred backdrop behind the detail page, Plex style. */
 export function Backdrop({ item }: { item: BaseItemDto }) {
@@ -216,7 +224,11 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const setFavorite = useSetFavorite();
   const refresh = useRefreshItem();
   const del = useDeleteItem();
+  const clearProgress = useClearProgress();
+  const canManageCollections = useCanManageCollections();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const [editing, setEditing] = useState(false);
   const trailers = useLocalTrailers(item.Id, (item.LocalTrailerCount ?? 0) > 0);
 
   const playable = isPlayable(item);
@@ -228,6 +240,20 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const localTrailer = trailers.data?.[0];
 
   const menu: MenuItem[] = [...extraMenu];
+  if (resumable && item.MediaType === 'Video') {
+    menu.push({
+      label: 'Remove from Continue Watching',
+      icon: <History size={16} />,
+      onSelect: () =>
+        clearProgress.mutate(item.Id, {
+          onSuccess: () => toast.success('Removed from Continue Watching'),
+          onError: (e) => toast.error(e),
+        }),
+    });
+  }
+  if (canManageCollections && supportsCollections(item)) {
+    menu.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
+  }
   if (item.CanDownload && !item.IsFolder) {
     menu.push({
       label: 'Download',
@@ -236,6 +262,9 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
     });
   }
   if (isAdmin) {
+    if (supportsMetadataEditing(item)) {
+      menu.push({ label: 'Edit metadata', icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
+    }
     menu.push(
       {
         label: 'Refresh metadata',
@@ -328,6 +357,12 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
         />
       )}
       {resumable && item.RunTimeTicks ? <span className="ml-1 text-sm text-muted">{formatRemaining(item)}</span> : null}
+      {addingToCollection && <AddToCollectionDialog item={item} onClose={() => setAddingToCollection(false)} />}
+      {editing && (
+        <Suspense fallback={null}>
+          <MetadataEditor itemId={item.Id} onClose={() => setEditing(false)} />
+        </Suspense>
+      )}
 
       <ConfirmDialog
         open={confirmDelete}

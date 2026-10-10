@@ -91,13 +91,27 @@ if [ -n "$JELLYFIN_URL" ]; then
   # visible to the system resolver, so use a static upstream for them. Everything else is
   # resolved at request time so Jellyplex starts even when Jellyfin is temporarily down.
   if grep -qE "[[:space:]]${HOST}([[:space:]]|\$)" /etc/hosts 2>/dev/null; then
-    UPSTREAM_BLOCK="upstream jellyfin_backend {
-    server ${HOST}:${PORT};
+    # Use the addresses themselves, and only the IPv4 ones when there are any: Docker Desktop also
+    # lists an IPv6 address for host.docker.internal that containers usually cannot reach, and nginx
+    # would send part of the requests there (failed requests, dropped WebSocket connections).
+    ADDRS=$(awk -v h="$HOST" '$1 !~ /^#/ { for (i = 2; i <= NF; i++) if ($i == h) print $1 }' /etc/hosts)
+    V4=$(printf '%s\n' "$ADDRS" | grep -v ':' || true)
+    if [ -n "$V4" ]; then
+      ADDRS="$V4"
+    else
+      ADDRS=$(printf '%s\n' "$ADDRS" | sed 's/.*/[&]/')
+    fi
+    SERVERS=""
+    for ADDR in $ADDRS; do
+      SERVERS="${SERVERS}
+    server ${ADDR}:${PORT};"
+    done
+    UPSTREAM_BLOCK="upstream jellyfin_backend {${SERVERS}
     keepalive 16;
 }"
     UPSTREAM_TARGET="${SCHEME}://jellyfin_backend${BASE_PATH}"
     RESOLVER=""
-    log "proxying ${PROXY_PATH}/ -> ${SCHEME}://${HOST}:${PORT}${BASE_PATH} (static upstream from /etc/hosts)"
+    log "proxying ${PROXY_PATH}/ -> ${SCHEME}://${HOST}:${PORT}${BASE_PATH} (static upstream from /etc/hosts: $(echo $ADDRS))"
   else
     NS=$(awk '/^nameserver/ { print $2; exit }' /etc/resolv.conf 2>/dev/null || true)
     case "$NS" in

@@ -4,17 +4,22 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ListVideo,
   Maximize,
   Maximize2,
   Minimize,
+  Minus,
+  Moon,
   Pause,
   PictureInPicture2,
   Play,
+  Plus,
   RotateCcw,
   RotateCw,
   Settings2,
   SkipForward,
   Subtitles,
+  Users,
   Volume1,
   Volume2,
   VolumeX,
@@ -30,9 +35,10 @@ import type { BaseItemDto, ItemsResult, MediaSourceInfo, MediaStream, PlaybackIn
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Img } from '@/components/ui/States';
 import { Spinner } from '@/components/ui/Spinner';
-import { errorMessage } from '@/components/ui/Toast';
+import { errorMessage, useToast } from '@/components/ui/Toast';
 import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
+import { registerActiveVideo, type ActiveVideo } from './activePlayer';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { buildDeviceProfile, MAX_BITRATE } from './deviceProfile';
 import {
@@ -43,6 +49,19 @@ import {
   type PlayMethod,
 } from './reporting';
 import { SeekBar } from './SeekBar';
+import { PlaybackInfo } from './PlaybackInfo';
+import {
+  clearSleepTimer,
+  getSleepTimer,
+  onSleepTimerFired,
+  SLEEP_TIMER_MINUTES,
+  sleepAtEndOfVideo,
+  startSleepTimer,
+  useSleepTimer,
+} from './sleepTimer';
+import { SubtitleOverlay } from './SubtitleOverlay';
+import { useSyncPlay, useSyncPlayManager } from './SyncPlayProvider';
+import { SUBTITLE_SIZES, useSubtitleStyle } from './subtitleStyle';
 import type { VideoPlayerState } from './usePlay';
 import { isPlayPath, useVideoSession } from './VideoSession';
 
@@ -82,6 +101,8 @@ interface LoadOptions {
   bitrate: number;
   mediaSourceId?: string;
   forceTranscode?: boolean;
+  /** Buffer without starting (SyncPlay starts everyone at the same moment). */
+  holdStart?: boolean;
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -91,7 +112,6 @@ const TRICKPLAY_PREVIEW_WIDTH = 240;
 
 const pipSupported = typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
 
-/** Picks the thumbnail resolution closest to the preview size for the playing media source. */
 /** Wall-clock time at which playback will finish, taking playback speed into account. */
 function EndsAt({ remaining, speed }: { remaining: number; speed: number }) {
   // Re-render on a timer too, so the time keeps moving while paused.
@@ -109,6 +129,30 @@ function EndsAt({ remaining, speed }: { remaining: number; speed: number }) {
   );
 }
 
+/** Countdown shown in the controls while a sleep timer is running. */
+function SleepIndicator() {
+  const sleep = useSleepTimer();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!sleep.endsAt) return;
+    const timer = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [sleep.endsAt]);
+  if (!sleep.endsAt && !sleep.endOfVideo) return null;
+  const left = sleep.endsAt ? Math.max(0, (sleep.endsAt - Date.now()) / 1000) : 0;
+  return (
+    <span
+      data-testid="sleep-indicator"
+      className="mr-2 flex items-center gap-1 text-sm text-accent tabular-nums"
+      title={sleep.endOfVideo ? 'Sleep timer: stops when this video ends' : 'Sleep timer'}
+    >
+      <Moon size={15} />
+      {sleep.endOfVideo ? 'End of video' : formatClock(left)}
+    </span>
+  );
+}
+
+/** Picks the thumbnail resolution closest to the preview size for the playing media source. */
 function pickTrickplay(item: BaseItemDto | undefined, sourceId: string | undefined): TrickplayInfo | null {
   if (!item?.Trickplay || !sourceId) return null;
   const norm = (id: string) => id.replace(/-/g, '').toLowerCase();
@@ -144,6 +188,8 @@ function readNumber(key: string, fallback: number): number {
 /** App-level player: renders the current video session full screen or as the mini player. */
 export default function GlobalVideoPlayer() {
   const { session } = useVideoSession();
+  // A sleep timer belongs to the viewing session: drop it once the player is closed.
+  useEffect(() => () => clearSleepTimer(), []);
   if (!session) return null;
   // Remount per session so each playback is fully isolated.
   return <VideoPlayer key={session.key} itemId={session.itemId} navState={session.state} />;
@@ -168,6 +214,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const loadToken = useRef(0);
   const fallbackTried = useRef(false);
   const subtitleUrlRef = useRef<string | null>(null);
+  const subtitleTrackRef = useRef<HTMLTrackElement | null>(null);
+  const toast = useToast();
+  const sleep = useSleepTimer();
+  const [subtitleStyle, setSubtitleStyle] = useSubtitleStyle();
+  // SyncPlay: this playback belongs to a group and follows the server's commands.
+  const syncManager = useSyncPlayManager();
+  const sync = useSyncPlay();
+  const syncItemId = navState.syncPlaylistItemId;
+  const inSync = Boolean(syncItemId) && sync.following && sync.playlistItemId === syncItemId;
 
   const [stream, setStream] = useState<ActiveStream | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,7 +235,12 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const [muted, setMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles'>('none');
+  const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles' | 'chapters'>('none');
+  /** A text subtitle track is attached (drawn by SubtitleOverlay). */
+  const [textSubtitles, setTextSubtitles] = useState(false);
+  /** Seconds the subtitles are shifted: positive = later. */
+  const [subtitleDelay, setSubtitleDelay] = useState(0);
+  const [showInfo, setShowInfo] = useState(false);
   const [maxBitrate, setMaxBitrate] = useState(() => readNumber(BITRATE_KEY, MAX_BITRATE));
   const [upNextDismissed, setUpNextDismissed] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -206,7 +266,9 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const nextId = nextFromQueue ?? nextEpisode.data?.Items.find((i) => i.Id !== itemId)?.Id;
   const { data: nextItem } = useItem(nextId);
   // Honour the user's "Automatically play the next episode" preference for TV episodes.
-  const autoAdvance = item?.Type !== 'Episode' || user?.Configuration?.EnableNextEpisodeAutoPlay !== false;
+  // A "stop at the end of this video" sleep timer also turns it off.
+  const autoAdvance =
+    !sleep.endOfVideo && (item?.Type !== 'Episode' || user?.Configuration?.EnableNextEpisodeAutoPlay !== false);
 
   /** Stop playback entirely (leaving the full-screen route if we're on it). */
   const exit = useCallback(() => {
@@ -216,10 +278,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
   const goNext = useCallback(() => {
     if (!nextId) return;
+    // In a SyncPlay group the whole group moves on; the server then tells everyone what to open.
+    if (syncItemId && syncManager?.getSnapshot().playlistItemId === syncItemId) {
+      syncManager.requestNext();
+      return;
+    }
     const state: VideoPlayerState = { queue, token: generateId() };
     start(nextId, state);
     if (isPlayPath(window.location.pathname)) navigate(`/play/${nextId}`, { replace: true, state });
-  }, [nextId, queue, start, navigate]);
+  }, [nextId, queue, start, navigate, syncItemId, syncManager]);
 
   // ---- Session lifecycle -------------------------------------------------
   const endSession = useCallback(
@@ -249,6 +316,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const clearSubtitles = useCallback(() => {
     const video = videoRef.current;
     if (video) video.querySelectorAll('track').forEach((t) => t.remove());
+    subtitleTrackRef.current = null;
+    setTextSubtitles(false);
     if (subtitleUrlRef.current) {
       URL.revokeObjectURL(subtitleUrlRef.current);
       subtitleUrlRef.current = null;
@@ -275,7 +344,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         track.src = blobUrl;
         track.default = true;
         video.appendChild(track);
-        track.track.mode = 'showing';
+        // 'hidden' loads the cues without the browser drawing them; SubtitleOverlay draws them
+        // (picture-in-picture is the exception, see below).
+        track.track.mode = document.pictureInPictureElement === video ? 'showing' : 'hidden';
+        subtitleTrackRef.current = track;
+        setTextSubtitles(true);
       } catch (err) {
         console.warn('Failed to load subtitles', err);
       }
@@ -296,6 +369,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       setLoading(true);
       setError(null);
       endSession(false);
+      const synced = Boolean(syncItemId) && syncManager?.getSnapshot().playlistItemId === syncItemId;
+      if (synced) syncManager?.reloading();
 
       try {
         const info = await api.post<PlaybackInfoResponse>(`/Items/${item.Id}/PlaybackInfo`, {
@@ -435,6 +510,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           void attachSubtitle(subStream, token);
         }
 
+        // SyncPlay: only buffer. The group starts together once every member is ready.
+        if (opts.holdStart || synced) return;
         video.play().catch((err: Error) => {
           // Autoplay may be blocked; the user can press play.
           if (err.name === 'NotAllowedError') {
@@ -448,8 +525,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         setError(errorMessage(err));
       }
     },
-    [api, item, userId, endSession, destroyHls, clearSubtitles, attachSubtitle],
+    [api, item, userId, endSession, destroyHls, clearSubtitles, attachSubtitle, syncItemId, syncManager],
   );
+
+  // SyncPlay: hand the video element to the group manager for as long as this player is open.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !syncItemId || !syncManager) return;
+    return syncManager.attach(video, syncItemId);
+  }, [syncItemId, syncManager]);
 
   // Initial load once the item is known.
   const initialised = useRef(false);
@@ -457,7 +541,12 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     if (!item || initialised.current) return;
     initialised.current = true;
     audioPlayer.pause();
-    const resumeAt = navState.fromStart ? 0 : ticksToSeconds(item.UserData?.PlaybackPositionTicks);
+    const resumeAt =
+      navState.startPositionTicks != null
+        ? ticksToSeconds(navState.startPositionTicks)
+        : navState.fromStart
+          ? 0
+          : ticksToSeconds(item.UserData?.PlaybackPositionTicks);
     setDuration(ticksToSeconds(item.RunTimeTicks));
     void load({
       start: resumeAt,
@@ -465,6 +554,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       subIndex: navState.subtitleStreamIndex,
       bitrate: maxBitrate,
       mediaSourceId: navState.mediaSourceId,
+      holdStart: Boolean(navState.syncPlaylistItemId),
     });
   }, [item, load, navState, maxBitrate, audioPlayer]);
 
@@ -611,12 +701,19 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     const video = videoRef.current;
     if (!video) return;
     const onEnded = () => {
-      if (nextId && autoAdvance && !upNextDismissed) goNext();
+      const stopHere = getSleepTimer().endOfVideo;
+      if (stopHere) clearSleepTimer();
+      if (syncItemId && syncManager?.getSnapshot().playlistItemId === syncItemId) {
+        // The group's queue decides what comes next (requestNext is a no-op for all but the first to ask).
+        if (stopHere || !syncManager.requestNext()) exit();
+        return;
+      }
+      if (nextId && autoAdvance && !upNextDismissed && !stopHere) goNext();
       else exit();
     };
     video.addEventListener('ended', onEnded);
     return () => video.removeEventListener('ended', onEnded);
-  }, [nextId, autoAdvance, upNextDismissed, goNext, exit]);
+  }, [nextId, autoAdvance, upNextDismissed, goNext, exit, syncItemId, syncManager]);
 
   // Volume
   useEffect(() => {
@@ -632,12 +729,14 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   }, [volume, muted]);
 
   // Playback speed. defaultPlaybackRate survives source changes (quality/audio switches).
+  // A SyncPlay group always plays at normal speed.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.defaultPlaybackRate = speed;
-    video.playbackRate = speed;
-  }, [speed]);
+    const rate = inSync ? 1 : speed;
+    video.defaultPlaybackRate = rate;
+    video.playbackRate = rate;
+  }, [speed, inSync]);
 
   // Picture-in-picture state (the browser can also open/close it on its own).
   useEffect(() => {
@@ -653,6 +752,23 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       if (document.pictureInPictureElement === video) void document.exitPictureInPicture().catch(() => {});
     };
   }, []);
+
+  // Our subtitle overlay isn't part of the picture-in-picture window, so let the browser draw the
+  // subtitles there instead.
+  useEffect(() => {
+    const track = subtitleTrackRef.current?.track;
+    if (track) track.mode = inPip ? 'showing' : 'hidden';
+  }, [inPip, textSubtitles]);
+
+  // Sleep timer ran out: pause.
+  useEffect(
+    () =>
+      onSleepTimerFired(() => {
+        videoRef.current?.pause();
+        toast.info('Sleep timer: playback paused');
+      }),
+    [toast],
+  );
 
   const togglePip = useCallback(() => {
     const video = videoRef.current;
@@ -750,8 +866,17 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         case 'p':
           togglePip();
           break;
+        case 'i':
+          setShowInfo((v) => !v);
+          break;
+        case 'g':
+        case 'h':
+          if (textSubtitles) setSubtitleDelay((d) => Math.round((d + (e.key.toLowerCase() === 'h' ? 0.1 : -0.1)) * 10) / 10);
+          else handled = false;
+          break;
         case '>':
         case '<': {
+          if (inSync) break;
           const i = SPEED_OPTIONS.indexOf(speed);
           const next = SPEED_OPTIONS[Math.min(SPEED_OPTIONS.length - 1, Math.max(0, i + (e.key === '>' ? 1 : -1)))];
           setSpeed(next);
@@ -772,7 +897,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed]);
+  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, textSubtitles, inSync]);
 
   // Collapsing into the mini player: close menus and leave browser full screen.
   useEffect(() => {
@@ -883,8 +1008,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const subtitleStreams = sourceStreams.filter((s) => s.Type === 'Subtitle');
 
   const changeAudio = (index: number) => {
-    if (!stream || index === stream.audioIndex) return;
     setPanel('none');
+    if (!stream || index === stream.audioIndex) return;
     void load({
       start: videoRef.current?.currentTime ?? 0,
       audioIndex: index,
@@ -895,8 +1020,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   };
 
   const changeSubtitle = (index: number) => {
-    if (!stream || index === stream.subIndex) return;
     setPanel('none');
+    if (!stream || index === stream.subIndex) return;
     const target = subtitleStreams.find((s) => s.Index === index);
     const canSwapLocally = !stream.burnedSub && (index === -1 || target?.DeliveryMethod === 'External');
     if (canSwapLocally) {
@@ -958,6 +1083,46 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     });
   };
 
+  // Let remote control (other devices) drive this player. The handle is registered once and
+  // always calls the latest closures.
+  const controls = useRef<Omit<ActiveVideo, 'itemId' | 'video'> | null>(null);
+  controls.current = {
+    play: () => {
+      pauseAudio();
+      void videoRef.current?.play().catch(() => {});
+    },
+    pause: () => videoRef.current?.pause(),
+    seek: seekTo,
+    stop: exit,
+    next: goNext,
+    setVolume: (v) => {
+      setVolume(v);
+      setMuted(false);
+    },
+    setMuted: (m) => setMuted(m === 'toggle' ? (prev) => !prev : m),
+    setAudioIndex: changeAudio,
+    setSubtitleIndex: changeSubtitle,
+    toggleFullscreen,
+  };
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    return registerActiveVideo({
+      itemId,
+      video,
+      play: () => controls.current?.play(),
+      pause: () => controls.current?.pause(),
+      seek: (s) => controls.current?.seek(s),
+      stop: () => controls.current?.stop(),
+      next: () => controls.current?.next(),
+      setVolume: (v) => controls.current?.setVolume(v),
+      setMuted: (m) => controls.current?.setMuted(m),
+      setAudioIndex: (i) => controls.current?.setAudioIndex(i),
+      setSubtitleIndex: (i) => controls.current?.setSubtitleIndex(i),
+      toggleFullscreen: () => controls.current?.toggleFullscreen(),
+    });
+  }, [itemId]);
+
   // ---- Derived UI state ------------------------------------------------------
   const activeSegment = useMemo(() => {
     const list = segments.data?.Items ?? [];
@@ -975,6 +1140,12 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     () => (item?.Chapters ?? []).map((c) => ticksToSeconds(c.StartPositionTicks)).filter((t) => t > 0),
     [item?.Chapters],
   );
+
+  const chapters = useMemo(
+    () => (item?.Chapters ?? []).map((c, index) => ({ index, start: ticksToSeconds(c.StartPositionTicks), name: c.Name || `Chapter ${index + 1}`, tag: c.ImageTag })),
+    [item?.Chapters],
+  );
+  const currentChapter = chapters.reduce((found, c) => (c.start <= currentTime + 0.25 ? c.index : found), -1);
 
   const trickplay = useMemo(() => pickTrickplay(item, stream?.source.Id), [item, stream?.source.Id]);
   const renderTrickplay = useCallback(
@@ -1052,6 +1223,16 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         onDoubleClick={onSurfaceDoubleClick}
       />
 
+      {textSubtitles && !inPip && (
+        <SubtitleOverlay
+          trackRef={subtitleTrackRef}
+          videoRef={videoRef}
+          delay={subtitleDelay}
+          raised={isFull && showControls}
+          compact={!isFull}
+        />
+      )}
+
       {(loading || !item) && !error && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-accent">
           <Spinner size={isFull ? 56 : 32} />
@@ -1108,6 +1289,19 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         />
       )}
 
+      {showInfo && stream && (
+        <PlaybackInfo
+          videoRef={videoRef}
+          source={stream.source}
+          method={stream.method}
+          isHls={stream.isHls}
+          audioIndex={stream.audioIndex}
+          subIndex={stream.subIndex}
+          transcodeReasons={stream.transcodeReasons}
+          onClose={() => setShowInfo(false)}
+        />
+      )}
+
       {/* Top bar */}
       <div
         className={clsx(
@@ -1127,6 +1321,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           <div className="truncate text-lg font-semibold">{title}</div>
           {subtitle && <div className="truncate text-sm text-white/70">{subtitle}</div>}
         </div>
+        {inSync && sync.group && (
+          <span
+            data-testid="syncplay-badge"
+            className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent sm:flex"
+            title={`SyncPlay: watching with ${sync.group.Participants.join(', ')}`}
+          >
+            <Users size={15} /> {sync.group.GroupName} · {sync.group.Participants.length}
+          </span>
+        )}
         <button
           onClick={minimize}
           className="rounded-full p-2 text-white hover:bg-white/15"
@@ -1203,12 +1406,53 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
           <div className="flex-1" />
 
-          {duration > 0 && remaining > 0 && <EndsAt remaining={remaining} speed={speed} />}
-          {speed !== 1 && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
+          <SleepIndicator />
+          {duration > 0 && remaining > 0 && <EndsAt remaining={remaining} speed={inSync ? 1 : speed} />}
+          {speed !== 1 && !inSync && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
           {stream && (
             <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">
               {stream.method === 'DirectPlay' ? 'Direct Play' : stream.method === 'DirectStream' ? 'Direct Stream' : 'Transcode'}
             </span>
+          )}
+          {chapters.length > 1 && (
+            <div className="relative">
+              <ControlButton
+                label="Chapters"
+                onClick={() => setPanel((p) => (p === 'chapters' ? 'none' : 'chapters'))}
+                active={panel === 'chapters'}
+              >
+                <ListVideo size={24} />
+              </ControlButton>
+              {panel === 'chapters' && (
+                <Panel wide>
+                  <PanelSection title="Chapters">
+                    {chapters.map((c) => (
+                      <button
+                        key={c.index}
+                        onClick={() => {
+                          seekTo(c.start);
+                          setPanel('none');
+                        }}
+                        aria-current={c.index === currentChapter}
+                        className={clsx(
+                          'flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/10',
+                          c.index === currentChapter ? 'text-accent' : 'text-white/90',
+                        )}
+                      >
+                        {c.tag && (
+                          <Img
+                            src={api.imageUrl(itemId, 'Chapter', { index: c.index, tag: c.tag, maxWidth: 240 })}
+                            className="aspect-video w-24 shrink-0 rounded-sm bg-black object-cover"
+                          />
+                        )}
+                        <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                        <span className="shrink-0 text-xs text-white/50 tabular-nums">{formatClock(c.start)}</span>
+                      </button>
+                    ))}
+                  </PanelSection>
+                </Panel>
+              )}
+            </div>
           )}
           <div className="relative">
             <ControlButton
@@ -1231,6 +1475,45 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                     </PanelOption>
                   ))}
                 </PanelSection>
+                {(stream?.subIndex ?? -1) >= 0 && (
+                  <>
+                    <PanelSection title="Subtitle delay">
+                      {textSubtitles ? (
+                        <div className="flex items-center gap-2 px-4 pt-1 pb-2">
+                          <PanelIconButton label="Show subtitles earlier" onClick={() => setSubtitleDelay((d) => Math.round((d - 0.1) * 10) / 10)}>
+                            <Minus size={16} />
+                          </PanelIconButton>
+                          <span className="w-16 text-center text-sm tabular-nums" data-testid="subtitle-delay">
+                            {subtitleDelay > 0 ? '+' : ''}
+                            {subtitleDelay.toFixed(1)} s
+                          </span>
+                          <PanelIconButton label="Show subtitles later" onClick={() => setSubtitleDelay((d) => Math.round((d + 0.1) * 10) / 10)}>
+                            <Plus size={16} />
+                          </PanelIconButton>
+                          {subtitleDelay !== 0 && (
+                            <button onClick={() => setSubtitleDelay(0)} className="ml-auto rounded px-2 py-1 text-xs text-white/70 hover:bg-white/10">
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available for subtitles that are burned into the video.</div>
+                      )}
+                    </PanelSection>
+                    {textSubtitles && (
+                      <PanelSection title="Text size">
+                        <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
+                          {SUBTITLE_SIZES.map((sz) => (
+                            <PanelChip key={sz.value} selected={subtitleStyle.size === sz.value} onClick={() => setSubtitleStyle({ size: sz.value })} title={sz.label}>
+                              {sz.short}
+                            </PanelChip>
+                          ))}
+                        </div>
+                        <div className="px-4 pb-2 text-xs text-white/40">More subtitle options are under Account settings.</div>
+                      </PanelSection>
+                    )}
+                  </>
+                )}
               </Panel>
             )}
           </div>
@@ -1253,20 +1536,30 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                     ))}
                   </PanelSection>
                 )}
-                <PanelSection title="Speed">
+                {!inSync && (
+                  <PanelSection title="Speed">
+                    <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
+                      {SPEED_OPTIONS.map((r) => (
+                        <PanelChip key={r} selected={speed === r} onClick={() => setSpeed(r)}>
+                          {r === 1 ? 'Normal' : `${r}×`}
+                        </PanelChip>
+                      ))}
+                    </div>
+                  </PanelSection>
+                )}
+                <PanelSection title="Sleep timer">
                   <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
-                    {SPEED_OPTIONS.map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setSpeed(r)}
-                        className={clsx(
-                          'rounded px-2 py-1 text-xs font-medium tabular-nums transition-colors',
-                          speed === r ? 'bg-accent text-accent-ink' : 'bg-white/10 text-white/80 hover:bg-white/20',
-                        )}
-                      >
-                        {r === 1 ? 'Normal' : `${r}×`}
-                      </button>
+                    <PanelChip selected={!sleep.endsAt && !sleep.endOfVideo} onClick={clearSleepTimer}>
+                      Off
+                    </PanelChip>
+                    {SLEEP_TIMER_MINUTES.map((m) => (
+                      <PanelChip key={m} selected={false} onClick={() => startSleepTimer(m)}>
+                        {m} min
+                      </PanelChip>
                     ))}
+                    <PanelChip selected={sleep.endOfVideo} onClick={sleepAtEndOfVideo}>
+                      End of video
+                    </PanelChip>
                   </div>
                 </PanelSection>
                 <PanelSection title="Quality">
@@ -1276,6 +1569,17 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                     </PanelOption>
                   ))}
                 </PanelSection>
+                <div className="border-t border-white/10 py-1">
+                  <PanelOption
+                    selected={showInfo}
+                    onClick={() => {
+                      setShowInfo((v) => !v);
+                      setPanel('none');
+                    }}
+                  >
+                    Playback info
+                  </PanelOption>
+                </div>
                 {stream && (
                   <div className="border-t border-white/10 px-4 py-3 text-xs leading-relaxed text-white/50">
                     <div>
@@ -1400,10 +1704,42 @@ function ControlButton({
   );
 }
 
-function Panel({ children }: { children: ReactNode }) {
+function PanelChip({ selected, onClick, children, title }: { selected: boolean; onClick: () => void; children: ReactNode; title?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-pressed={selected}
+      className={clsx(
+        'rounded px-2 py-1 text-xs font-medium tabular-nums transition-colors',
+        selected ? 'bg-accent text-accent-ink' : 'bg-white/10 text-white/80 hover:bg-white/20',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PanelIconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-white/90 transition-colors hover:bg-white/20"
+    >
+      {children}
+    </button>
+  );
+}
+
+function Panel({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div
-      className="animate-pop-in absolute right-0 bottom-14 max-h-[60vh] w-72 overflow-y-auto rounded-lg bg-base-850/95 py-1 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+      className={clsx(
+        'animate-pop-in absolute right-0 bottom-14 max-h-[60vh] overflow-y-auto rounded-lg bg-base-850/95 py-1 shadow-2xl ring-1 ring-white/10 backdrop-blur',
+        wide ? 'w-96 max-w-[calc(100vw-2rem)]' : 'w-72',
+      )}
       onClick={(e) => e.stopPropagation()}
     >
       {children}

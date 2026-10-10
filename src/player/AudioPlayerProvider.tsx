@@ -14,6 +14,7 @@ import type { BaseItemDto } from '@/api/types';
 import { generateId } from '@/api/device';
 import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped } from './reporting';
+import { getCastTarget, sendRemotePlay, type RemotePlayCommand } from './castTarget';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -281,8 +282,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, muted]);
 
+  /** While "Play on" is active, music goes to the other device instead of this browser's queue. */
+  const sendToCastTarget = useCallback((items: BaseItemDto[], command: RemotePlayCommand, startIndex = 0): boolean => {
+    const target = getCastTarget();
+    const a = stateRef.current.api;
+    if (!target || !a) return false;
+    void sendRemotePlay(
+      a,
+      target,
+      items.map((i) => i.Id),
+      { command, startIndex },
+    ).catch(() => {});
+    return true;
+  }, []);
+
   const play = useCallback((items: BaseItemDto[], startIndex = 0) => {
     if (!items.length) return;
+    if (sendToCastTarget(items, 'PlayNow', startIndex)) return;
     const audio = audioRef.current;
     const sameTrack = stateRef.current.queue[stateRef.current.index]?.Id === items[startIndex]?.Id;
     setQueue(items);
@@ -291,19 +307,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.currentTime = 0;
       void audio.play();
     }
-  }, []);
+  }, [sendToCastTarget]);
 
   const enqueue = useCallback((items: BaseItemDto[]) => {
+    if (sendToCastTarget(items, 'PlayLast')) return;
     setQueue((q) => [...q, ...items]);
-  }, []);
+  }, [sendToCastTarget]);
 
   const playNext = useCallback((items: BaseItemDto[]) => {
+    if (sendToCastTarget(items, 'PlayNext')) return;
     setQueue((q) => {
       const i = stateRef.current.index;
       if (q.length === 0) return items;
       return [...q.slice(0, i + 1), ...items, ...q.slice(i + 1)];
     });
-  }, []);
+  }, [sendToCastTarget]);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;

@@ -76,7 +76,7 @@ export function CollectionDetails({ item }: { item: BaseItemDto }) {
         ) : count === 0 ? (
           <EmptyState title="This collection is empty" />
         ) : (
-          <CardGrid items={children.data!.Items} shape="poster" />
+          <CardGrid items={children.data!.Items} shape="poster" cardProps={{ collectionId: item.Id }} />
         )}
       </section>
     </DetailFrame>

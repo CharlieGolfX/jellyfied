@@ -11,6 +11,16 @@ import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { useTimeFormat, type TimeFormat } from '@/lib/timeFormat';
 import { MAX_BITRATE } from '@/player/deviceProfile';
+import {
+  SUBTITLE_BACKGROUNDS,
+  SUBTITLE_COLORS,
+  SUBTITLE_EDGES,
+  SUBTITLE_SIZES,
+  subtitleLineCss,
+  subtitleScale,
+  useSubtitleStyle,
+  type SubtitleStyle,
+} from '@/player/subtitleStyle';
 
 export function Card({ title, description, children, actions }: { title: string; description?: ReactNode; children: ReactNode; actions?: ReactNode }) {
   return (
@@ -151,7 +161,7 @@ export default function SettingsPage() {
             <Select value={config.AudioLanguagePreference ?? ''} onChange={(e) => set('AudioLanguagePreference', e.target.value)}>
               <option value="">Any language</option>
               {languages.map((l) => (
-                <option key={l.ThreeLetterISOLanguageName!} value={l.ThreeLetterISOLanguageName!}>
+                <option key={`${l.ThreeLetterISOLanguageName}-${l.DisplayName}`} value={l.ThreeLetterISOLanguageName!}>
                   {l.DisplayName}
                 </option>
               ))}
@@ -161,7 +171,7 @@ export default function SettingsPage() {
             <Select value={config.SubtitleLanguagePreference ?? ''} onChange={(e) => set('SubtitleLanguagePreference', e.target.value)}>
               <option value="">Any language</option>
               {languages.map((l) => (
-                <option key={l.ThreeLetterISOLanguageName!} value={l.ThreeLetterISOLanguageName!}>
+                <option key={`${l.ThreeLetterISOLanguageName}-${l.DisplayName}`} value={l.ThreeLetterISOLanguageName!}>
                   {l.DisplayName}
                 </option>
               ))}
@@ -250,9 +260,51 @@ export default function SettingsPage() {
         </Field>
       </Card>
 
+      <SubtitleAppearanceCard />
+
       <PasswordCard hasPassword={user.HasPassword} />
       <QuickConnectCard />
     </div>
+  );
+}
+
+function SubtitleAppearanceCard() {
+  const [style, setStyle] = useSubtitleStyle();
+  const select = <K extends keyof SubtitleStyle>(key: K, label: string, options: { value: SubtitleStyle[K]; label: string }[]) => (
+    <Field label={label}>
+      <Select value={style[key]} onChange={(e) => setStyle({ [key]: e.target.value } as Partial<SubtitleStyle>)}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+    </Field>
+  );
+  return (
+    <Card
+      title="Subtitle appearance"
+      description="How text subtitles look in the video player on this device. Subtitles that are burned into the video by the server are not affected."
+    >
+      <div
+        className="mb-4 flex aspect-[32/9] items-end justify-center rounded-md bg-gradient-to-br from-sky-900 via-slate-700 to-amber-800 p-4"
+        aria-hidden
+      >
+        <span
+          data-testid="subtitle-preview"
+          className="rounded-sm px-[0.35em] text-center font-semibold"
+          style={{ ...subtitleLineCss(style), fontSize: `${20 * subtitleScale(style)}px`, lineHeight: 1.3 }}
+        >
+          This is how subtitles will look.
+        </span>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {select('size', 'Text size', SUBTITLE_SIZES)}
+        {select('color', 'Text colour', SUBTITLE_COLORS)}
+        {select('background', 'Background', SUBTITLE_BACKGROUNDS)}
+        {select('edge', 'Text edge', SUBTITLE_EDGES)}
+      </div>
+    </Card>
   );
 }
 

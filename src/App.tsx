@@ -10,6 +10,7 @@ import LoginPage from '@/pages/Login';
 import SearchPage from '@/pages/Search';
 import FavoritesPage from '@/pages/Favorites';
 import NotFoundPage from '@/pages/NotFound';
+import { RemoteControlReceiver } from '@/player/RemoteControl';
 import { PlayRoute, useVideoSession } from '@/player/VideoSession';
 
 const GlobalVideoPlayer = lazy(() => import('@/player/VideoPlayer'));
@@ -29,11 +30,16 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function PlayerHost() {
   const { session } = useVideoSession();
   const { session: auth } = useAuth();
-  if (!session || !auth) return null;
+  if (!auth) return null;
   return (
-    <Suspense fallback={null}>
-      <GlobalVideoPlayer />
-    </Suspense>
+    <>
+      <RemoteControlReceiver />
+      {session && (
+        <Suspense fallback={null}>
+          <GlobalVideoPlayer />
+        </Suspense>
+      )}
+    </>
   );
 }
 

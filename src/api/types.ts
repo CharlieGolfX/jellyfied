@@ -280,7 +280,7 @@ export interface UserPolicy {
   RemoteClientBitrateLimit: number;
   AuthenticationProviderId: string;
   PasswordResetProviderId: string;
-  SyncPlayAccess: string;
+  SyncPlayAccess?: 'CreateAndJoinGroups' | 'JoinGroups' | 'None';
   MaxParentalRating?: number | null;
   BlockedTags?: string[];
   AllowedTags?: string[];
