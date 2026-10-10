@@ -41,16 +41,15 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   again on the collection's page. Needs administrator rights or the collection-management permission.
 
 **Playback**
-- Video player with direct play when the browser supports the file, and automatic HLS transcoding
-  (hls.js) when it doesn't. A failed direct play falls back to a transcode automatically.
+- Video player that plays files directly when the browser supports them and lets the server
+  transcode when it doesn't, switching over automatically if direct play fails.
 - Audio track, subtitle, quality and playback speed (0.5×–2×) switching. Text subtitles
-  (SRT/ASS/VTT, embedded or sidecar) are converted to WebVTT. Image subtitles (PGS/VobSub) are
-  burned in by the server.
+  (SRT/ASS/VTT, embedded or sidecar) and image subtitles (PGS/VobSub) are both supported.
 - Resume, chapter markers and a chapter list to jump from, thumbnail previews on the seek bar
   (when the server has generated trickplay images), Skip Intro / Credits (when the server has
   media segments), Up Next with auto-play (honours the user's preference), keyboard shortcuts.
 - Subtitle delay (earlier or later in 0.1 s steps) and subtitle appearance (size, colour,
-  background, edge) for text subtitles. Burned-in subtitles can't be adjusted.
+  background, edge) for text subtitles.
 - Playback info overlay ("stats for nerds"): play method, why the server is transcoding and what
   the transcoder is doing, source and player resolution, codecs, buffer and dropped frames.
 - Sleep timer: pause after 15 to 120 minutes, or stop at the end of the current video.
@@ -68,8 +67,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   pause or stop. Starting music pauses the video.
 - Persistent music player bar with queue, shuffle, repeat and OS media keys.
 - Instant Mix: start a queue of similar music from any song, album, artist, genre or playlist.
-- Playback progress, watched state and "Now Playing" are reported to Jellyfin, and transcodes are
-  stopped when you leave the player.
+- Playback progress and watched state are synced with Jellyfin, so you can continue on any other
+  Jellyfin app.
 
 **Server dashboard (administrators)**
 - Dashboard: active streams with transcode details and remote pause/stop/message, active devices,
@@ -103,19 +102,19 @@ Compose plugin. There is no prebuilt image yet, so the container is built from s
    cd jellyplex
    ```
 
-2. Copy the example settings and set `JELLYFIN_URL` in `.env` to your Jellyfin server, as
-   reachable from inside the Jellyplex container:
+2. Create your settings file from the example:
 
    ```bash
    cp .env.example .env
    ```
 
-   `.env` is ignored by git, so your own addresses and ports stay out of the repository.
+   Then open `.env` and set `JELLYFIN_URL` to the address of your Jellyfin server, as reachable
+   from inside the Jellyplex container:
 
    | Where Jellyfin runs                    | `JELLYFIN_URL`                                                         |
    | -------------------------------------- | ---------------------------------------------------------------------- |
    | Same Docker network / compose project  | `http://jellyfin:8096`                                                 |
-   | On the Docker host                     | `http://host.docker.internal:8096` (the compose file maps it on Linux) |
+   | On the Docker host                     | `http://host.docker.internal:8096`                                     |
    | Another machine                        | `http://192.168.1.10:8096`                                             |
    | Behind a base URL                      | `http://jellyfin:8096/jellyfin`                                        |
 
@@ -126,6 +125,8 @@ Compose plugin. There is no prebuilt image yet, so the container is built from s
    ```
 
 4. Open `http://localhost:8080` and sign in with your Jellyfin account.
+
+The port and the other settings are described under [Configuration](#configuration).
 
 To update later, pull the latest changes and rebuild:
 
@@ -154,9 +155,8 @@ cross-origin requests by default.
 
 ## Configuration
 
-All configuration happens through environment variables, applied each time the container starts.
-With Docker Compose they are set in `.env` (see `.env.example`); with plain `docker run`, pass
-them with `-e`.
+Jellyplex is configured with environment variables. With Docker Compose, set them in `.env`;
+with plain `docker run`, pass them with `-e`. Changes take effect when the container is restarted.
 
 | Variable                | Default                    | Description |
 | ----------------------- | -------------------------- | ----------- |
@@ -165,18 +165,15 @@ them with `-e`.
 | `JELLYPLEX_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
 | `JELLYPLEX_PORT`        | `80`                       | Port nginx listens on inside the container. |
 
-`.env` also holds settings that are used by Docker Compose and the development server rather
-than by the container itself:
+If neither URL is set, the login screen asks for the server address. Jellyfin allows cross-origin
+requests by default, so this works without a proxy too.
+
+Docker Compose additionally reads these from `.env`:
 
 | Variable                 | Default    | Description |
 | ------------------------ | ---------- | ----------- |
-| `JELLYPLEX_HOST_PORT`    | `8080`     | Port on the Docker host that Jellyplex is published on. |
-| `JELLYPLEX_BIND_ADDRESS` | `0.0.0.0`  | Host address the port is published on. Use `127.0.0.1` to keep Jellyplex reachable from this machine only, for example behind a reverse proxy. |
-| `JELLYFIN_DEV_URL`       | _(empty)_  | Jellyfin address for `npm run dev`, when it differs from `JELLYFIN_URL`. |
-| `JELLYPLEX_DEV_PORT`     | `5173`     | Port of the development server. |
-
-If neither URL is set, the login screen asks for the server address. Jellyfin allows cross-origin
-requests by default, so this works without a proxy too.
+| `JELLYPLEX_HOST_PORT`    | `8080`     | Port Jellyplex is reachable on. |
+| `JELLYPLEX_BIND_ADDRESS` | `0.0.0.0`  | Address the port is published on. Use `127.0.0.1` to make Jellyplex reachable from the Docker host only, for example when a reverse proxy runs in front of it. |
 
 ### Notes
 
@@ -214,10 +211,14 @@ Requires Node.js 20.19+ (22 or 24 recommended).
 
 ```bash
 npm install
-cp .env.example .env          # set JELLYFIN_URL (or JELLYFIN_DEV_URL) to your server
-npm run dev                   # http://localhost:5173, proxies /jellyfin to that server
+cp .env.example .env          # set JELLYFIN_URL to your Jellyfin server
+npm run dev                   # http://localhost:5173
 npm run build                 # type-check and production build into dist/
 ```
+
+The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
+`JELLYFIN_DEV_URL` if your machine reaches Jellyfin at a different address than the container,
+and `JELLYPLEX_DEV_PORT` to use a port other than 5173.
 
 Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
 The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
@@ -236,10 +237,9 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 ## Compatibility and limitations
 
-- Built and tested against Jellyfin 10.11. It only uses API endpoints that exist since 10.9, so
-  10.9 and 10.10 should work as well, but they haven't been tested. Optional features degrade
-  gracefully: storage stats need 10.11, Skip Intro needs 10.10+, and seek-bar previews only appear
-  for videos with trickplay images.
+- Jellyfin 10.11 is recommended and is what Jellyplex is tested against. Jellyfin 10.9 and 10.10
+  are expected to work, with a few features unavailable: storage statistics need 10.11 and Skip
+  Intro needs 10.10 or newer. Seek-bar previews only appear for videos with trickplay images.
 - Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in
   Jellyplex, and plugin settings pages open in the Jellyfin web UI.
 - Not implemented: Live TV / DVR and the photo slideshow (single-photo viewer only). Use the
@@ -248,6 +248,8 @@ docker/         container entrypoint that writes config.js and the nginx site
   remote control. Casting straight to a Chromecast or AirPlay device that isn't running a Jellyfin
   app is not supported.
 - SyncPlay covers video. Music played while in a group stays on your own device.
+- Subtitle delay and appearance apply to text subtitles. Image subtitles are burned into the video
+  by the server and can't be adjusted.
 - SyncPlay and remote control use a WebSocket connection. If you put another reverse proxy in front
   of Jellyplex, make sure it forwards WebSocket upgrades.
 - Which formats play directly depends on the browser. Jellyplex tells the server exactly what the
