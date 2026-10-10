@@ -137,6 +137,9 @@ function clampStep(value: number, min: number, max: number): number {
   return Math.round(Math.min(max, Math.max(min, value)) * 1000) / 1000;
 }
 
+/** How long a skip button (intro, recap, credits…) stays up on its own when its segment starts. */
+const SKIP_BUTTON_SECONDS = 5;
+
 /** Display width of the seek-bar thumbnail preview, in px. */
 const TRICKPLAY_PREVIEW_WIDTH = 240;
 
@@ -928,7 +931,12 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     window.clearTimeout(hideTimer.current);
     hideTimer.current = window.setTimeout(() => setControlsVisible(false), 3000);
   }, []);
-  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+  // Start the countdown right away, so the controls also go away when the mouse is never moved
+  // (e.g. when the next episode starts by itself).
+  useEffect(() => {
+    poke();
+    return () => window.clearTimeout(hideTimer.current);
+  }, [poke]);
   const showControls = controlsVisible || !playing || panel !== 'none' || Boolean(error);
 
   // Keyboard shortcuts (full-screen player only; the mini player must not hijack page keys).
@@ -1251,6 +1259,21 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     });
   }, [segments.data, currentTime]);
 
+  // The skip button shows for a few seconds when its segment starts; after that it comes and goes
+  // with the player controls.
+  const segmentKey = activeSegment ? `${activeSegment.Type}-${activeSegment.StartTicks}` : null;
+  const [skipFresh, setSkipFresh] = useState(false);
+  useEffect(() => {
+    if (!segmentKey) return;
+    setSkipFresh(true);
+    const timer = window.setTimeout(() => setSkipFresh(false), SKIP_BUTTON_SECONDS * 1000);
+    return () => {
+      window.clearTimeout(timer);
+      setSkipFresh(false);
+    };
+  }, [segmentKey]);
+  const skipVisible = skipFresh || showControls;
+
   const remaining = duration - currentTime;
   const inOutro = activeSegment?.Type === 'Outro';
   const showUpNext = Boolean(nextItem) && !upNextDismissed && duration > 60 && (remaining <= 25 || inOutro) && !error;
@@ -1405,9 +1428,12 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       {activeSegment && !showUpNext && !error && (
         <button
           onClick={() => seekTo(ticksToSeconds(activeSegment.EndTicks))}
+          tabIndex={skipVisible ? undefined : -1}
           className={clsx(
-            'absolute right-8 z-10 rounded-md bg-white/90 px-5 py-2.5 font-semibold text-black shadow-xl transition-all hover:bg-white',
-            showControls ? 'bottom-32' : 'bottom-10',
+            'absolute right-8 z-10 rounded-md bg-white/90 px-5 py-2.5 font-semibold text-black shadow-xl transition-all duration-300 hover:bg-white',
+            // Clear of the controls' gradient, which would otherwise swallow clicks on its lower half.
+            showControls ? 'bottom-40' : 'bottom-10',
+            !skipVisible && 'pointer-events-none opacity-0',
           )}
         >
           {SEGMENT_LABELS[activeSegment.Type]}
