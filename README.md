@@ -45,6 +45,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Resume, chapter markers, thumbnail previews on the seek bar (when the server has generated
   trickplay images), Skip Intro / Credits (when the server has media segments),
   Up Next with auto-play (honours the user's preference), keyboard shortcuts.
+- "Ends at" clock in the player controls, showing when the video will finish at the current
+  playback speed.
 - Picture-in-picture, from the player or the mini player, plus OS media controls (media keys,
   lock screen) for video.
 - Mini player: press Back (or `Esc`) in the player and the video keeps playing in a small window,
@@ -67,7 +69,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 **Account**
 - Quick Connect sign-in and authorization, profile picture, password, playback language and subtitle
-  preferences, and a per-device streaming quality setting.
+  preferences, and per-device settings for streaming quality and time display (24-hour by default,
+  or 12-hour).
 
 ## Installation
 

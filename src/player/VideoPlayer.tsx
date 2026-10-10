@@ -32,6 +32,7 @@ import { Img } from '@/components/ui/States';
 import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage } from '@/components/ui/Toast';
 import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { buildDeviceProfile, MAX_BITRATE } from './deviceProfile';
 import {
@@ -91,6 +92,23 @@ const TRICKPLAY_PREVIEW_WIDTH = 240;
 const pipSupported = typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
 
 /** Picks the thumbnail resolution closest to the preview size for the playing media source. */
+/** Wall-clock time at which playback will finish, taking playback speed into account. */
+function EndsAt({ remaining, speed }: { remaining: number; speed: number }) {
+  // Re-render on a timer too, so the time keeps moving while paused.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => tick((n) => n + 1), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [timeFormat] = useTimeFormat();
+  const end = new Date(Date.now() + (remaining / speed) * 1000);
+  return (
+    <span className="mr-2 hidden text-sm text-white/70 tabular-nums sm:inline">
+      Ends at {formatTimeOfDay(end, timeFormat)}
+    </span>
+  );
+}
+
 function pickTrickplay(item: BaseItemDto | undefined, sourceId: string | undefined): TrickplayInfo | null {
   if (!item?.Trickplay || !sourceId) return null;
   const norm = (id: string) => id.replace(/-/g, '').toLowerCase();
@@ -1185,6 +1203,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
           <div className="flex-1" />
 
+          {duration > 0 && remaining > 0 && <EndsAt remaining={remaining} speed={speed} />}
           {speed !== 1 && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
           {stream && (
             <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">

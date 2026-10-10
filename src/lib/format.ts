@@ -1,4 +1,5 @@
 import type { BaseItemDto } from '@/api/types';
+import { hourCycleOption } from '@/lib/timeFormat';
 
 export const TICKS_PER_SECOND = 10_000_000;
 
@@ -66,7 +67,7 @@ export function formatDateTime(iso?: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return '';
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', ...hourCycleOption() });
 }
 
 export function formatRelative(iso?: string | null): string {

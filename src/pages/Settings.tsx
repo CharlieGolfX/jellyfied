@@ -9,6 +9,7 @@ import { Field, Input, Select, Switch } from '@/components/ui/Form';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
+import { useTimeFormat, type TimeFormat } from '@/lib/timeFormat';
 import { MAX_BITRATE } from '@/player/deviceProfile';
 
 export function Card({ title, description, children, actions }: { title: string; description?: ReactNode; children: ReactNode; actions?: ReactNode }) {
@@ -60,6 +61,7 @@ export default function SettingsPage() {
     if (user && !config) setConfig(user.Configuration);
   }, [user, config]);
 
+  const [timeFormat, setTimeFormat] = useTimeFormat();
   const [bitrate, setBitrate] = useState(() => Number(localStorage.getItem('jellyplex.maxBitrate')) || MAX_BITRATE);
 
   const saveConfig = useMutation({
@@ -232,6 +234,18 @@ export default function SettingsPage() {
             <option value={4_000_000}>4 Mbps (720p)</option>
             <option value={2_000_000}>2 Mbps (480p)</option>
             <option value={1_000_000}>1 Mbps (480p)</option>
+          </Select>
+        </Field>
+        <Field className="mt-4" label="Default time display" hint="Used for clock times such as “Ends at” in the player and dates in the dashboard.">
+          <Select
+            value={timeFormat}
+            onChange={(e) => {
+              setTimeFormat(e.target.value as TimeFormat);
+              toast.success('Time display updated');
+            }}
+          >
+            <option value="24h">24-hour (21:45)</option>
+            <option value="12h">12-hour (9:45 PM)</option>
           </Select>
         </Field>
       </Card>
