@@ -85,7 +85,8 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
       <div
         ref={scrollerRef}
         onScroll={update}
-        className="scrollbar-none overflow-x-auto scroll-smooth px-4 pb-2 sm:px-8 lg:px-10"
+        // A horizontal scroller also clips vertically, so pad the top to leave room for the cards' hover ring.
+        className="scrollbar-none -mt-1 overflow-x-auto scroll-smooth px-4 pt-1 pb-2 sm:px-8 lg:px-10"
         style={{ scrollPaddingInline: '2.5rem' }}
       >
         <div className="flex w-max gap-4 sm:gap-5">{children}</div>
