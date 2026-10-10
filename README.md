@@ -39,6 +39,9 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   position.
 - Add movies, shows and videos to a collection (new or existing) from their menu, and remove them
   again on the collection's page. Needs administrator rights or the collection-management permission.
+- Playlists: "Add to playlist" in the menu of songs, albums, artists, movies, shows and episodes
+  (to a new or an existing playlist). On a playlist's page, drag entries into another order, remove
+  them, rename the playlist, or make it visible to all users.
 
 **Playback**
 - Video player that plays files directly when the browser supports them and lets the server
@@ -50,6 +53,13 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   media segments), Up Next with auto-play (honours the user's preference), keyboard shortcuts.
 - Subtitle delay (earlier or later in 0.1 s steps) and subtitle appearance (size, colour,
   background, edge) for text subtitles.
+- Audio delay, to hold the sound back by up to 3 seconds when it is ahead of the picture. Both
+  delays have a slider and step buttons in the player menus, as well as keyboard shortcuts.
+- Aspect ratio and zoom: fit, fill (crop) or stretch the picture, force 16:9, 4:3, 21:9 or
+  2.39:1, and zoom in up to 200%.
+- Remembers the audio and subtitle track you pick for a show and uses it for the following
+  episodes, matching by language and title, so it also works when episodes number their tracks
+  differently. Follows the "Remember audio/subtitle selections" account settings.
 - Playback info overlay ("stats for nerds"): play method, why the server is transcoding and what
   the transcoder is doing, source and player resolution, codecs, buffer and dropped frames.
 - Sleep timer: pause after 15 to 120 minutes, or stop at the end of the current video.
@@ -86,7 +96,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 **Account**
 - Quick Connect sign-in and authorization, profile picture, password, playback language and subtitle
   preferences, and per-device settings for streaming quality, time display (24-hour by default,
-  or 12-hour) and subtitle appearance.
+  or 12-hour), subtitle appearance and interface colours (accent colour, from presets or any
+  colour you pick, and background tone).
 
 ## Installation
 
@@ -102,14 +113,14 @@ Compose plugin. There is no prebuilt image yet, so the container is built from s
    cd jellyplex
    ```
 
-2. Create your settings file from the example:
+2. Tell Jellyplex where your Jellyfin server is. The default is a Jellyfin server on the Docker
+   host, port 8096; if that is your setup, skip this step. Otherwise create a `.env` file from the
+   example and set `JELLYFIN_URL` in it, to the address as reachable from inside the Jellyplex
+   container:
 
    ```bash
    cp .env.example .env
    ```
-
-   Then open `.env` and set `JELLYFIN_URL` to the address of your Jellyfin server, as reachable
-   from inside the Jellyplex container:
 
    | Where Jellyfin runs                    | `JELLYFIN_URL`                                                         |
    | -------------------------------------- | ---------------------------------------------------------------------- |
@@ -155,20 +166,23 @@ cross-origin requests by default.
 
 ## Configuration
 
-Jellyplex is configured with environment variables. With Docker Compose, set them in `.env`;
-with plain `docker run`, pass them with `-e`. Changes take effect when the container is restarted.
+Jellyplex is configured with environment variables. With Docker Compose, set them in a `.env`
+file next to `docker-compose.yml` (copy `.env.example`) or edit `docker-compose.yml` directly;
+with plain `docker run`, pass them with `-e`. Changes take effect when the container is recreated.
 
 | Variable                | Default                    | Description |
 | ----------------------- | -------------------------- | ----------- |
-| `JELLYFIN_URL`          | _(empty)_                  | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyplex (no CORS or mixed-content problems, one URL to expose). |
+| `JELLYFIN_URL`          | _(empty)_ ¹                | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyplex (no CORS or mixed-content problems, one URL to expose). |
 | `JELLYFIN_PUBLIC_URL`   | _(empty)_                  | Address the browser should use to reach Jellyfin directly, e.g. `https://jellyfin.example.com`. Overrides the proxy for API and media requests. |
 | `JELLYPLEX_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
 | `JELLYPLEX_PORT`        | `80`                       | Port nginx listens on inside the container. |
 
+¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
+
 If neither URL is set, the login screen asks for the server address. Jellyfin allows cross-origin
 requests by default, so this works without a proxy too.
 
-Docker Compose additionally reads these from `.env`:
+Docker Compose additionally understands these:
 
 | Variable                 | Default    | Description |
 | ------------------------ | ---------- | ----------- |
@@ -200,6 +214,7 @@ Docker Compose additionally reads these from `.env`:
 | `P`            | Picture-in-picture  |
 | `<` / `>`      | Slower / faster     |
 | `G` / `H`      | Subtitles earlier / later |
+| `Z` / `X`      | Less / more audio delay |
 | `I`            | Playback info       |
 | `Esc`          | Close menu / minimize to mini player |
 
@@ -250,6 +265,10 @@ docker/         container entrypoint that writes config.js and the nginx site
 - SyncPlay covers video. Music played while in a group stays on your own device.
 - Subtitle delay and appearance apply to text subtitles. Image subtitles are burned into the video
   by the server and can't be adjusted.
+- Audio delay can only make the sound later, not earlier: a browser can't play sound ahead of the
+  picture. It is not available in Safari on iPhone and iPad.
+- The remembered track per show and the interface colours are stored in the browser, so they
+  don't follow you to other devices.
 - SyncPlay and remote control use a WebSocket connection. If you put another reverse proxy in front
   of Jellyplex, make sure it forwards WebSocket upgrades.
 - Which formats play directly depends on the browser. Jellyplex tells the server exactly what the

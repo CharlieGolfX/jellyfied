@@ -1,3 +1,5 @@
+import { Pencil } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CARD_FIELDS, MEDIA, useItems } from '@/api/queries';
@@ -5,6 +7,7 @@ import type { BaseItemDto, ItemsResult } from '@/api/types';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { CardGrid } from '@/components/media/CardGrid';
 import { Hub } from '@/components/media/Hub';
+import { EditPlaylistDialog, useCanEditPlaylist } from '@/components/media/Playlists';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { formatRuntime, plural } from '@/lib/format';
@@ -197,6 +200,8 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
   });
   const list = entries.data?.Items ?? [];
   const totalTicks = list.reduce((sum, t) => sum + (t.RunTimeTicks ?? 0), 0);
+  const canEdit = useCanEditPlaylist(item.Id);
+  const [editing, setEditing] = useState(false);
 
   return (
     <DetailFrame
@@ -209,9 +214,14 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
             extra={list.length ? <span>{plural(list.length, 'item')} · {formatRuntime(totalTicks)}</span> : undefined}
           />
           <div className="pt-2">
-            <ActionBar item={item} showShuffle />
+            <ActionBar
+              item={item}
+              showShuffle
+              extraMenu={canEdit ? [{ label: 'Edit playlist', icon: <Pencil size={16} />, onSelect: () => setEditing(true) }] : []}
+            />
           </div>
           <ExpandableText text={item.Overview} className="max-w-4xl pt-1" />
+          {editing && <EditPlaylistDialog playlist={item} onClose={() => setEditing(false)} />}
         </>
       }
     >
@@ -221,9 +231,11 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
         ) : entries.error ? (
           <ErrorState error={entries.error} onRetry={() => entries.refetch()} />
         ) : list.length === 0 ? (
-          <p className="text-sm text-muted">This playlist is empty.</p>
+          <p className="text-sm text-muted">
+            This playlist is empty. Use “Add to playlist” in the menu of a song, album, movie or episode to fill it.
+          </p>
         ) : (
-          <TrackList tracks={list} showAlbum showArt numbered="position" />
+          <TrackList tracks={list} showAlbum showArt numbered="position" editablePlaylistId={canEdit ? item.Id : undefined} />
         )}
       </section>
     </DetailFrame>

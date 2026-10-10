@@ -11,6 +11,8 @@ import { RealtimeProvider } from '@/realtime/RealtimeProvider';
 import { VideoSessionProvider } from '@/player/VideoSession';
 import App from './App';
 import './index.css';
+// Applies the saved interface colours before the first render.
+import '@/lib/theme';
 
 const queryClient = new QueryClient({
   defaultOptions: {

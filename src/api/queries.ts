@@ -281,6 +281,10 @@ export function useDeleteItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/Items/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
+    // Not awaited: the caller leaves the deleted item's page first. Waiting for the refresh would
+    // reload that page's own item, fail with "Not Found" and replace the page before it can leave.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [MEDIA] });
+    },
   });
 }

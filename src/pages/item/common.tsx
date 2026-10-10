@@ -6,6 +6,7 @@ import {
   FolderPlus,
   Heart,
   History,
+  ListPlus,
   MoreHorizontal,
   Pencil,
   Play,
@@ -32,6 +33,7 @@ import { useApi, useIsAdmin } from '@/auth/AuthProvider';
 import { HubRow } from '@/components/media/Hub';
 import { PersonCard } from '@/components/media/PersonCard';
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections } from '@/components/media/AddToCollection';
+import { AddToPlaylistDialog, supportsPlaylists } from '@/components/media/Playlists';
 import { fallbackIcon } from '@/components/media/PosterCard';
 import { supportsMetadataEditing } from '@/components/media/metadataEditing';
 import { Button } from '@/components/ui/Button';
@@ -228,6 +230,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const canManageCollections = useCanManageCollections();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingToCollection, setAddingToCollection] = useState(false);
+  const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const [editing, setEditing] = useState(false);
   const trailers = useLocalTrailers(item.Id, (item.LocalTrailerCount ?? 0) > 0);
 
@@ -250,6 +253,9 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
           onError: (e) => toast.error(e),
         }),
     });
+  }
+  if (supportsPlaylists(item)) {
+    menu.push({ label: 'Add to playlist', icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
   }
   if (canManageCollections && supportsCollections(item)) {
     menu.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
@@ -358,6 +364,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
       )}
       {resumable && item.RunTimeTicks ? <span className="ml-1 text-sm text-muted">{formatRemaining(item)}</span> : null}
       {addingToCollection && <AddToCollectionDialog item={item} onClose={() => setAddingToCollection(false)} />}
+      {addingToPlaylist && <AddToPlaylistDialog item={item} onClose={() => setAddingToPlaylist(false)} />}
       {editing && (
         <Suspense fallback={null}>
           <MetadataEditor itemId={item.Id} onClose={() => setEditing(false)} />

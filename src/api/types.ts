@@ -218,6 +218,8 @@ export interface BaseItemDto {
   ExternalUrls?: { Name?: string | null; Url?: string | null }[];
   Path?: string | null;
   CanDelete?: boolean;
+  /** Id of this entry in its playlist (only on items listed from a playlist). */
+  PlaylistItemId?: string | null;
   CanDownload?: boolean;
   LocationType?: string;
   Width?: number | null;

@@ -16,6 +16,7 @@ import {
   Plus,
   RotateCcw,
   RotateCw,
+  Scaling,
   Settings2,
   SkipForward,
   Subtitles,
@@ -39,6 +40,15 @@ import { errorMessage, useToast } from '@/components/ui/Toast';
 import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
 import { registerActiveVideo, type ActiveVideo } from './activePlayer';
+import {
+  AUDIO_DELAY_STEP,
+  audioDelaySupported,
+  getLastAudioDelay,
+  hasAudioGraph,
+  MAX_AUDIO_DELAY,
+  releaseAudioDelay,
+  setAudioDelay as applyAudioDelay,
+} from './audioDelay';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { buildDeviceProfile, MAX_BITRATE } from './deviceProfile';
 import {
@@ -51,6 +61,16 @@ import {
 import { SeekBar } from './SeekBar';
 import { PlaybackInfo } from './PlaybackInfo';
 import {
+  MAX_PICTURE_ZOOM,
+  PICTURE_ASPECTS,
+  PICTURE_FITS,
+  pictureStyle,
+  readPictureFit,
+  storePictureFit,
+  type PictureAspect,
+  type PictureFit,
+} from './picture';
+import {
   clearSleepTimer,
   getSleepTimer,
   onSleepTimerFired,
@@ -62,6 +82,7 @@ import {
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { useSyncPlay, useSyncPlayManager } from './SyncPlayProvider';
 import { SUBTITLE_SIZES, useSubtitleStyle } from './subtitleStyle';
+import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from './trackMemory';
 import type { VideoPlayerState } from './usePlay';
 import { isPlayPath, useVideoSession } from './VideoSession';
 
@@ -106,6 +127,15 @@ interface LoadOptions {
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+/** Furthest the subtitles can be shifted, in seconds. The slider covers the middle of that range. */
+const MAX_SUBTITLE_DELAY = 60;
+const SUBTITLE_DELAY_SLIDER = 10;
+
+/** Rounds away the floating-point noise of repeated small steps. */
+function clampStep(value: number, min: number, max: number): number {
+  return Math.round(Math.min(max, Math.max(min, value)) * 1000) / 1000;
+}
 
 /** Display width of the seek-bar thumbnail preview, in px. */
 const TRICKPLAY_PREVIEW_WIDTH = 240;
@@ -235,16 +265,40 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const [muted, setMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles' | 'chapters'>('none');
+  const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles' | 'chapters' | 'picture'>('none');
   /** A text subtitle track is attached (drawn by SubtitleOverlay). */
   const [textSubtitles, setTextSubtitles] = useState(false);
   /** Seconds the subtitles are shifted: positive = later. */
   const [subtitleDelay, setSubtitleDelay] = useState(0);
+  /** Seconds the sound is held back. Carried over to the next video. */
+  const [audioDelay, setAudioDelay] = useState(getLastAudioDelay);
+  const [pictureFit, setPictureFit] = useState<PictureFit>(readPictureFit);
+  const [pictureAspect, setPictureAspect] = useState<PictureAspect>('auto');
+  const [pictureZoom, setPictureZoom] = useState(1);
+  const [boxSize, setBoxSize] = useState({ width: 0, height: 0 });
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [showInfo, setShowInfo] = useState(false);
   const [maxBitrate, setMaxBitrate] = useState(() => readNumber(BITRATE_KEY, MAX_BITRATE));
   const [upNextDismissed, setUpNextDismissed] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [inPip, setInPip] = useState(false);
+  /** Short on-screen note for changes made with the keyboard. */
+  const [osd, setOsd] = useState<string | null>(null);
+  const osdTimer = useRef<number | undefined>(undefined);
+  const flash = useCallback((text: string) => {
+    setOsd(text);
+    window.clearTimeout(osdTimer.current);
+    osdTimer.current = window.setTimeout(() => setOsd(null), 1500);
+  }, []);
+  useEffect(() => () => window.clearTimeout(osdTimer.current), []);
+
+  // Episodes remember the audio and subtitle track per show (see trackMemory.ts), following the
+  // user's "Remember audio/subtitle selections" preferences.
+  const seriesId = item?.Type === 'Episode' ? item.SeriesId : undefined;
+  const rememberAudio = user?.Configuration?.RememberAudioSelections !== false;
+  const rememberSubtitles = user?.Configuration?.RememberSubtitleSelections !== false;
+  // Safari on iOS plays HLS itself, and its sound can't be routed through Web Audio.
+  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && !Hls.isSupported());
 
   // ---- Up next -----------------------------------------------------------
   const queue = navState.queue;
@@ -548,15 +602,17 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           ? 0
           : ticksToSeconds(item.UserData?.PlaybackPositionTicks);
     setDuration(ticksToSeconds(item.RunTimeTicks));
+    const source = item.MediaSources?.find((s) => s.Id === navState.mediaSourceId) ?? item.MediaSources?.[0];
+    const remembered = recallTracks(seriesId, source?.MediaStreams, { audio: rememberAudio, subtitle: rememberSubtitles });
     void load({
       start: resumeAt,
-      audioIndex: navState.audioStreamIndex,
-      subIndex: navState.subtitleStreamIndex,
+      audioIndex: navState.audioStreamIndex ?? remembered.audioIndex,
+      subIndex: navState.subtitleStreamIndex ?? remembered.subtitleIndex,
       bitrate: maxBitrate,
       mediaSourceId: navState.mediaSourceId,
       holdStart: Boolean(navState.syncPlaylistItemId),
     });
-  }, [item, load, navState, maxBitrate, audioPlayer]);
+  }, [item, load, navState, maxBitrate, audioPlayer, seriesId, rememberAudio, rememberSubtitles]);
 
   // Teardown on unmount / tab close.
   useEffect(() => {
@@ -728,6 +784,55 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     }
   }, [volume, muted]);
 
+  // Audio delay. Sound from another origin is silent in Web Audio unless the media was requested
+  // with CORS, so such a stream is loaded again with CORS the first time a delay is set.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !audioDelayAvailable) return;
+    const crossOrigin = new URL(api.serverUrl, window.location.href).origin !== window.location.origin;
+    if (audioDelay !== 0 && crossOrigin && !video.crossOrigin && !hasAudioGraph(video)) {
+      video.crossOrigin = 'anonymous';
+      const s = streamRef.current;
+      if (s && !hlsRef.current) {
+        void load({
+          start: video.currentTime,
+          audioIndex: s.audioIndex,
+          subIndex: s.subIndex,
+          bitrate: maxBitrate,
+          mediaSourceId: s.source.Id,
+          forceTranscode: s.method === 'Transcode',
+        });
+      }
+    }
+    if (!applyAudioDelay(video, audioDelay) && audioDelay !== 0) {
+      toast.error('Audio delay isn’t available in this browser.');
+      setAudioDelay(0);
+    }
+  }, [audioDelay, audioDelayAvailable, api, load, maxBitrate, toast]);
+  useEffect(() => {
+    const video = videoRef.current;
+    return () => {
+      if (video) releaseAudioDelay(video);
+    };
+  }, []);
+
+  // Player and video size, for the aspect ratio and zoom modes.
+  useEffect(() => {
+    const el = containerRef.current;
+    const video = videoRef.current;
+    if (!el || !video) return;
+    const observer = new ResizeObserver(() => setBoxSize({ width: el.clientWidth, height: el.clientHeight }));
+    observer.observe(el);
+    const onSize = () => setVideoSize({ width: video.videoWidth, height: video.videoHeight });
+    video.addEventListener('loadedmetadata', onSize);
+    video.addEventListener('resize', onSize);
+    return () => {
+      observer.disconnect();
+      video.removeEventListener('loadedmetadata', onSize);
+      video.removeEventListener('resize', onSize);
+    };
+  }, []);
+
   // Playback speed. defaultPlaybackRate survives source changes (quality/audio switches).
   // A SyncPlay group always plays at normal speed.
   useEffect(() => {
@@ -871,8 +976,19 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           break;
         case 'g':
         case 'h':
-          if (textSubtitles) setSubtitleDelay((d) => Math.round((d + (e.key.toLowerCase() === 'h' ? 0.1 : -0.1)) * 10) / 10);
-          else handled = false;
+          if (textSubtitles) {
+            const next = clampStep(subtitleDelay + (e.key.toLowerCase() === 'h' ? 0.1 : -0.1), -MAX_SUBTITLE_DELAY, MAX_SUBTITLE_DELAY);
+            setSubtitleDelay(next);
+            flash(`Subtitle delay ${formatSubtitleDelay(next)}`);
+          } else handled = false;
+          break;
+        case 'z':
+        case 'x':
+          if (audioDelayAvailable) {
+            const next = clampStep(audioDelay + (e.key.toLowerCase() === 'x' ? AUDIO_DELAY_STEP : -AUDIO_DELAY_STEP), 0, MAX_AUDIO_DELAY);
+            setAudioDelay(next);
+            flash(`Audio delay ${formatAudioDelay(next)}`);
+          } else handled = false;
           break;
         case '>':
         case '<': {
@@ -897,7 +1013,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, textSubtitles, inSync]);
+  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, textSubtitles, inSync, subtitleDelay, audioDelay, audioDelayAvailable, flash]);
 
   // Collapsing into the mini player: close menus and leave browser full screen.
   useEffect(() => {
@@ -1010,6 +1126,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const changeAudio = (index: number) => {
     setPanel('none');
     if (!stream || index === stream.audioIndex) return;
+    if (seriesId && rememberAudio) rememberAudioTrack(seriesId, audioStreams.find((s) => s.Index === index));
     void load({
       start: videoRef.current?.currentTime ?? 0,
       audioIndex: index,
@@ -1023,6 +1140,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     setPanel('none');
     if (!stream || index === stream.subIndex) return;
     const target = subtitleStreams.find((s) => s.Index === index);
+    if (seriesId && rememberSubtitles && (target || index === -1)) rememberSubtitleTrack(seriesId, target);
     const canSwapLocally = !stream.burnedSub && (index === -1 || target?.DeliveryMethod === 'External');
     if (canSwapLocally) {
       const token = loadToken.current;
@@ -1179,9 +1297,19 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     [api, itemId, trickplay, stream],
   );
 
+  const changePictureFit = (fit: PictureFit) => {
+    setPictureFit(fit);
+    storePictureFit(fit);
+  };
+  // The mini player always shows the whole picture.
+  const picture = isFull
+    ? pictureStyle({ fit: pictureFit, aspect: pictureAspect, zoom: pictureZoom, box: boxSize, video: videoSize })
+    : undefined;
+  const pictureChanged = pictureFit !== 'fit' || pictureAspect !== 'auto' || pictureZoom !== 1;
+
   const miniBottom = audioPlayer.current ? 'bottom-[92px]' : 'bottom-4';
   const frameClass = isFull
-    ? 'fixed inset-0 z-50 bg-black'
+    ? 'fixed inset-0 z-50 overflow-hidden bg-black'
     : clsx(
         'group/mini fixed right-4 z-[60] aspect-video w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-lg bg-black shadow-2xl ring-1 ring-white/15',
         miniBottom,
@@ -1214,9 +1342,17 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       onMouseMove={isFull ? poke : undefined}
       onTouchStart={isFull ? poke : undefined}
     >
+      {/* A resized picture may not cover the player: keep clicks next to it working. */}
+      {picture && <div className="absolute inset-0" onClick={onSurfaceClick} onDoubleClick={onSurfaceDoubleClick} />}
       <video
         ref={videoRef}
-        className={clsx('absolute inset-0 h-full w-full bg-black object-contain', !isFull && 'cursor-pointer')}
+        data-testid="video"
+        className={clsx(
+          'absolute bg-black',
+          picture ? 'max-w-none' : 'inset-0 h-full w-full object-contain',
+          !isFull && 'cursor-pointer',
+        )}
+        style={picture}
         playsInline
         preload="auto"
         onClick={onSurfaceClick}
@@ -1287,6 +1423,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           onPlay={goNext}
           onCancel={() => setUpNextDismissed(true)}
         />
+      )}
+
+      {osd && (
+        <div
+          data-testid="player-osd"
+          className="pointer-events-none absolute top-20 left-1/2 z-10 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-sm font-semibold tabular-nums"
+        >
+          {osd}
+        </div>
       )}
 
       {showInfo && stream && (
@@ -1479,23 +1624,20 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                   <>
                     <PanelSection title="Subtitle delay">
                       {textSubtitles ? (
-                        <div className="flex items-center gap-2 px-4 pt-1 pb-2">
-                          <PanelIconButton label="Show subtitles earlier" onClick={() => setSubtitleDelay((d) => Math.round((d - 0.1) * 10) / 10)}>
-                            <Minus size={16} />
-                          </PanelIconButton>
-                          <span className="w-16 text-center text-sm tabular-nums" data-testid="subtitle-delay">
-                            {subtitleDelay > 0 ? '+' : ''}
-                            {subtitleDelay.toFixed(1)} s
-                          </span>
-                          <PanelIconButton label="Show subtitles later" onClick={() => setSubtitleDelay((d) => Math.round((d + 0.1) * 10) / 10)}>
-                            <Plus size={16} />
-                          </PanelIconButton>
-                          {subtitleDelay !== 0 && (
-                            <button onClick={() => setSubtitleDelay(0)} className="ml-auto rounded px-2 py-1 text-xs text-white/70 hover:bg-white/10">
-                              Reset
-                            </button>
-                          )}
-                        </div>
+                        <DelayControl
+                          value={subtitleDelay}
+                          onChange={setSubtitleDelay}
+                          min={-MAX_SUBTITLE_DELAY}
+                          max={MAX_SUBTITLE_DELAY}
+                          sliderMin={-SUBTITLE_DELAY_SLIDER}
+                          sliderMax={SUBTITLE_DELAY_SLIDER}
+                          step={0.1}
+                          format={formatSubtitleDelay}
+                          lessLabel="Show subtitles earlier"
+                          moreLabel="Show subtitles later"
+                          sliderLabel="Subtitle delay"
+                          testId="subtitle-delay"
+                        />
                       ) : (
                         <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available for subtitles that are burned into the video.</div>
                       )}
@@ -1519,6 +1661,76 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           </div>
           <div className="relative">
             <ControlButton
+              label="Picture"
+              onClick={() => setPanel((p) => (p === 'picture' ? 'none' : 'picture'))}
+              active={panel === 'picture' || pictureChanged}
+            >
+              <Scaling size={24} />
+            </ControlButton>
+            {panel === 'picture' && (
+              <Panel>
+                <PanelSection title="Zoom mode">
+                  <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
+                    {PICTURE_FITS.map((f) => (
+                      <PanelChip key={f.value} selected={pictureFit === f.value} onClick={() => changePictureFit(f.value)} title={f.title}>
+                        {f.label}
+                      </PanelChip>
+                    ))}
+                  </div>
+                </PanelSection>
+                <PanelSection title="Aspect ratio">
+                  <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
+                    {PICTURE_ASPECTS.map((a) => (
+                      <PanelChip
+                        key={a.value}
+                        selected={pictureFit !== 'stretch' && pictureAspect === a.value}
+                        onClick={() => {
+                          setPictureAspect(a.value);
+                          // Stretch ignores the aspect ratio, so picking one leaves that mode.
+                          if (pictureFit === 'stretch') changePictureFit('fit');
+                        }}
+                      >
+                        {a.label}
+                      </PanelChip>
+                    ))}
+                  </div>
+                </PanelSection>
+                <PanelSection title="Zoom">
+                  <div className="flex items-center gap-3 px-4 pt-1 pb-2">
+                    <input
+                      type="range"
+                      min={1}
+                      max={MAX_PICTURE_ZOOM}
+                      step={0.05}
+                      value={pictureZoom}
+                      onChange={(e) => setPictureZoom(Number(e.target.value))}
+                      aria-label="Zoom"
+                      className="min-w-0 flex-1"
+                    />
+                    <span className="w-12 text-right text-sm tabular-nums" data-testid="picture-zoom">
+                      {Math.round(pictureZoom * 100)}%
+                    </span>
+                  </div>
+                </PanelSection>
+                {pictureChanged && (
+                  <div className="border-t border-white/10 py-1">
+                    <PanelOption
+                      selected={false}
+                      onClick={() => {
+                        changePictureFit('fit');
+                        setPictureAspect('auto');
+                        setPictureZoom(1);
+                      }}
+                    >
+                      Reset picture
+                    </PanelOption>
+                  </div>
+                )}
+              </Panel>
+            )}
+          </div>
+          <div className="relative">
+            <ControlButton
               label="Settings"
               onClick={() => setPanel((p) => (p === 'settings' ? 'none' : 'settings'))}
               active={panel === 'settings'}
@@ -1534,6 +1746,33 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                         {streamName(s)}
                       </PanelOption>
                     ))}
+                  </PanelSection>
+                )}
+                {audioStreams.length > 0 && (
+                  <PanelSection title="Audio delay">
+                    {audioDelayAvailable ? (
+                      <>
+                        <DelayControl
+                          value={audioDelay}
+                          onChange={setAudioDelay}
+                          min={0}
+                          max={MAX_AUDIO_DELAY}
+                          sliderMin={0}
+                          sliderMax={MAX_AUDIO_DELAY}
+                          step={AUDIO_DELAY_STEP}
+                          format={formatAudioDelay}
+                          lessLabel="Less audio delay"
+                          moreLabel="More audio delay"
+                          sliderLabel="Audio delay"
+                          testId="audio-delay"
+                        />
+                        <div className="px-4 pb-2 text-xs text-white/40">
+                          Holds the sound back when it is ahead of the picture. A browser can’t play sound earlier than the picture.
+                        </div>
+                      </>
+                    ) : (
+                      <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available in this browser.</div>
+                    )}
                   </PanelSection>
                 )}
                 {!inSync && (
@@ -1733,11 +1972,87 @@ function PanelIconButton({ label, onClick, children }: { label: string; onClick:
   );
 }
 
+function formatSubtitleDelay(seconds: number): string {
+  return `${seconds > 0 ? '+' : ''}${seconds.toFixed(1)} s`;
+}
+
+function formatAudioDelay(seconds: number): string {
+  const ms = Math.round(seconds * 1000);
+  return `${ms > 0 ? '+' : ''}${ms} ms`;
+}
+
+/** Step buttons, the current value and a slider for a timing offset. */
+function DelayControl({
+  value,
+  onChange,
+  min,
+  max,
+  sliderMin,
+  sliderMax,
+  step,
+  format,
+  lessLabel,
+  moreLabel,
+  sliderLabel,
+  testId,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  /** The slider may cover less than the full range; the buttons reach the rest. */
+  sliderMin: number;
+  sliderMax: number;
+  step: number;
+  format: (value: number) => string;
+  lessLabel: string;
+  moreLabel: string;
+  sliderLabel: string;
+  testId: string;
+}) {
+  const set = (v: number) => onChange(clampStep(v, min, max));
+  return (
+    <div className="px-4 pt-1 pb-2">
+      <div className="flex items-center gap-2">
+        <PanelIconButton label={lessLabel} onClick={() => set(value - step)}>
+          <Minus size={16} />
+        </PanelIconButton>
+        <span className="w-20 text-center text-sm tabular-nums" data-testid={testId}>
+          {format(value)}
+        </span>
+        <PanelIconButton label={moreLabel} onClick={() => set(value + step)}>
+          <Plus size={16} />
+        </PanelIconButton>
+        {value !== 0 && (
+          <button onClick={() => onChange(0)} className="ml-auto rounded px-2 py-1 text-xs text-white/70 hover:bg-white/10">
+            Reset
+          </button>
+        )}
+      </div>
+      <input
+        type="range"
+        min={sliderMin}
+        max={sliderMax}
+        step={step}
+        value={Math.min(sliderMax, Math.max(sliderMin, value))}
+        onChange={(e) => set(Number(e.target.value))}
+        aria-label={sliderLabel}
+        className="mt-3 block w-full"
+      />
+      <div className="mt-0.5 flex justify-between text-[10px] text-white/40 tabular-nums">
+        <span>{format(sliderMin)}</span>
+        <span>{format(sliderMax)}</span>
+      </div>
+    </div>
+  );
+}
+
 function Panel({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div
       className={clsx(
-        'animate-pop-in absolute right-0 bottom-14 max-h-[60vh] overflow-y-auto rounded-lg bg-base-850/95 py-1 shadow-2xl ring-1 ring-white/10 backdrop-blur',
+        // On phones the panel is pinned to the screen edge: next to its button it would run off the left side.
+        'animate-pop-in absolute right-0 bottom-14 max-h-[60vh] overflow-y-auto rounded-lg bg-base-850/95 py-1 shadow-2xl ring-1 ring-white/10 backdrop-blur max-sm:fixed max-sm:right-3 max-sm:bottom-20',
         wide ? 'w-96 max-w-[calc(100vw-2rem)]' : 'w-72',
       )}
       onClick={(e) => e.stopPropagation()}

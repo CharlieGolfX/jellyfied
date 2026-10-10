@@ -11,6 +11,7 @@ import {
   Heart,
   Image as ImageIcon,
   ListMusic,
+  ListPlus,
   MoreHorizontal,
   Pencil,
   Music,
@@ -30,6 +31,7 @@ import { Img } from '@/components/ui/States';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { supportsMetadataEditing } from './metadataEditing';
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections, useRemoveFromCollection } from './AddToCollection';
+import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
 import { useToast } from '@/components/ui/Toast';
 import { episodeLabel, playedPercent } from '@/lib/format';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay } from '@/player/usePlay';
@@ -146,6 +148,7 @@ export const PosterCard = memo(function PosterCard({
   const removeFromCollection = useRemoveFromCollection();
   const canManageCollections = useCanManageCollections();
   const [addingToCollection, setAddingToCollection] = useState(false);
+  const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const isAdmin = useIsAdmin();
   const [editing, setEditing] = useState(false);
 
@@ -205,6 +208,9 @@ export const PosterCard = memo(function PosterCard({
           (e) => toast.error(e),
         ),
     });
+  }
+  if (supportsPlaylists(item)) {
+    menuItems.push({ label: 'Add to playlist', icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
   }
   if (canManageCollections && supportsCollections(item)) {
     menuItems.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
@@ -355,6 +361,7 @@ export const PosterCard = memo(function PosterCard({
         </div>
       )}
       {addingToCollection && <AddToCollectionDialog item={item} onClose={() => setAddingToCollection(false)} />}
+      {addingToPlaylist && <AddToPlaylistDialog item={item} onClose={() => setAddingToPlaylist(false)} />}
       {editing && (
         <Suspense fallback={null}>
           <MetadataEditor itemId={item.Id} onClose={() => setEditing(false)} />

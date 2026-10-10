@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useEpisodes, useSimilar, useSpecialFeatures } from '@/api/queries';
 import type { BaseItemDto, MediaStream } from '@/api/types';
-import { useIsAdmin } from '@/auth/AuthProvider';
+import { useCurrentUser, useIsAdmin } from '@/auth/AuthProvider';
 import { Hub } from '@/components/media/Hub';
 import { episodeLabel, formatBitrate, formatBytes, formatDate } from '@/lib/format';
+import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from '@/player/trackMemory';
 import { ActionBar, CastHub, CreditsList, DetailFrame, ExpandableText, MetaLine } from './common';
 
 function streamLabel(s: MediaStream): string {
@@ -56,10 +57,16 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
 
   const [audioIndex, setAudioIndex] = useState<number | undefined>(undefined);
   const [subtitleIndex, setSubtitleIndex] = useState<number | undefined>(undefined);
-  const effectiveAudio = audioIndex ?? source?.DefaultAudioStreamIndex ?? audioStreams[0]?.Index;
-  const effectiveSub = subtitleIndex ?? source?.DefaultSubtitleStreamIndex ?? -1;
-
   const isEpisode = item.Type === 'Episode';
+  // Episodes start with the tracks last chosen for their show (see trackMemory.ts).
+  const { data: user } = useCurrentUser();
+  const seriesId = isEpisode ? item.SeriesId : undefined;
+  const rememberAudio = user?.Configuration?.RememberAudioSelections !== false;
+  const rememberSubtitles = user?.Configuration?.RememberSubtitleSelections !== false;
+  const remembered = recallTracks(seriesId, streams, { audio: rememberAudio, subtitle: rememberSubtitles });
+  const effectiveAudio = audioIndex ?? remembered.audioIndex ?? source?.DefaultAudioStreamIndex ?? audioStreams[0]?.Index;
+  const effectiveSub = subtitleIndex ?? remembered.subtitleIndex ?? source?.DefaultSubtitleStreamIndex ?? -1;
+
   const episodes = useEpisodes(isEpisode ? item.SeriesId ?? undefined : undefined, item.SeasonId ?? undefined);
   const extras = useSpecialFeatures(item.Id, (item.SpecialFeatureCount ?? 0) > 0 || item.Type === 'Movie');
   const similar = useSimilar(item.Id, item.Type === 'Movie' || item.Type === 'MusicVideo' || item.Type === 'Video');
@@ -147,7 +154,10 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                     ? audioStreams.map((s) => ({ value: String(s.Index), label: streamLabel(s) }))
                     : [{ value: '', label: 'None' }]
                 }
-                onChange={(v) => setAudioIndex(Number(v))}
+                onChange={(v) => {
+                  setAudioIndex(Number(v));
+                  if (seriesId && rememberAudio) rememberAudioTrack(seriesId, audioStreams.find((s) => s.Index === Number(v)));
+                }}
               />
               <StreamSelect
                 label="Subtitles"
@@ -156,7 +166,10 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                   { value: '-1', label: 'None' },
                   ...subtitleStreams.map((s) => ({ value: String(s.Index), label: streamLabel(s) })),
                 ]}
-                onChange={(v) => setSubtitleIndex(Number(v))}
+                onChange={(v) => {
+                  setSubtitleIndex(Number(v));
+                  if (seriesId && rememberSubtitles) rememberSubtitleTrack(seriesId, subtitleStreams.find((s) => s.Index === Number(v)));
+                }}
               />
             </div>
           )}
