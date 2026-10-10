@@ -263,7 +263,14 @@ export default function LibraryPage() {
         />
       )}
       {tab === 'genres' && <GenreGrid library={library} />}
-      {tab === 'browse' && <FolderGrid parentId={library.Id} shape={config.shape} sorts={config.sorts} />}
+      {tab === 'browse' && (
+        <FolderGrid
+          parentId={library.Id}
+          shape={config.shape}
+          sorts={config.sorts}
+          shuffleItem={library.CollectionType === 'photos' || library.CollectionType === 'books' ? undefined : library}
+        />
+      )}
     </div>
   );
 }
@@ -552,11 +559,15 @@ export function FolderGrid({
   parentId,
   shape,
   sorts = [SORT_TITLE, SORT_ADDED],
+  shuffleItem,
 }: {
   parentId: string;
   shape: CardShape;
   sorts?: SortDef[];
+  /** Folder or library to shuffle; plays everything below it, including subfolders. */
+  shuffleItem?: BaseItemDto;
 }) {
+  const play = usePlay();
   const [params, setParams] = useSearchParams();
   const sort = sorts.find((s) => s.value === params.get('sort')) ?? sorts[0];
   const order = (params.get('order') as 'Ascending' | 'Descending' | null) ?? sort.defaultOrder;
@@ -594,7 +605,14 @@ export function FolderGrid({
             }))}
           />
         </Toolbar>
-        <CardSizeSlider />
+        <Toolbar>
+          {shuffleItem && total > 0 && (
+            <Button size="sm" variant="ghost" icon={<Shuffle size={15} />} onClick={() => play(shuffleItem, { shuffle: true })}>
+              Shuffle
+            </Button>
+          )}
+          <CardSizeSlider />
+        </Toolbar>
       </div>
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />

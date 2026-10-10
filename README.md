@@ -20,6 +20,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 **Browsing (Plex layout)**
 - Top bar with global search (type `/` to focus) and live results, collapsible library sidebar, account menu.
+- Drag libraries in the sidebar to reorder them. The order is saved to your Jellyfin account, so it
+  also applies to the home page and other Jellyfin apps.
 - Home: Continue Watching (in-progress plus next-up episodes merged, like Plex's On Deck),
   Continue Listening, and Recently Added per library.
 - Libraries with Plex-style tabs: Recommended / Library / Collections / Categories for movies and TV,
@@ -30,19 +32,26 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Detail pages for movies, shows, seasons, episodes, albums, artists, playlists, collections, people,
   genres and studios. Backdrop hero, ratings, cast & crew, extras, trailers, "More Like This", and
   version/audio/subtitle pickers.
+- Shuffle button on folder-based libraries and folder pages. It plays everything below the folder,
+  including subfolders.
 - Unwatched corner badges, progress bars, watched toggles and favorites everywhere.
 
 **Playback**
 - Video player with direct play when the browser supports the file, and automatic HLS transcoding
   (hls.js) when it doesn't. A failed direct play falls back to a transcode automatically.
-- Audio track, subtitle and quality switching. Text subtitles (SRT/ASS/VTT, embedded or sidecar)
-  are converted to WebVTT. Image subtitles (PGS/VobSub) are burned in by the server.
-- Resume, chapter markers, Skip Intro / Credits (when the server has media segments),
+- Audio track, subtitle, quality and playback speed (0.5×–2×) switching. Text subtitles
+  (SRT/ASS/VTT, embedded or sidecar) are converted to WebVTT. Image subtitles (PGS/VobSub) are
+  burned in by the server.
+- Resume, chapter markers, thumbnail previews on the seek bar (when the server has generated
+  trickplay images), Skip Intro / Credits (when the server has media segments),
   Up Next with auto-play (honours the user's preference), keyboard shortcuts.
+- Picture-in-picture, from the player or the mini player, plus OS media controls (media keys,
+  lock screen) for video.
 - Mini player: press Back (or `Esc`) in the player and the video keeps playing in a small window,
   so you can browse and read media info while streaming. Click it to expand, or use its controls to
   pause or stop. Starting music pauses the video.
 - Persistent music player bar with queue, shuffle, repeat and OS media keys.
+- Instant Mix: start a queue of similar music from any song, album, artist, genre or playlist.
 - Playback progress, watched state and "Now Playing" are reported to Jellyfin, and transcodes are
   stopped when you leave the player.
 
@@ -52,7 +61,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - General settings, Users (create, delete, permissions, library access, passwords),
   Libraries (add with a server-side folder browser, rename, add/remove folders, scan, refresh metadata, remove),
   Transcoding (hardware acceleration, encoder settings, throttling, resume thresholds),
-  Networking, Scheduled Tasks, Activity log, Devices, Plugins (installed and catalog),
+  Networking, Scheduled Tasks, Activity log, Devices, Plugins (installed and catalog, with a
+  Configure link that opens the plugin's settings page in the Jellyfin web UI),
   API keys and a Log viewer.
 
 **Account**
@@ -152,6 +162,8 @@ requests by default, so this works without a proxy too.
 | `M`            | Mute                |
 | `F`            | Full screen         |
 | `N`            | Next item           |
+| `P`            | Picture-in-picture  |
+| `<` / `>`      | Slower / faster     |
 | `Esc`          | Close menu / minimize to mini player |
 
 `/` focuses search anywhere in the app.
@@ -184,7 +196,10 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 - Built and tested against Jellyfin 10.11. It only uses API endpoints that exist since 10.9, so
   10.9 and 10.10 should work as well, but they haven't been tested. Optional features degrade
-  gracefully: storage stats need 10.11 and Skip Intro needs 10.10+.
+  gracefully: storage stats need 10.11, Skip Intro needs 10.10+, and seek-bar previews only appear
+  for videos with trickplay images.
+- Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in
+  Jellyplex, and plugin settings pages open in the Jellyfin web UI.
 - Not implemented: Live TV / DVR, SyncPlay, metadata and image editing, the photo slideshow
   (single-photo viewer only), and casting. Use the regular Jellyfin web UI for those.
 - Which formats play directly depends on the browser. Jellyplex tells the server exactly what the

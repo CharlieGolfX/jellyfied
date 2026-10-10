@@ -12,9 +12,11 @@ interface SeekBarProps {
   /** Markers such as chapter starts, in seconds. */
   markers?: number[];
   renderPreview?: (seconds: number) => ReactNode;
+  /** Width of the preview in px, used to keep the tooltip inside the bar. */
+  previewWidth?: number;
 }
 
-export function SeekBar({ current, duration, buffered, onSeek, className, compact, markers, renderPreview }: SeekBarProps) {
+export function SeekBar({ current, duration, buffered, onSeek, className, compact, markers, renderPreview, previewWidth }: SeekBarProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
@@ -48,6 +50,8 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
   const pct = valid ? (shown / duration) * 100 : 0;
   const bufPct = valid && buffered ? (buffered / duration) * 100 : 0;
   const hoverPct = valid && hover !== null ? (hover / duration) * 100 : null;
+  const tipHalf = previewWidth ? previewWidth / 2 + 8 : 0;
+  const tipLeft = tipHalf ? `clamp(${tipHalf}px, ${hoverPct}%, calc(100% - ${tipHalf}px))` : `${hoverPct}%`;
 
   return (
     <div
@@ -94,8 +98,8 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
       </div>
       {hover !== null && valid && !compact && (
         <div
-          className="pointer-events-none absolute bottom-6 -translate-x-1/2 rounded bg-black/85 px-2 py-1 text-xs font-medium text-white tabular-nums"
-          style={{ left: `${hoverPct}%` }}
+          className="pointer-events-none absolute bottom-6 -translate-x-1/2 rounded bg-black/85 px-2 py-1 text-center text-xs font-medium text-white tabular-nums"
+          style={{ left: tipLeft }}
         >
           {renderPreview?.(drag ?? hover)}
           {formatClock(drag ?? hover)}

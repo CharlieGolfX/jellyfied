@@ -6,6 +6,7 @@ import {
   Heart,
   MoreHorizontal,
   Play,
+  Radio,
   RefreshCw,
   RotateCcw,
   Shuffle,
@@ -33,7 +34,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, formatRemaining, formatRuntime, playedPercent, ticksToSeconds, yearRange } from '@/lib/format';
-import { isPlayable, supportsWatchedState, usePlay, type PlayOptions } from '@/player/usePlay';
+import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay, type PlayOptions } from '@/player/usePlay';
 
 /** Full-bleed blurred backdrop behind the detail page, Plex style. */
 export function Backdrop({ item }: { item: BaseItemDto }) {
@@ -207,6 +208,7 @@ interface ActionBarProps {
 export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: ActionBarProps) {
   const api = useApi();
   const play = usePlay();
+  const instantMix = useInstantMix();
   const navigate = useNavigate();
   const toast = useToast();
   const isAdmin = useIsAdmin();
@@ -280,6 +282,11 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
       {showShuffle && playable && (
         <IconAction label="Shuffle" onClick={() => play(item, { shuffle: true })}>
           <Shuffle size={20} />
+        </IconAction>
+      )}
+      {supportsInstantMix(item) && (
+        <IconAction label="Instant Mix" onClick={() => void instantMix(item)}>
+          <Radio size={20} />
         </IconAction>
       )}
       {(localTrailer || remoteTrailer) && (

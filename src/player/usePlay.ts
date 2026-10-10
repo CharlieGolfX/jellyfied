@@ -224,3 +224,41 @@ export function usePlay() {
     [api, userId, audio, fetchChildren, playVideoQueue, toast],
   );
 }
+
+const INSTANT_MIX_TYPES = new Set(['Audio', 'MusicAlbum', 'MusicArtist', 'MusicGenre', 'Playlist']);
+
+/** Instant Mix: the server builds a queue of similar songs from a track, album, artist, genre or playlist. */
+export function supportsInstantMix(item: BaseItemDto): boolean {
+  if (item.Type === 'Playlist') return item.MediaType === 'Audio';
+  return INSTANT_MIX_TYPES.has(item.Type);
+}
+
+export function useInstantMix() {
+  const api = useApi();
+  const { userId } = useSession();
+  const audio = useAudioPlayer();
+  const toast = useToast();
+  return useCallback(
+    async (item: BaseItemDto) => {
+      try {
+        const result = await api.get<ItemsResult>(`/Items/${item.Id}/InstantMix`, {
+          userId,
+          limit: 200,
+          fields: [...CARD_FIELDS, 'MediaSources'],
+          enableUserData: true,
+          imageTypeLimit: 1,
+          enableImageTypes: ['Primary'],
+        });
+        const tracks = result.Items.filter((i) => i.MediaType === 'Audio');
+        if (!tracks.length) {
+          toast.info('No similar music found for an Instant Mix.');
+          return;
+        }
+        audio.play(tracks);
+      } catch (err) {
+        toast.error(err);
+      }
+    },
+    [api, userId, audio, toast],
+  );
+}

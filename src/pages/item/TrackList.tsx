@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Heart, ListEnd, ListPlus, MoreHorizontal, Pause, Play } from 'lucide-react';
+import { Heart, ListEnd, ListPlus, MoreHorizontal, Pause, Play, Radio } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSetFavorite } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
@@ -9,7 +9,7 @@ import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, ticksToSeconds } from '@/lib/format';
 import { useAudioPlayer } from '@/player/AudioPlayerProvider';
-import { usePlay } from '@/player/usePlay';
+import { useInstantMix, usePlay } from '@/player/usePlay';
 
 interface TrackListProps {
   tracks: BaseItemDto[];
@@ -25,6 +25,7 @@ export function TrackList({ tracks, albumArtist, showAlbum, showArt, numbered = 
   const navigate = useNavigate();
   const player = useAudioPlayer();
   const play = usePlay();
+  const instantMix = useInstantMix();
   const toast = useToast();
   const setFavorite = useSetFavorite();
 
@@ -144,6 +145,7 @@ export function TrackList({ tracks, albumArtist, showAlbum, showArt, numbered = 
                       ? [
                           { label: 'Play next', icon: <ListPlus size={16} />, onSelect: () => (player.current ? player.playNext([t]) : player.play([t])) },
                           { label: 'Add to queue', icon: <ListEnd size={16} />, onSelect: () => (player.current ? player.enqueue([t]) : player.play([t])) },
+                          { label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(t) },
                         ]
                       : []),
                     ...(t.AlbumId && showAlbum ? [{ label: 'Go to album', onSelect: () => navigate(`/item/${t.AlbumId}`) }] : []),

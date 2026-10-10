@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Music,
   Play,
+  Radio,
   RotateCcw,
   Tv,
   User,
@@ -25,7 +26,7 @@ import { Img } from '@/components/ui/States';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useToast } from '@/components/ui/Toast';
 import { episodeLabel, playedPercent } from '@/lib/format';
-import { isPlayable, supportsWatchedState, usePlay } from '@/player/usePlay';
+import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay } from '@/player/usePlay';
 
 const aspect: Record<CardShape, string> = {
   poster: 'aspect-[2/3]',
@@ -126,6 +127,7 @@ export const PosterCard = memo(function PosterCard({
   const api = useApi();
   const navigate = useNavigate();
   const play = usePlay();
+  const instantMix = useInstantMix();
   const toast = useToast();
   const setPlayed = useSetPlayed();
   const setFavorite = useSetFavorite();
@@ -152,6 +154,9 @@ export const PosterCard = memo(function PosterCard({
         icon: <RotateCcw size={16} />,
         onSelect: () => play(item, { fromStart: true }),
       });
+  }
+  if (supportsInstantMix(item)) {
+    menuItems.push({ label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(item) });
   }
   if (watchable) {
     menuItems.push({

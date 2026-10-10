@@ -90,7 +90,11 @@ export function FolderDetails({ item }: { item: BaseItemDto }) {
       <div className="px-4 pt-8 sm:px-8 lg:px-10">
         <h1 className="text-2xl font-bold">{item.Name}</h1>
       </div>
-      <FolderGrid parentId={item.Id} shape={shape} />
+      <FolderGrid
+        parentId={item.Id}
+        shape={shape}
+        shuffleItem={item.Type === 'PhotoAlbum' || item.CollectionType === 'photos' || item.CollectionType === 'books' ? undefined : item}
+      />
     </div>
   );
 }

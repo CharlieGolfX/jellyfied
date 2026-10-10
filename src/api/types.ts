@@ -210,6 +210,8 @@ export interface BaseItemDto {
   MediaSources?: MediaSourceInfo[];
   MediaStreams?: MediaStream[];
   Chapters?: ChapterInfo[];
+  /** Seek-bar thumbnail sheets, keyed by media source id, then by thumbnail width. */
+  Trickplay?: Record<string, Record<string, TrickplayInfo>>;
   LocalTrailerCount?: number;
   RemoteTrailers?: { Url?: string | null; Name?: string | null }[];
   ProviderIds?: Record<string, string>;
@@ -223,6 +225,17 @@ export interface BaseItemDto {
   SpecialFeatureCount?: number | null;
   PlayAccess?: string;
   Container?: string | null;
+}
+
+export interface TrickplayInfo {
+  Width: number;
+  Height: number;
+  TileWidth: number;
+  TileHeight: number;
+  ThumbnailCount: number;
+  /** Milliseconds between thumbnails. */
+  Interval: number;
+  Bandwidth?: number;
 }
 
 export interface ItemsResult<T = BaseItemDto> {
@@ -473,6 +486,13 @@ export interface PluginInfo {
   CanUninstall: boolean;
   HasImage: boolean;
   Status: 'Active' | 'Restart' | 'Deleted' | 'Superceded' | 'Malfunctioned' | 'NotSupported' | 'Disabled';
+}
+
+export interface ConfigurationPageInfo {
+  Name: string;
+  DisplayName?: string | null;
+  PluginId?: string | null;
+  EnableInMainMenu?: boolean;
 }
 
 export interface VersionInfo {

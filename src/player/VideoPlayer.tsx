@@ -8,6 +8,7 @@ import {
   Maximize2,
   Minimize,
   Pause,
+  PictureInPicture2,
   Play,
   RotateCcw,
   RotateCw,
@@ -25,7 +26,7 @@ import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
 import { cardImage, imageSrc } from '@/api/images';
 import { useItem, useMediaSegments } from '@/api/queries';
-import type { BaseItemDto, ItemsResult, MediaSourceInfo, MediaStream, PlaybackInfoResponse } from '@/api/types';
+import type { BaseItemDto, ItemsResult, MediaSourceInfo, MediaStream, PlaybackInfoResponse, TrickplayInfo } from '@/api/types';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Img } from '@/components/ui/States';
 import { Spinner } from '@/components/ui/Spinner';
@@ -80,6 +81,25 @@ interface LoadOptions {
   bitrate: number;
   mediaSourceId?: string;
   forceTranscode?: boolean;
+}
+
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+/** Display width of the seek-bar thumbnail preview, in px. */
+const TRICKPLAY_PREVIEW_WIDTH = 240;
+
+const pipSupported = typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
+
+/** Picks the thumbnail resolution closest to the preview size for the playing media source. */
+function pickTrickplay(item: BaseItemDto | undefined, sourceId: string | undefined): TrickplayInfo | null {
+  if (!item?.Trickplay || !sourceId) return null;
+  const norm = (id: string) => id.replace(/-/g, '').toLowerCase();
+  const key = Object.keys(item.Trickplay).find((k) => norm(k) === norm(sourceId));
+  const infos = key ? Object.values(item.Trickplay[key]) : [];
+  if (!infos.length) return null;
+  return infos.reduce((best, i) =>
+    Math.abs(i.Width - TRICKPLAY_PREVIEW_WIDTH) < Math.abs(best.Width - TRICKPLAY_PREVIEW_WIDTH) ? i : best,
+  );
 }
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -145,6 +165,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const [panel, setPanel] = useState<'none' | 'settings' | 'subtitles'>('none');
   const [maxBitrate, setMaxBitrate] = useState(() => readNumber(BITRATE_KEY, MAX_BITRATE));
   const [upNextDismissed, setUpNextDismissed] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [inPip, setInPip] = useState(false);
 
   // ---- Up next -----------------------------------------------------------
   const queue = navState.queue;
@@ -591,6 +613,36 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     }
   }, [volume, muted]);
 
+  // Playback speed. defaultPlaybackRate survives source changes (quality/audio switches).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.defaultPlaybackRate = speed;
+    video.playbackRate = speed;
+  }, [speed]);
+
+  // Picture-in-picture state (the browser can also open/close it on its own).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onEnter = () => setInPip(true);
+    const onLeave = () => setInPip(false);
+    video.addEventListener('enterpictureinpicture', onEnter);
+    video.addEventListener('leavepictureinpicture', onLeave);
+    return () => {
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      video.removeEventListener('leavepictureinpicture', onLeave);
+      if (document.pictureInPictureElement === video) void document.exitPictureInPicture().catch(() => {});
+    };
+  }, []);
+
+  const togglePip = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !pipSupported) return;
+    if (document.pictureInPictureElement) void document.exitPictureInPicture().catch(() => {});
+    else void video.requestPictureInPicture().catch(() => {});
+  }, []);
+
   // ---- Controls ------------------------------------------------------------
   const pauseAudio = audioPlayer.pause;
   const togglePlay = useCallback(() => {
@@ -648,7 +700,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       let handled = true;
-      switch (e.key) {
+      switch (e.key.length === 1 && e.key !== '<' && e.key !== '>' ? e.key.toLowerCase() : e.key) {
         case ' ':
         case 'k':
           togglePlay();
@@ -677,6 +729,16 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         case 'n':
           if (nextId) goNext();
           break;
+        case 'p':
+          togglePip();
+          break;
+        case '>':
+        case '<': {
+          const i = SPEED_OPTIONS.indexOf(speed);
+          const next = SPEED_OPTIONS[Math.min(SPEED_OPTIONS.length - 1, Math.max(0, i + (e.key === '>' ? 1 : -1)))];
+          setSpeed(next);
+          break;
+        }
         case 'Escape':
           if (panel !== 'none') setPanel('none');
           else if (!document.fullscreenElement) minimize();
@@ -692,7 +754,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFull, togglePlay, skip, toggleFullscreen, minimize, goNext, nextId, panel, poke]);
+  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed]);
 
   // Collapsing into the mini player: close menus and leave browser full screen.
   useEffect(() => {
@@ -705,6 +767,77 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   useEffect(() => {
     if (audioPlayer.isPlaying) videoRef.current?.pause();
   }, [audioPlayer.isPlaying]);
+
+  // OS media controls (media keys, lock screen). Claimed whenever the video starts playing, since
+  // the music player uses the same session.
+  const mediaMetaRef = useRef<MediaMetadata | null>(null);
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !item || !playing) return;
+    const ms = navigator.mediaSession;
+    const art = imageSrc(api, cardImage(item, 'landscape'), 512);
+    const meta = new MediaMetadata({
+      title: item.Type === 'Episode' ? `${episodeLabel(item)}${item.Name ? ` · ${item.Name}` : ''}` : (item.Name ?? ''),
+      artist: item.Type === 'Episode' ? (item.SeriesName ?? '') : item.ProductionYear ? String(item.ProductionYear) : '',
+      artwork: art ? [{ src: art, sizes: '512x288' }] : [],
+    });
+    mediaMetaRef.current = meta;
+    ms.metadata = meta;
+    const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
+      ['play', () => togglePlay()],
+      ['pause', () => videoRef.current?.pause()],
+      ['seekbackward', (d) => skip(-(d.seekOffset ?? 10))],
+      ['seekforward', (d) => skip(d.seekOffset ?? 30)],
+      ['seekto', (d) => d.seekTime !== undefined && seekTo(d.seekTime)],
+      ['previoustrack', null],
+      ['nexttrack', nextId ? () => goNext() : null],
+    ];
+    for (const [action, handler] of handlers) {
+      try {
+        ms.setActionHandler(action, handler);
+      } catch {
+        /* action not supported by this browser */
+      }
+    }
+  }, [api, item, playing, nextId, togglePlay, skip, seekTo, goNext]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const update = () => {
+      if (navigator.mediaSession.metadata !== mediaMetaRef.current) return;
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: video.duration,
+          position: Math.min(video.currentTime, video.duration),
+          playbackRate: video.playbackRate || 1,
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+    const events = ['playing', 'pause', 'seeked', 'ratechange', 'durationchange'];
+    events.forEach((ev) => video.addEventListener(ev, update));
+    return () => events.forEach((ev) => video.removeEventListener(ev, update));
+  }, []);
+
+  // Release the media session when this player goes away, unless music has taken it over.
+  useEffect(
+    () => () => {
+      if (!('mediaSession' in navigator) || navigator.mediaSession.metadata !== mediaMetaRef.current) return;
+      const ms = navigator.mediaSession;
+      ms.metadata = null;
+      for (const action of ['play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'nexttrack'] as MediaSessionAction[]) {
+        try {
+          ms.setActionHandler(action, null);
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    [],
+  );
 
   // Single click toggles playback, double click toggles fullscreen.
   const clickTimer = useRef<number | undefined>(undefined);
@@ -823,6 +956,38 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const chapterMarks = useMemo(
     () => (item?.Chapters ?? []).map((c) => ticksToSeconds(c.StartPositionTicks)).filter((t) => t > 0),
     [item?.Chapters],
+  );
+
+  const trickplay = useMemo(() => pickTrickplay(item, stream?.source.Id), [item, stream?.source.Id]);
+  const renderTrickplay = useCallback(
+    (seconds: number) => {
+      if (!trickplay || !stream) return null;
+      const perTile = trickplay.TileWidth * trickplay.TileHeight;
+      const n = Math.min(trickplay.ThumbnailCount - 1, Math.max(0, Math.floor((seconds * 1000) / trickplay.Interval)));
+      const sheet = Math.floor(n / perTile);
+      const cell = n % perTile;
+      const scale = TRICKPLAY_PREVIEW_WIDTH / trickplay.Width;
+      const w = trickplay.Width * scale;
+      const h = trickplay.Height * scale;
+      const url = api.url(
+        `/Videos/${itemId}/Trickplay/${trickplay.Width}/${sheet}.jpg`,
+        { mediaSourceId: stream.source.Id },
+        true,
+      );
+      return (
+        <div
+          className="mb-1 rounded-sm bg-black bg-no-repeat"
+          style={{
+            width: w,
+            height: h,
+            backgroundImage: `url("${url}")`,
+            backgroundSize: `${trickplay.TileWidth * w}px auto`,
+            backgroundPosition: `-${(cell % trickplay.TileWidth) * w}px -${Math.floor(cell / trickplay.TileWidth) * h}px`,
+          }}
+        />
+      );
+    },
+    [api, itemId, trickplay, stream],
   );
 
   const miniBottom = audioPlayer.current ? 'bottom-[92px]' : 'bottom-4';
@@ -973,6 +1138,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             buffered={buffered}
             onSeek={seekTo}
             markers={chapterMarks}
+            renderPreview={trickplay ? renderTrickplay : undefined}
+            previewWidth={trickplay ? TRICKPLAY_PREVIEW_WIDTH : undefined}
           />
           <span className="w-16 text-right">-{formatClock(Math.max(0, remaining))}</span>
         </div>
@@ -1018,6 +1185,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
           <div className="flex-1" />
 
+          {speed !== 1 && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
           {stream && (
             <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">
               {stream.method === 'DirectPlay' ? 'Direct Play' : stream.method === 'DirectStream' ? 'Direct Stream' : 'Transcode'}
@@ -1066,6 +1234,22 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
                     ))}
                   </PanelSection>
                 )}
+                <PanelSection title="Speed">
+                  <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
+                    {SPEED_OPTIONS.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setSpeed(r)}
+                        className={clsx(
+                          'rounded px-2 py-1 text-xs font-medium tabular-nums transition-colors',
+                          speed === r ? 'bg-accent text-accent-ink' : 'bg-white/10 text-white/80 hover:bg-white/20',
+                        )}
+                      >
+                        {r === 1 ? 'Normal' : `${r}×`}
+                      </button>
+                    ))}
+                  </div>
+                </PanelSection>
                 <PanelSection title="Quality">
                   {QUALITY_OPTIONS.map((q) => (
                     <PanelOption key={q.value} selected={maxBitrate === q.value} onClick={() => changeQuality(q.value)}>
@@ -1085,6 +1269,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
               </Panel>
             )}
           </div>
+          {pipSupported && (
+            <ControlButton label={inPip ? 'Exit picture-in-picture' : 'Picture-in-picture'} onClick={togglePip} active={inPip}>
+              <PictureInPicture2 size={24} />
+            </ControlButton>
+          )}
           <ControlButton label={isFullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
           </ControlButton>
@@ -1103,6 +1292,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           onToggle={togglePlay}
           onExpand={expand}
           onClose={exit}
+          onPip={pipSupported ? togglePip : undefined}
         />
       )}
     </div>
@@ -1118,6 +1308,7 @@ function MiniOverlay({
   onToggle,
   onExpand,
   onClose,
+  onPip,
 }: {
   title: string;
   subtitle: string;
@@ -1127,6 +1318,7 @@ function MiniOverlay({
   onToggle: () => void;
   onExpand: () => void;
   onClose: () => void;
+  onPip?: () => void;
 }) {
   const btn = 'flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20';
   return (
@@ -1137,6 +1329,11 @@ function MiniOverlay({
           <div className="truncate text-sm font-semibold">{title}</div>
           {subtitle && <div className="truncate text-xs text-white/70">{subtitle}</div>}
         </Link>
+        {onPip && (
+          <button onClick={onPip} className={btn} aria-label="Picture-in-picture" title="Picture-in-picture">
+            <PictureInPicture2 size={18} />
+          </button>
+        )}
         <button onClick={onExpand} className={btn} aria-label="Expand player" title="Expand">
           <Maximize2 size={18} />
         </button>

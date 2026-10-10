@@ -1,8 +1,8 @@
 import clsx from 'clsx';
-import { Download, Power, Puzzle, Search, Trash2 } from 'lucide-react';
+import { Download, ExternalLink, Power, Puzzle, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PackageInfo, PluginInfo } from '@/api/types';
+import type { ConfigurationPageInfo, PackageInfo, PluginInfo } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
@@ -28,6 +28,17 @@ function Installed() {
   const qc = useQueryClient();
   const [removing, setRemoving] = useState<PluginInfo | null>(null);
   const plugins = useQuery({ queryKey: ['admin', 'plugins'], queryFn: () => api.get<PluginInfo[]>('/Plugins') });
+  // Plugin settings pages are written for jellyfin-web, so "Configure" opens them there.
+  const pages = useQuery({
+    queryKey: ['admin', 'plugin-pages'],
+    queryFn: () => api.get<ConfigurationPageInfo[]>('/web/ConfigurationPages'),
+    staleTime: 5 * 60_000,
+  });
+  const configUrl = (p: PluginInfo) => {
+    const id = p.Id.replace(/-/g, '').toLowerCase();
+    const page = pages.data?.find((pg) => pg.PluginId?.replace(/-/g, '').toLowerCase() === id);
+    return page ? `${api.serverUrl}/web/#/configurationpage?name=${encodeURIComponent(page.Name)}` : null;
+  };
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'plugins'] });
 
   const toggle = useMutation({
@@ -71,6 +82,17 @@ function Installed() {
               </div>
               {p.Description && <p className="mt-1 line-clamp-2 text-sm text-muted">{p.Description}</p>}
               <div className="mt-2 flex gap-2">
+                {p.Status === 'Active' && configUrl(p) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<ExternalLink size={14} />}
+                    onClick={() => window.open(configUrl(p)!, '_blank', 'noopener')}
+                    title="Opens the plugin's settings in the Jellyfin web interface"
+                  >
+                    Configure
+                  </Button>
+                )}
                 {(p.Status === 'Active' || p.Status === 'Disabled') && (
                   <Button size="sm" variant="ghost" icon={<Power size={14} />} loading={toggle.isPending && toggle.variables?.Id === p.Id} onClick={() => toggle.mutate(p)}>
                     {p.Status === 'Disabled' ? 'Enable' : 'Disable'}
