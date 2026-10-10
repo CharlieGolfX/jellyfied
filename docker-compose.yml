@@ -1,6 +1,9 @@
 # Jellyplex — Plex-style frontend for an existing Jellyfin server.
 #
-#   docker compose up -d   →   http://localhost:8080
+#   cp .env.example .env      (then set JELLYFIN_URL in .env)
+#   docker compose up -d      →   http://localhost:8080
+#
+# All addresses and ports come from .env, which is not committed to git. See .env.example.
 #
 services:
   jellyplex:
@@ -9,26 +12,20 @@ services:
     container_name: jellyplex
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${JELLYPLEX_BIND_ADDRESS:-0.0.0.0}:${JELLYPLEX_HOST_PORT:-8080}:80"
     environment:
-      # Jellyfin address as reachable FROM THIS CONTAINER. Jellyplex proxies it at /jellyfin,
-      # so the browser only ever talks to Jellyplex (no CORS or mixed-content issues).
-      #   Same compose project / docker network:  http://jellyfin:8096
-      #   Jellyfin on the Docker host:            http://host.docker.internal:8096
-      #   Another machine on your LAN:            http://192.168.1.10:8096
-      JELLYFIN_URL: "http://host.docker.internal:8096"
-
+      # Jellyfin address as reachable FROM THIS CONTAINER (proxied at /jellyfin).
+      JELLYFIN_URL: "${JELLYFIN_URL:-}"
       # Optional: make the browser talk to Jellyfin directly instead of through the proxy.
-      # JELLYFIN_PUBLIC_URL: "https://jellyfin.example.com"
-
-      # Optional: let users type a different server address on the login screen.
-      # JELLYPLEX_LOCK_SERVER: "false"
+      JELLYFIN_PUBLIC_URL: "${JELLYFIN_PUBLIC_URL:-}"
+      # Optional: whether users can type a different server address on the login screen.
+      JELLYPLEX_LOCK_SERVER: "${JELLYPLEX_LOCK_SERVER:-}"
     extra_hosts:
       # Makes host.docker.internal work on Linux too.
       - "host.docker.internal:host-gateway"
 
-  # If Jellyfin runs in Docker as well, put both on the same network and use
-  # JELLYFIN_URL=http://jellyfin:8096 above, e.g.:
+  # If Jellyfin runs in Docker as well, put both on the same network and set
+  # JELLYFIN_URL=http://jellyfin:8096 in .env, e.g.:
   #
   # jellyfin:
   #   image: jellyfin/jellyfin:latest

@@ -3,11 +3,12 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
-// In development, set JELLYFIN_URL (e.g. in .env.local) to proxy /jellyfin to a
-// Jellyfin server, mirroring what the nginx container does in production.
+// In development, /jellyfin is proxied to the Jellyfin server from .env (JELLYFIN_DEV_URL, or
+// JELLYFIN_URL when that is empty), mirroring what the nginx container does in production.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const target = env.JELLYFIN_URL;
+  const target = env.JELLYFIN_DEV_URL || env.JELLYFIN_URL;
+  const port = Number(env.JELLYPLEX_DEV_PORT) || 5173;
 
   return {
     base: '/',
@@ -30,7 +31,7 @@ export default defineConfig(({ mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     server: {
-      port: 5173,
+      port,
       proxy: target
         ? {
             '/jellyfin': {
