@@ -6,6 +6,12 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-11
+
+First public version: Plex-style browsing, the video and music players, SyncPlay, playing on
+other devices, the metadata editor and the server dashboard. See the
+[README](README.md#features) for the full list.
+
 ### Added
 - Prebuilt container images on GitHub Container Registry (`ghcr.io/charliegolfx/jellyplex`) for
   amd64 and arm64: `latest` and version tags for releases, `edge` for the main branch.
@@ -20,11 +26,5 @@ shown in the account menu and on the login screen.
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-## [1.0.0] - 2026-10-11
-
-First public version: Plex-style browsing, the video and music players, SyncPlay, playing on
-other devices, the metadata editor and the server dashboard. See the
-[README](README.md#features) for the full list.
-
-[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/b2da6e1...HEAD
-[1.0.0]: https://github.com/CharlieGolfX/jellyplex/tree/b2da6e1
+[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/CharlieGolfX/jellyplex/releases/tag/v1.0.0

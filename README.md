@@ -247,7 +247,7 @@ Docker Compose additionally understands these:
 
 ## Development
 
-Requires Node.js 20.19+ (22 or 24 recommended).
+Requires Node.js 22.22+ (24 recommended).
 
 ```bash
 npm install
