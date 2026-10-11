@@ -1,6 +1,6 @@
 import clsx from 'clsx';
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, Filter, Shuffle } from 'lucide-react';
-import { useMemo, type ReactNode } from 'react';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, Filter, LayoutGrid, List, Shuffle } from 'lucide-react';
+import { lazy, Suspense, useMemo, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { CardShape } from '@/api/images';
@@ -8,16 +8,21 @@ import type { Query } from '@/api/client';
 import {
   MEDIA,
   useFilters,
+  useFilterValues,
   useInfiniteItems,
   useItem,
   useItems,
   useLatest,
   useNextUp,
   useResume,
+  useStudios,
 } from '@/api/queries';
 import type { BaseItemDto, CollectionType, ItemsResult } from '@/api/types';
 import { useApi, useSession } from '@/auth/AuthProvider';
+import { BulkBar } from '@/components/media/BulkBar';
 import { CardGrid } from '@/components/media/CardGrid';
+import { ItemList } from '@/components/media/ItemList';
+import { SelectionProvider } from '@/components/media/selection';
 import { CardSizeSlider } from '@/components/media/CardSizeSlider';
 import { Hub } from '@/components/media/Hub';
 import { LibraryIcon } from '@/components/layout/libraryIcon';
@@ -27,6 +32,10 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { usePlay } from '@/player/usePlay';
 import { plural } from '@/lib/format';
+import { useLibraryView } from '@/lib/libraryView';
+import { usePageTitle } from '@/lib/usePageTitle';
+
+const LiveTvPage = lazy(() => import('./LiveTv'));
 
 type TabId = 'recommended' | 'library' | 'collections' | 'genres' | 'albums' | 'artists' | 'browse';
 
@@ -168,6 +177,72 @@ const FILTERS = [
   { value: 'IsFavorite', label: 'Favorites' },
 ];
 
+const RESOLUTIONS = [
+  { value: '4k', label: '4K', query: { is4K: true } },
+  { value: 'hd', label: 'HD', query: { isHd: true, is4K: false } },
+  { value: 'sd', label: 'SD', query: { isHd: false } },
+] as const;
+/** Item types that are single video files, so they have a resolution. */
+const HAS_RESOLUTION = new Set(['Movie', 'Video', 'MusicVideo', 'Episode']);
+/** Item types whose metadata carries studios. */
+const HAS_STUDIOS = new Set(['Movie', 'Series']);
+
+const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+
+/** The part of an items query that picks titles by their first letter ('#' = everything before A). */
+export function letterQuery(letter: string): Query {
+  if (!letter) return {};
+  return letter === '#' ? { nameLessThan: 'A' } : { nameStartsWith: letter };
+}
+
+/** A–Z strip to jump to a letter in a list sorted by title. */
+function AlphabetBar({ value, onChange }: { value: string; onChange: (letter: string | null) => void }) {
+  return (
+    <div className="scrollbar-none -mx-1 mb-4 flex gap-0.5 overflow-x-auto" role="group" aria-label="Jump to a letter" data-testid="alphabet-bar">
+      {LETTERS.map((l) => (
+        <button
+          key={l}
+          onClick={() => onChange(value === l ? null : l)}
+          aria-pressed={value === l}
+          title={l === '#' ? 'Titles that start with a number or symbol' : `Titles that start with ${l}`}
+          className={clsx(
+            'h-7 min-w-7 shrink-0 rounded px-1.5 text-xs font-semibold transition-colors',
+            value === l ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-white/10 hover:text-fg',
+          )}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Switches a library between cards and rows. */
+function ViewToggle() {
+  const [view, setView] = useLibraryView();
+  return (
+    <div className="flex rounded-md bg-white/5 p-0.5" role="group" aria-label="Layout">
+      {(
+        [
+          ['grid', 'Grid', <LayoutGrid size={15} key="g" />],
+          ['list', 'List', <List size={15} key="l" />],
+        ] as const
+      ).map(([value, label, icon]) => (
+        <button
+          key={value}
+          onClick={() => setView(value)}
+          aria-pressed={view === value}
+          aria-label={`${label} view`}
+          title={`${label} view`}
+          className={clsx('flex h-7 w-8 items-center justify-center rounded', view === value ? 'bg-white/15 text-fg' : 'text-muted hover:text-fg')}
+        >
+          {icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Toolbar({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap items-center gap-2">{children}</div>;
 }
@@ -200,15 +275,16 @@ export default function LibraryPage() {
   const { data: library, isLoading, error, refetch } = useItem(id);
   const [params, setParams] = useSearchParams();
   const config = useMemo(() => configFor(library?.CollectionType), [library?.CollectionType]);
+  usePageTitle(library?.Name);
 
   if (isLoading) return <PageSpinner />;
   if (error || !library) return <ErrorState error={error ?? 'Library not found'} onRetry={() => refetch()} />;
 
   if (library.CollectionType === 'livetv') {
     return (
-      <EmptyState title="Live TV isn’t supported yet">
-        Use the Jellyfin web app for Live TV and recordings.
-      </EmptyState>
+      <Suspense fallback={<PageSpinner />}>
+        <LiveTvPage library={library} />
+      </Suspense>
     );
   }
 
@@ -252,11 +328,12 @@ export default function LibraryPage() {
       </div>
 
       {tab === 'recommended' && <Recommended library={library} />}
-      {tab === 'library' && <LibraryGrid library={library} config={config} itemTypes={config.itemTypes} />}
-      {tab === 'albums' && <LibraryGrid library={library} config={config} itemTypes={['MusicAlbum']} />}
+      {tab === 'library' && <LibraryGrid key="library" library={library} config={config} itemTypes={config.itemTypes} />}
+      {tab === 'albums' && <LibraryGrid key="albums" library={library} config={config} itemTypes={['MusicAlbum']} />}
       {tab === 'artists' && <ArtistsGrid library={library} />}
       {tab === 'collections' && (
         <LibraryGrid
+          key="collections"
           library={library}
           config={{ ...config, sorts: [SORT_TITLE, SORT_ADDED], watchFilters: false }}
           itemTypes={['BoxSet']}
@@ -349,7 +426,15 @@ function Recommended({ library }: { library: BaseItemDto }) {
   );
 }
 
-function LibraryGrid({
+function LibraryGrid(props: { library: BaseItemDto; config: LibraryConfig; itemTypes?: string[] }) {
+  return (
+    <SelectionProvider>
+      <LibraryItems {...props} />
+    </SelectionProvider>
+  );
+}
+
+function LibraryItems({
   library,
   config,
   itemTypes,
@@ -360,12 +445,24 @@ function LibraryGrid({
 }) {
   const [params, setParams] = useSearchParams();
   const play = usePlay();
+  const [view] = useLibraryView();
   const filters = useFilters(library.Id, itemTypes);
+  const values = useFilterValues(library.Id, itemTypes);
+  const studios = useStudios(library.Id, itemTypes, Boolean(itemTypes?.some((t) => HAS_STUDIOS.has(t))));
 
   const sort = config.sorts.find((s) => s.value === params.get('sort')) ?? config.sorts[0];
   const order = (params.get('order') as 'Ascending' | 'Descending' | null) ?? sort.defaultOrder;
   const filter = params.get('filter') ?? '';
   const genre = params.get('genre') ?? '';
+  const year = params.get('year') ?? '';
+  const rating = params.get('rating') ?? '';
+  const tag = params.get('tag') ?? '';
+  const studio = params.get('studio') ?? '';
+  const resolution = RESOLUTIONS.find((r) => r.value === params.get('res'));
+  // Jumping to a letter only makes sense in a list that is in alphabetical order.
+  const byTitle = sort.value === 'SortName';
+  const letter = byTitle ? (params.get('letter') ?? '') : '';
+  const filtered = Boolean(filter || genre || year || rating || tag || studio || resolution || letter);
 
   const update = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
@@ -384,11 +481,22 @@ function LibraryGrid({
     sortOrder: order,
     filters: filter || undefined,
     genreIds: genre || undefined,
+    years: year || undefined,
+    officialRatings: rating || undefined,
+    tags: tag || undefined,
+    studioIds: studio || undefined,
+    ...resolution?.query,
+    ...letterQuery(letter),
   };
   const result = useInfiniteItems(query);
   const items = useMemo(() => result.data?.pages.flatMap((p) => p.Items) ?? [], [result.data]);
   const total = result.data?.pages[0]?.TotalRecordCount ?? 0;
   const genreName = filters.data?.Genres?.find((g) => g.Id === genre)?.Name;
+  const years = [...(values.data?.Years ?? [])].sort((a, b) => b - a);
+  const ratings = values.data?.OfficialRatings ?? [];
+  const tags = values.data?.Tags ?? filters.data?.Tags ?? [];
+  const studioList = studios.data?.Items ?? [];
+  const hasResolution = Boolean(itemTypes?.some((t) => HAS_RESOLUTION.has(t)));
 
   const baseWidth = config.shape === 'landscape' ? 250 : config.shape === 'square' ? 160 : 145;
   const kind = itemTypes?.includes('BoxSet') ? 'collection' : itemTypes?.includes('MusicAlbum') ? 'album' : itemTypes?.includes('Series') ? 'show' : 'item';
@@ -438,8 +546,66 @@ function LibraryGrid({
               ]}
             />
           )}
-          {(filter || genre) && (
-            <button onClick={() => update({ filter: null, genre: null })} className="text-sm text-accent hover:underline">
+          {years.length > 1 && (
+            <DropdownButton
+              label={year || 'Year'}
+              active={Boolean(year)}
+              items={[
+                { label: 'All years', checked: !year, onSelect: () => update({ year: null }) },
+                { divider: true, label: '' },
+                ...years.map((y) => ({ label: String(y), checked: String(y) === year, onSelect: () => update({ year: String(y) }) })),
+              ]}
+            />
+          )}
+          {ratings.length > 1 && (
+            <DropdownButton
+              label={rating || 'Rating'}
+              active={Boolean(rating)}
+              items={[
+                { label: 'All ratings', checked: !rating, onSelect: () => update({ rating: null }) },
+                { divider: true, label: '' },
+                ...ratings.map((r) => ({ label: r, checked: r === rating, onSelect: () => update({ rating: r }) })),
+              ]}
+            />
+          )}
+          {hasResolution && (
+            <DropdownButton
+              label={resolution?.label ?? 'Resolution'}
+              active={Boolean(resolution)}
+              items={[
+                { label: 'Any resolution', checked: !resolution, onSelect: () => update({ res: null }) },
+                { divider: true, label: '' },
+                ...RESOLUTIONS.map((r) => ({ label: r.label, checked: r.value === resolution?.value, onSelect: () => update({ res: r.value }) })),
+              ]}
+            />
+          )}
+          {tags.length > 0 && (
+            <DropdownButton
+              label={tag || 'Tag'}
+              active={Boolean(tag)}
+              items={[
+                { label: 'All tags', checked: !tag, onSelect: () => update({ tag: null }) },
+                { divider: true, label: '' },
+                ...tags.map((t) => ({ label: t, checked: t === tag, onSelect: () => update({ tag: t }) })),
+              ]}
+            />
+          )}
+          {studioList.length > 1 && (
+            <DropdownButton
+              label={studioList.find((s) => s.Id === studio)?.Name ?? 'Studio'}
+              active={Boolean(studio)}
+              items={[
+                { label: 'All studios', checked: !studio, onSelect: () => update({ studio: null }) },
+                { divider: true, label: '' },
+                ...studioList.map((s) => ({ label: s.Name ?? '', checked: s.Id === studio, onSelect: () => update({ studio: s.Id }) })),
+              ]}
+            />
+          )}
+          {filtered && (
+            <button
+              onClick={() => update({ filter: null, genre: null, year: null, rating: null, tag: null, studio: null, res: null, letter: null })}
+              className="text-sm text-accent hover:underline"
+            >
               Clear
             </button>
           )}
@@ -450,16 +616,27 @@ function LibraryGrid({
               Shuffle
             </Button>
           )}
-          <CardSizeSlider />
+          <ViewToggle />
+          {view === 'grid' && <CardSizeSlider />}
         </Toolbar>
       </div>
+
+      {byTitle && <AlphabetBar value={letter} onChange={(l) => update({ letter: l })} />}
 
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : !result.isLoading && items.length === 0 ? (
         <EmptyState title="Nothing here">
-          {filter || genre ? 'No items match the current filters.' : 'This library doesn’t contain any items yet.'}
+          {filtered ? 'No items match the current filters.' : 'This library doesn’t contain any items yet.'}
         </EmptyState>
+      ) : view === 'list' ? (
+        <ItemList
+          items={items}
+          loading={result.isLoading}
+          hasMore={result.hasNextPage}
+          loadingMore={result.isFetchingNextPage}
+          onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
+        />
       ) : (
         <CardGrid
           items={items}
@@ -471,6 +648,7 @@ function LibraryGrid({
           onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
         />
       )}
+      <BulkBar allItems={items} />
     </div>
   );
 }
@@ -555,19 +733,25 @@ function GenreGrid({ library }: { library: BaseItemDto }) {
   );
 }
 
-export function FolderGrid({
-  parentId,
-  shape,
-  sorts = [SORT_TITLE, SORT_ADDED],
-  shuffleItem,
-}: {
+interface FolderGridProps {
   parentId: string;
   shape: CardShape;
   sorts?: SortDef[];
   /** Folder or library to shuffle; plays everything below it, including subfolders. */
   shuffleItem?: BaseItemDto;
-}) {
+}
+
+export function FolderGrid(props: FolderGridProps) {
+  return (
+    <SelectionProvider>
+      <FolderItems {...props} />
+    </SelectionProvider>
+  );
+}
+
+function FolderItems({ parentId, shape, sorts = [SORT_TITLE, SORT_ADDED], shuffleItem }: FolderGridProps) {
   const play = usePlay();
+  const [view] = useLibraryView();
   const [params, setParams] = useSearchParams();
   const sort = sorts.find((s) => s.value === params.get('sort')) ?? sorts[0];
   const order = (params.get('order') as 'Ascending' | 'Descending' | null) ?? sort.defaultOrder;
@@ -611,13 +795,22 @@ export function FolderGrid({
               Shuffle
             </Button>
           )}
-          <CardSizeSlider />
+          <ViewToggle />
+          {view === 'grid' && <CardSizeSlider />}
         </Toolbar>
       </div>
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : !result.isLoading && items.length === 0 ? (
         <EmptyState title="This folder is empty" />
+      ) : view === 'list' ? (
+        <ItemList
+          items={items}
+          loading={result.isLoading}
+          hasMore={result.hasNextPage}
+          loadingMore={result.isFetchingNextPage}
+          onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
+        />
       ) : (
         <CardGrid
           items={items}
@@ -629,6 +822,7 @@ export function FolderGrid({
           onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
         />
       )}
+      <BulkBar allItems={items} />
     </div>
   );
 }

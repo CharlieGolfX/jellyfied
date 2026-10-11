@@ -1,5 +1,6 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { AUDIO_DELAY_STEP, MAX_AUDIO_DELAY } from '../audioDelay';
+import type { SeekSteps } from '../seekSteps';
 import { clampStep, formatAudioDelay, formatSubtitleDelay, MAX_SUBTITLE_DELAY, SPEED_OPTIONS, type PlayerPanel } from './shared';
 
 interface ShortcutOptions {
@@ -21,7 +22,8 @@ interface ShortcutOptions {
   speed: number;
   setSpeed: Dispatch<SetStateAction<number>>;
   inSync: boolean;
-  textSubtitles: boolean;
+  /** Subtitles are drawn in the browser, so they can be shifted. */
+  subtitleTiming: boolean;
   subtitleDelay: number;
   setSubtitleDelay: Dispatch<SetStateAction<number>>;
   audioDelay: number;
@@ -30,9 +32,12 @@ interface ShortcutOptions {
   setVolume: Dispatch<SetStateAction<number>>;
   setMuted: Dispatch<SetStateAction<boolean>>;
   setShowInfo: Dispatch<SetStateAction<boolean>>;
+  showShortcuts: boolean;
+  setShowShortcuts: Dispatch<SetStateAction<boolean>>;
+  steps: SeekSteps;
 }
 
-/** Keyboard shortcuts of the full-screen player (listed in the README). */
+/** Keyboard shortcuts of the full-screen player (listed in ShortcutsHelp and the README). */
 export function usePlayerShortcuts({
   isFull,
   togglePlay,
@@ -49,7 +54,7 @@ export function usePlayerShortcuts({
   speed,
   setSpeed,
   inSync,
-  textSubtitles,
+  subtitleTiming,
   subtitleDelay,
   setSubtitleDelay,
   audioDelay,
@@ -58,6 +63,9 @@ export function usePlayerShortcuts({
   setVolume,
   setMuted,
   setShowInfo,
+  showShortcuts,
+  setShowShortcuts,
+  steps,
 }: ShortcutOptions) {
   useEffect(() => {
     if (!isFull) return;
@@ -73,11 +81,11 @@ export function usePlayerShortcuts({
           break;
         case 'ArrowLeft':
         case 'j':
-          skip(-10);
+          skip(-steps.back);
           break;
         case 'ArrowRight':
         case 'l':
-          skip(30);
+          skip(steps.forward);
           break;
         case 'ArrowUp':
           setVolume((v) => Math.min(1, v + 0.05));
@@ -101,9 +109,12 @@ export function usePlayerShortcuts({
         case 'i':
           setShowInfo((v) => !v);
           break;
+        case '?':
+          setShowShortcuts((v) => !v);
+          break;
         case 'g':
         case 'h':
-          if (textSubtitles) {
+          if (subtitleTiming) {
             const next = clampStep(subtitleDelay + (e.key.toLowerCase() === 'h' ? 0.1 : -0.1), -MAX_SUBTITLE_DELAY, MAX_SUBTITLE_DELAY);
             setSubtitleDelay(next);
             flash(`Subtitle delay ${formatSubtitleDelay(next)}`);
@@ -126,7 +137,8 @@ export function usePlayerShortcuts({
           break;
         }
         case 'Escape':
-          if (panel !== 'none') setPanel('none');
+          if (showShortcuts) setShowShortcuts(false);
+          else if (panel !== 'none') setPanel('none');
           else if (!document.fullscreenElement) minimize();
           else handled = false;
           break;
@@ -140,5 +152,5 @@ export function usePlayerShortcuts({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, textSubtitles, inSync, subtitleDelay, audioDelay, audioDelayAvailable, flash, setPanel, setSpeed, setSubtitleDelay, setAudioDelay, setVolume, setMuted, setShowInfo]);
+  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, subtitleTiming, inSync, subtitleDelay, audioDelay, audioDelayAvailable, flash, setPanel, setSpeed, setSubtitleDelay, setAudioDelay, setVolume, setMuted, setShowInfo, showShortcuts, setShowShortcuts, steps]);
 }

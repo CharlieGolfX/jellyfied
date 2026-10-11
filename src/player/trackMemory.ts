@@ -1,9 +1,10 @@
 import type { MediaStream } from '@/api/types';
+import { prefChanged } from '@/lib/prefsBus';
 
 /**
  * Remembers the audio and subtitle track chosen for a show, so the next episode starts with the
  * same choice. Episodes number their tracks differently, so a track is remembered by what it is
- * (language, title, …) rather than by its index. Stored in this browser only.
+ * (language, title, …) rather than by its index. Synced with the account (see prefsSync).
  */
 interface TrackSignature {
   language?: string;
@@ -46,6 +47,7 @@ function update(seriesId: string, patch: SeriesMemory) {
   } catch {
     /* ignore */
   }
+  prefChanged(KEY);
 }
 
 function signature(s: MediaStream): TrackSignature {

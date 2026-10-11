@@ -3,6 +3,7 @@ import type { JellyfinApi } from '@/api/client';
 import { cardImage, imageSrc } from '@/api/images';
 import type { BaseItemDto } from '@/api/types';
 import { episodeLabel } from '@/lib/format';
+import type { SeekSteps } from '../seekSteps';
 
 /**
  * OS media controls (media keys, lock screen) for the video. Claimed whenever the video starts
@@ -18,6 +19,7 @@ export function useVideoMediaSession({
   skip,
   seekTo,
   goNext,
+  steps,
 }: {
   api: JellyfinApi;
   item: BaseItemDto | undefined;
@@ -28,6 +30,7 @@ export function useVideoMediaSession({
   skip: (delta: number) => void;
   seekTo: (seconds: number) => void;
   goNext: () => void;
+  steps: SeekSteps;
 }) {
   const mediaMetaRef = useRef<MediaMetadata | null>(null);
   useEffect(() => {
@@ -44,8 +47,8 @@ export function useVideoMediaSession({
     const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
       ['play', () => togglePlay()],
       ['pause', () => videoRef.current?.pause()],
-      ['seekbackward', (d) => skip(-(d.seekOffset ?? 10))],
-      ['seekforward', (d) => skip(d.seekOffset ?? 30)],
+      ['seekbackward', (d) => skip(-(d.seekOffset ?? steps.back))],
+      ['seekforward', (d) => skip(d.seekOffset ?? steps.forward)],
       ['seekto', (d) => d.seekTime !== undefined && seekTo(d.seekTime)],
       ['previoustrack', null],
       ['nexttrack', nextId ? () => goNext() : null],
@@ -57,7 +60,7 @@ export function useVideoMediaSession({
         /* action not supported by this browser */
       }
     }
-  }, [api, item, playing, nextId, togglePlay, skip, seekTo, goNext, videoRef]);
+  }, [api, item, playing, nextId, togglePlay, skip, seekTo, goNext, videoRef, steps]);
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;

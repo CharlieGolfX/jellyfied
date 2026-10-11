@@ -162,12 +162,14 @@ fi
 # is written for Jellyplex and would break Jellyfin's own web interface.
 #
 # Images, media and API calls may go to any address, because the Jellyfin server can live on
-# another origin (JELLYFIN_PUBLIC_URL, or one typed on the login screen). Scripts cannot.
+# another origin (JELLYFIN_PUBLIC_URL, or one typed on the login screen). Scripts cannot, with two
+# exceptions: WebAssembly ('wasm-unsafe-eval'), which draws styled subtitles, and Google's Cast SDK
+# on www.gstatic.com, which is only loaded when someone picks Chromecast.
 cat >"$HEADERS" <<EOF
 add_header X-Content-Type-Options nosniff always;
 add_header Referrer-Policy same-origin always;
 add_header X-Frame-Options DENY always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * data: blob:; connect-src * ws: wss: data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * data: blob:; connect-src * ws: wss: data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 EOF
 
 cat >"$CONF" <<EOF
@@ -207,7 +209,7 @@ server {
     gzip on;
     gzip_comp_level 5;
     gzip_min_length 1024;
-    gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
+    gzip_types text/plain text/css text/javascript application/javascript application/json application/wasm image/svg+xml;
 
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy same-origin always;

@@ -1,7 +1,9 @@
 import clsx from 'clsx';
 import Hls from 'hls.js';
 import {
+  Airplay,
   ArrowLeft,
+  Cast,
   ChevronDown,
   Maximize,
   Minimize,
@@ -26,17 +28,21 @@ import type { ItemsResult } from '@/api/types';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage, useToast } from '@/components/ui/Toast';
-import { episodeLabel, formatClock, ticksToSeconds } from '@/lib/format';
+import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { usePageTitle } from '@/lib/usePageTitle';
 import { registerActiveVideo, type ActiveVideo } from './activePlayer';
 import { audioDelaySupported, getLastAudioDelay, hasAudioGraph, releaseAudioDelay, setAudioDelay as applyAudioDelay } from './audioDelay';
 import { useAudioPlayer } from './AudioPlayerProvider';
+import { castPlay, chromecastSupported, connectChromecast, useChromecast } from './chromecast';
 import { SeekBar } from './SeekBar';
+import { useSeekSteps } from './seekSteps';
 import { PlaybackInfo } from './PlaybackInfo';
 import { pictureStyle, readPictureFit, storePictureFit, type PictureAspect, type PictureFit } from './picture';
 import { clearSleepTimer, getSleepTimer, onSleepTimerFired, useSleepTimer } from './sleepTimer';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { useSyncPlay, useSyncPlayManager } from './SyncPlayProvider';
 import type { VideoPlayerState } from './usePlay';
+import { useWakeLock } from './useWakeLock';
 import { isPlayPath, useVideoSession } from './VideoSession';
 import { ControlButton } from './video/controls';
 import { EndsAt, SleepIndicator } from './video/indicators';
@@ -52,9 +58,12 @@ import {
   VOLUME_KEY,
   type PlayerPanel,
 } from './video/shared';
+import { ShortcutsHelp } from './video/ShortcutsHelp';
 import { UpNextCard } from './video/UpNextCard';
+import { useAirPlay } from './video/useAirPlay';
 import { usePlaybackStream } from './video/usePlaybackStream';
 import { usePlayerShortcuts } from './video/usePlayerShortcuts';
+import { useTouchGestures } from './video/useTouchGestures';
 import { useVideoMediaSession } from './video/useVideoMediaSession';
 
 /** App-level player: renders the current video session full screen or as the mini player. */
@@ -69,7 +78,7 @@ export default function GlobalVideoPlayer() {
 
 function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlayerState }) {
   const api = useApi();
-  const { userId } = useSession();
+  const { userId, serverId } = useSession();
   const navigate = useNavigate();
   const { mode, start, close, expand, minimize } = useVideoSession();
   const isFull = mode === 'full';
@@ -80,6 +89,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  /** Styled (ASS) subtitles draw in this layer, image (PGS) subtitles in the one that follows the picture. */
+  const assLayerRef = useRef<HTMLDivElement>(null);
+  const pgsLayerRef = useRef<HTMLDivElement>(null);
+  const subtitleDelayRef = useRef(0);
+  const [seekSteps] = useSeekSteps();
   const toast = useToast();
   const sleep = useSleepTimer();
   // SyncPlay: this playback belongs to a group and follows the server's commands.
@@ -103,6 +117,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const [boxSize, setBoxSize] = useState({ width: 0, height: 0 });
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [showInfo, setShowInfo] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [upNextDismissed, setUpNextDismissed] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [inPip, setInPip] = useState(false);
@@ -174,7 +189,9 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     setCurrentTime,
     duration,
     buffered,
+    subtitleKind,
     textSubtitles,
+    canvasSubtitlesRef,
     maxBitrate,
     audioStreams,
     subtitleStreams,
@@ -182,14 +199,54 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     streamRef,
     hlsRef,
     subtitleTrackRef,
+    preferNativeHls,
     changeAudio: switchAudio,
     changeSubtitle: switchSubtitle,
     changeQuality: switchQuality,
     retry,
     retryTranscode,
-  } = usePlaybackStream({ itemId, item, navState, videoRef, seriesId, rememberAudio, rememberSubtitles });
-  // Safari on iOS plays HLS itself, and its sound can't be routed through Web Audio.
-  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && !Hls.isSupported());
+  } = usePlaybackStream({
+    itemId,
+    item,
+    navState,
+    videoRef,
+    seriesId,
+    rememberAudio,
+    rememberSubtitles,
+    assLayerRef,
+    pgsLayerRef,
+    subtitleDelayRef,
+  });
+  // Safari's own HLS player (iPhone, and AirPlay everywhere) can't route its sound through Web Audio.
+  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (stream.nativeHls || !Hls.isSupported()));
+  /** The subtitles are drawn here, not burned in, so they can be shifted in time. */
+  const subtitleTiming = subtitleKind !== 'none';
+
+  // Subtitles drawn on a canvas (styled and image subtitles) take the delay themselves.
+  useEffect(() => {
+    subtitleDelayRef.current = subtitleDelay;
+    canvasSubtitlesRef.current?.setDelay(subtitleDelay);
+  }, [subtitleDelay, subtitleKind, canvasSubtitlesRef]);
+
+  useWakeLock(playing);
+
+  // AirPlay only takes a video the browser plays by itself, so a transcode that hls.js is feeding
+  // is loaded again through Safari's own HLS player once an AirPlay device is chosen.
+  const airPlay = useAirPlay(videoRef);
+  useEffect(() => {
+    preferNativeHls.current = airPlay.active;
+    const s = streamRef.current;
+    const video = videoRef.current;
+    if (!airPlay.active || !s || !video || !s.isHls || s.nativeHls) return;
+    void load({
+      start: video.currentTime,
+      audioIndex: s.audioIndex,
+      subIndex: s.subIndex,
+      bitrate: maxBitrate,
+      mediaSourceId: s.source.Id,
+      forceTranscode: true,
+    });
+  }, [airPlay.active, load, maxBitrate, streamRef, preferNativeHls]);
 
   // Auto-advance at the end.
   useEffect(() => {
@@ -393,7 +450,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     speed,
     setSpeed,
     inSync,
-    textSubtitles,
+    subtitleTiming,
     subtitleDelay,
     setSubtitleDelay,
     audioDelay,
@@ -402,12 +459,58 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     setVolume,
     setMuted,
     setShowInfo,
+    showShortcuts,
+    setShowShortcuts,
+    steps: seekSteps,
   });
+
+  const hideControls = useCallback(() => {
+    window.clearTimeout(hideTimer.current);
+    setControlsVisible(false);
+  }, []);
+  const gestures = useTouchGestures({
+    enabled: isFull,
+    videoRef,
+    containerRef,
+    controlsShown: showControls,
+    hideControls,
+    menuOpen: panel !== 'none',
+    closeMenu: () => setPanel('none'),
+    skip,
+    seekTo,
+    toggleFullscreen,
+    flash,
+    back: seekSteps.back,
+    forward: seekSteps.forward,
+  });
+
+  // Chromecast: once one is connected while this video is open, the video moves over to it.
+  const cast = useChromecast();
+  const castConnected = cast.status === 'connected';
+  const castWasConnected = useRef(castConnected);
+  useEffect(() => {
+    const was = castWasConnected.current;
+    castWasConnected.current = castConnected;
+    if (was || !castConnected || !item || inSync) return;
+    const s = streamRef.current;
+    castPlay({ api, serverId }, [item], {
+      startPositionTicks: secondsToTicks(videoRef.current?.currentTime ?? 0),
+      mediaSourceId: s?.source.Id,
+      audioStreamIndex: s?.audioIndex,
+      subtitleStreamIndex: s && s.subIndex >= 0 ? s.subIndex : undefined,
+    })
+      .then(() => {
+        toast.info(`Playing on ${cast.deviceName}`);
+        exit();
+      })
+      .catch((err: unknown) => toast.error(err));
+  }, [castConnected, cast.deviceName, item, inSync, api, serverId, streamRef, toast, exit]);
 
   // Collapsing into the mini player: close menus and leave browser full screen.
   useEffect(() => {
     if (isFull) return;
     setPanel('none');
+    setShowShortcuts(false);
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
   }, [isFull]);
 
@@ -416,7 +519,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     if (audioPlayer.isPlaying) videoRef.current?.pause();
   }, [audioPlayer.isPlaying]);
 
-  useVideoMediaSession({ api, item, videoRef, playing, nextId, togglePlay, skip, seekTo, goNext });
+  useVideoMediaSession({ api, item, videoRef, playing, nextId, togglePlay, skip, seekTo, goNext, steps: seekSteps });
 
   // Single click toggles playback, double click toggles fullscreen.
   const clickTimer = useRef<number | undefined>(undefined);
@@ -425,6 +528,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       expand();
       return;
     }
+    // Taps are handled as touch gestures; this is the mouse click the browser reports after one.
+    if (gestures.fromTouch()) return;
     if (panel !== 'none') {
       setPanel('none');
       return;
@@ -434,7 +539,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   };
   const onSurfaceDoubleClick = () => {
     window.clearTimeout(clickTimer.current);
-    if (!isFull) return;
+    if (!isFull || gestures.fromTouch()) return;
     toggleFullscreen();
   };
 
@@ -573,6 +678,9 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     : undefined;
   const pictureChanged = pictureFit !== 'fit' || pictureAspect !== 'auto' || pictureZoom !== 1;
 
+  // The full-screen player names the tab; the mini player leaves that to the page underneath.
+  usePageTitle(isFull && item ? (item.Type === 'Episode' ? `${item.SeriesName ?? ''} ${episodeLabel(item)}`.trim() : item.Name) : undefined);
+
   const miniBottom = audioPlayer.current ? 'bottom-[92px]' : 'bottom-4';
   const frameClass = isFull
     ? 'fixed inset-0 z-50 overflow-hidden bg-black'
@@ -609,7 +717,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       onTouchStart={isFull ? poke : undefined}
     >
       {/* A resized picture may not cover the player: keep clicks next to it working. */}
-      {picture && <div className="absolute inset-0" onClick={onSurfaceClick} onDoubleClick={onSurfaceDoubleClick} />}
+      {picture && <div className="absolute inset-0" onClick={onSurfaceClick} onDoubleClick={onSurfaceDoubleClick} {...gestures.handlers} />}
       <video
         ref={videoRef}
         data-testid="video"
@@ -623,7 +731,16 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         preload="auto"
         onClick={onSurfaceClick}
         onDoubleClick={onSurfaceDoubleClick}
+        {...gestures.handlers}
       />
+      {/* Canvases for subtitles that draw themselves. Image subtitles sit in a box that matches the
+          video element; styled ones find the picture on their own. */}
+      <div
+        ref={pgsLayerRef}
+        className={clsx('pointer-events-none absolute', picture ? 'max-w-none' : 'inset-0 h-full w-full object-contain')}
+        style={picture}
+      />
+      <div ref={assLayerRef} className="pointer-events-none absolute inset-0" />
 
       {textSubtitles && !inPip && (
         <SubtitleOverlay
@@ -702,6 +819,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           {osd}
         </div>
       )}
+
+      {showShortcuts && <ShortcutsHelp steps={seekSteps} onClose={() => setShowShortcuts(false)} />}
 
       {showInfo && stream && (
         <PlaybackInfo
@@ -782,16 +901,16 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           <ControlButton label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
             {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
           </ControlButton>
-          <ControlButton label="Back 10 seconds" onClick={() => skip(-10)}>
+          <ControlButton label={`Back ${seekSteps.back} seconds`} onClick={() => skip(-seekSteps.back)}>
             <span className="relative">
               <RotateCcw size={24} />
-              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">10</span>
+              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{seekSteps.back}</span>
             </span>
           </ControlButton>
-          <ControlButton label="Forward 30 seconds" onClick={() => skip(30)}>
+          <ControlButton label={`Forward ${seekSteps.forward} seconds`} onClick={() => skip(seekSteps.forward)}>
             <span className="relative">
               <RotateCw size={24} />
-              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">30</span>
+              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{seekSteps.forward}</span>
             </span>
           </ControlButton>
           {nextId && (
@@ -847,7 +966,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             stream={stream}
             subtitleStreams={subtitleStreams}
             onSelect={changeSubtitle}
-            textSubtitles={textSubtitles}
+            kind={subtitleKind}
             delay={subtitleDelay}
             onDelayChange={setSubtitleDelay}
           />
@@ -881,7 +1000,21 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
               setShowInfo((v) => !v);
               setPanel('none');
             }}
+            onShowShortcuts={() => {
+              setShowShortcuts(true);
+              setPanel('none');
+            }}
           />
+          {airPlay.available && (
+            <ControlButton label={airPlay.active ? 'AirPlay (playing on another device)' : 'AirPlay'} onClick={airPlay.pick} active={airPlay.active}>
+              <Airplay size={24} />
+            </ControlButton>
+          )}
+          {chromecastSupported && !inSync && (
+            <ControlButton label="Play on a Chromecast" onClick={() => void connectChromecast()} active={cast.status === 'loading'}>
+              <Cast size={24} />
+            </ControlButton>
+          )}
           {pipSupported && (
             <ControlButton label={inPip ? 'Exit picture-in-picture' : 'Picture-in-picture'} onClick={togglePip} active={inPip}>
               <PictureInPicture2 size={24} />

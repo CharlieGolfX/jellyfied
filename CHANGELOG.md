@@ -6,6 +6,42 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Added
+- Chromecast: "Chromecast…" in the "Play on" menu, and a cast button in the player that moves the
+  video you are watching to the TV. Works in Chrome, Edge and other Chromium browsers.
+- AirPlay: an AirPlay button in the player in Safari.
+- Styled subtitles (ASS/SSA) are drawn in the browser, with their fonts, colours, positions and
+  effects, instead of being flattened to plain text.
+- PGS image subtitles are drawn in the browser instead of being burned in by the server, so they
+  no longer force a transcode and can be shifted with the subtitle delay.
+- Transcodes use AV1 or HEVC when the browser decodes them and the server is allowed to encode
+  them, and keep 5.1 sound when the sound output has the channels for it.
+- Dolby Vision files with an HDR10, HLG or SDR fallback play directly instead of being transcoded.
+- Touch controls in the player: tap to show or hide the controls, double-tap left or right to
+  skip, double-tap the middle for full screen, swipe sideways to seek.
+- Skip lengths can be chosen under Account settings (5 to 90 seconds, back and forward
+  separately).
+- `?` in the player lists the keyboard shortcuts; the list is also in the settings menu.
+- The screen stays on while a video is playing, also in the mini player.
+
+- Pages update on their own when the library changes or when something is watched, favourited or
+  paused on another device.
+- Library filters for year, age rating, resolution, tag and studio, an A–Z bar to jump to a
+  letter, and a list view next to the poster grid.
+- Selecting several items to mark them watched or unwatched, add them to a playlist or
+  collection, or delete them.
+- The home page has a featured title at the top, and "Customise home" to reorder or hide its rows.
+- Browser tabs and history entries are named after the page.
+- Several accounts can be signed in on one device and switched between without a password.
+- Preferences (colours, subtitle appearance, skip lengths, time display, home layout, remembered
+  tracks) are saved with the Jellyfin account and follow you to other browsers.
+- Live TV: channels with what is on, programmes airing now, and recordings.
+- Photo slideshow.
+
+### Changed
+- The container's Content-Security-Policy now allows WebAssembly (for styled subtitles) and
+  scripts from `www.gstatic.com` (Google's Cast software, loaded only when Chromecast is picked).
+
 ## [1.0.0] - 2026-10-11
 
 First public version: Plex-style browsing, the video and music players, SyncPlay, playing on

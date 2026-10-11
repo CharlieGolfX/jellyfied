@@ -1,6 +1,6 @@
 import clsx from 'clsx';
-import { Cast, MonitorPlay, Pause, Play, SkipBack, SkipForward, Square, Volume2, VolumeX, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Cast, MonitorPlay, Tv, Pause, Play, SkipBack, SkipForward, Square, Volume2, VolumeX, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
@@ -15,8 +15,21 @@ import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib
 import { useSocket } from '@/realtime/RealtimeProvider';
 import { getActiveVideo } from './activePlayer';
 import { useAudioPlayer } from './AudioPlayerProvider';
-import { setCastTarget, useCastTarget, type RemotePlayCommand } from './castTarget';
+import { setCastTarget, useCastTarget, type CastTarget, type RemotePlayCommand } from './castTarget';
+import {
+  castCommand,
+  castSeek,
+  castSetVolume,
+  castToggleMute,
+  chromecastSupported,
+  connectChromecast,
+  disconnectChromecast,
+  onChromecastError,
+  resumeChromecast,
+  useChromecast,
+} from './chromecast';
 import { SeekBar } from './SeekBar';
+import { getSeekSteps } from './seekSteps';
 import { useLocalPlay, type VideoPlayerState } from './usePlay';
 import { isPlayPath } from './VideoSession';
 
@@ -49,7 +62,17 @@ export function CastButton() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const target = useCastTarget();
+  const chromecast = useChromecast();
+  const toast = useToast();
   const sessions = useControllableSessions(open, 3000);
+  const casting = chromecast.status === 'connected';
+
+  // Join a Chromecast session that was open before a reload, and show what the Chromecast reports.
+  useEffect(() => {
+    resumeChromecast();
+    onChromecastError((message) => toast.error(message));
+    return () => onChromecastError(null);
+  }, [toast]);
 
   useEffect(() => {
     if (!open) return;
@@ -73,8 +96,8 @@ export function CastButton() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label="Play on another device"
-        title={target ? `Playing on ${target.deviceName}` : 'Play on another device'}
-        className={clsx('rounded-full p-2 hover:bg-white/10', open || target ? 'text-accent' : 'text-muted hover:text-fg')}
+        title={casting ? `Playing on ${chromecast.deviceName}` : target ? `Playing on ${target.deviceName}` : 'Play on another device'}
+        className={clsx('rounded-full p-2 hover:bg-white/10', open || target || casting ? 'text-accent' : 'text-muted hover:text-fg')}
       >
         <Cast size={20} />
       </button>
@@ -84,9 +107,10 @@ export function CastButton() {
           <button
             onClick={() => {
               setCastTarget(null);
+              disconnectChromecast();
               setOpen(false);
             }}
-            className={clsx('flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/10', !target && 'text-accent')}
+            className={clsx('flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/10', !target && !casting && 'text-accent')}
           >
             <MonitorPlay size={18} className="shrink-0" />
             <span className="min-w-0 flex-1">This device</span>
@@ -97,7 +121,7 @@ export function CastButton() {
             </div>
           ) : list.length === 0 ? (
             <p className="px-4 py-3 text-xs text-faint">
-              No other devices found. Open a Jellyfin app on the device you want to play on, signed in to this server.
+              No other Jellyfin apps found. Open a Jellyfin app on the device you want to play on, signed in to this server.
             </p>
           ) : (
             list.map((s) => (
@@ -105,6 +129,7 @@ export function CastButton() {
                 key={s.Id}
                 data-testid="cast-target"
                 onClick={() => {
+                  disconnectChromecast();
                   setCastTarget({
                     sessionId: s.Id,
                     deviceName: s.DeviceName ?? 'Unknown device',
@@ -115,7 +140,7 @@ export function CastButton() {
                 }}
                 className={clsx(
                   'flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-white/10',
-                  target?.sessionId === s.Id && 'text-accent',
+                  !casting && target?.sessionId === s.Id && 'text-accent',
                 )}
               >
                 <Cast size={18} className="shrink-0" />
@@ -129,48 +154,76 @@ export function CastButton() {
               </button>
             ))
           )}
+          {chromecastSupported && (
+            <button
+              data-testid="chromecast-target"
+              disabled={chromecast.status === 'loading'}
+              onClick={() => {
+                setOpen(false);
+                if (casting) return;
+                void connectChromecast().then((connected) => {
+                  if (connected) setCastTarget(null);
+                  else if (!navigator.onLine) toast.error('Chromecast needs an internet connection to start.');
+                });
+              }}
+              className={clsx(
+                'flex w-full items-center gap-3 border-t border-white/10 px-4 py-2 text-left text-sm hover:bg-white/10 disabled:opacity-50',
+                casting && 'text-accent',
+              )}
+            >
+              <Tv size={18} className="shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{casting ? chromecast.deviceName : 'Chromecast…'}</span>
+                <span className="block truncate text-xs text-muted">
+                  {casting ? 'Chromecast' : 'Pick a Chromecast or a TV with Google Cast'}
+                </span>
+              </span>
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+interface RemoteState {
+  PositionTicks?: number | null;
+  IsPaused?: boolean;
+  IsMuted?: boolean;
+  VolumeLevel?: number | null;
+}
+
+interface RemoteControls {
+  playPause: (paused: boolean) => void;
+  previous: () => void;
+  next: () => void;
+  stop: () => void;
+  seek: (seconds: number) => void;
+  toggleMute: () => void;
+  /** 0–100. */
+  setVolume: (volume: number) => void;
+  disconnect: () => void;
+}
+
 /** Bottom bar with the controls for the device playback is being sent to. */
 export function RemoteBar() {
+  const target = useCastTarget();
+  const chromecast = useChromecast();
+  if (chromecast.status === 'connected') return <ChromecastRemoteBar />;
+  if (target) return <SessionRemoteBar target={target} />;
+  return null;
+}
+
+/** Another Jellyfin app, controlled through the server. */
+function SessionRemoteBar({ target }: { target: CastTarget }) {
   const api = useApi();
   const toast = useToast();
-  const target = useCastTarget();
-  const sessions = useControllableSessions(Boolean(target), 2000);
-  const [, tick] = useState(0);
-  // The other device only reports its position every few seconds, so remember the last reported
-  // position and when it arrived, and count on from there while it is playing.
-  const anchor = useRef<{ key: string; ticks: number; at: number } | null>(null);
-  const pending = useRef<{ seek?: number; until: number } | null>(null);
-
-  const session = target ? sessions.data?.find((s) => s.Id === target.sessionId) : undefined;
-  const item = session?.NowPlayingItem ?? null;
-  const state = session?.PlayState;
-  const paused = Boolean(state?.IsPaused);
-
-  const reportedTicks = state?.PositionTicks ?? 0;
-  const anchorKey = `${item?.Id ?? ''}|${paused}`;
-  if (!anchor.current || anchor.current.key !== anchorKey || anchor.current.ticks !== reportedTicks) {
-    // First sight of this state: the report may already be a few seconds old.
-    const checkIn = session?.LastPlaybackCheckIn ? Date.parse(session.LastPlaybackCheckIn) : NaN;
-    const age = !anchor.current && Number.isFinite(checkIn) ? Math.min(12_000, Math.max(0, Date.now() - checkIn)) : 0;
-    anchor.current = { key: anchorKey, ticks: reportedTicks, at: Date.now() - age };
-  }
-
-  useEffect(() => {
-    if (!item || paused) return;
-    const timer = window.setInterval(() => tick((n) => n + 1), 500);
-    return () => window.clearInterval(timer);
-  }, [item, paused]);
+  const sessions = useControllableSessions(true, 2000);
+  const session = sessions.data?.find((s) => s.Id === target.sessionId);
 
   const refetch = sessions.refetch;
   const command = useCallback(
     async (path: string, query?: Record<string, string | number>, body?: unknown) => {
-      if (!target) return;
       try {
         await api.post(`/Sessions/${target.sessionId}/${path}`, body, query);
         window.setTimeout(() => void refetch(), 400);
@@ -181,14 +234,106 @@ export function RemoteBar() {
     [api, target, toast, refetch],
   );
 
-  if (!target) return null;
+  return (
+    <RemoteBarView
+      deviceName={target.deviceName}
+      client={target.client}
+      item={session?.NowPlayingItem ?? null}
+      state={session?.PlayState}
+      checkIn={session?.LastPlaybackCheckIn}
+      offline={sessions.isSuccess && !session}
+      controls={{
+        playPause: (paused) => void command(paused ? 'Playing/Unpause' : 'Playing/Pause'),
+        previous: () => void command('Playing/PreviousTrack'),
+        next: () => void command('Playing/NextTrack'),
+        stop: () => void command('Playing/Stop'),
+        seek: (seconds) => void command('Playing/Seek', { seekPositionTicks: secondsToTicks(seconds) }),
+        toggleMute: () => void command('Command', undefined, { Name: 'ToggleMute', Arguments: {} }),
+        setVolume: (volume) => void command('Command', undefined, { Name: 'SetVolume', Arguments: { Volume: String(volume) } }),
+        disconnect: () => setCastTarget(null),
+      }}
+    />
+  );
+}
+
+/** A Chromecast, controlled directly. */
+function ChromecastRemoteBar() {
+  const api = useApi();
+  const { serverId } = useSession();
+  const toast = useToast();
+  const chromecast = useChromecast();
+  const auth = useMemo(() => ({ api, serverId }), [api, serverId]);
+  const run = (action: Promise<unknown>) => void action.catch((err: unknown) => toast.error(err));
+
+  return (
+    <RemoteBarView
+      deviceName={chromecast.deviceName}
+      client="Chromecast"
+      item={chromecast.item}
+      state={chromecast.playState ?? undefined}
+      checkIn={chromecast.reportedAt}
+      offline={false}
+      controls={{
+        playPause: (paused) => run(castCommand(auth, paused ? 'Unpause' : 'Pause')),
+        previous: () => run(castCommand(auth, 'PreviousTrack')),
+        next: () => run(castCommand(auth, 'NextTrack')),
+        stop: () => run(castCommand(auth, 'Stop')),
+        seek: (seconds) => run(castSeek(auth, seconds)),
+        toggleMute: () => run(castToggleMute()),
+        setVolume: (volume) => run(castSetVolume(volume)),
+        disconnect: disconnectChromecast,
+      }}
+    />
+  );
+}
+
+function RemoteBarView({
+  deviceName,
+  client,
+  item,
+  state,
+  checkIn: lastCheckIn,
+  offline,
+  controls,
+}: {
+  deviceName: string;
+  client: string;
+  item: BaseItemDto | null;
+  state: RemoteState | undefined;
+  /** When the device last reported its position. */
+  checkIn?: string | null;
+  offline: boolean;
+  controls: RemoteControls;
+}) {
+  const api = useApi();
+  const [, tick] = useState(0);
+  // The other device only reports its position every few seconds, so remember the last reported
+  // position and when it arrived, and count on from there while it is playing.
+  const anchor = useRef<{ key: string; ticks: number; at: number } | null>(null);
+  const pending = useRef<{ seek?: number; until: number } | null>(null);
+
+  const paused = Boolean(state?.IsPaused);
+
+  const reportedTicks = state?.PositionTicks ?? 0;
+  const anchorKey = `${item?.Id ?? ''}|${paused}`;
+  if (!anchor.current || anchor.current.key !== anchorKey || anchor.current.ticks !== reportedTicks) {
+    // First sight of this state: the report may already be a few seconds old.
+    const checkIn = lastCheckIn ? Date.parse(lastCheckIn) : NaN;
+    const age = !anchor.current && Number.isFinite(checkIn) ? Math.min(12_000, Math.max(0, Date.now() - checkIn)) : 0;
+    anchor.current = { key: anchorKey, ticks: reportedTicks, at: Date.now() - age };
+  }
+
+  useEffect(() => {
+    if (!item || paused) return;
+    const timer = window.setInterval(() => tick((n) => n + 1), 500);
+    return () => window.clearInterval(timer);
+  }, [item, paused]);
 
   const duration = ticksToSeconds(item?.RunTimeTicks);
   let position = ticksToSeconds(reportedTicks);
   if (item && !paused) position += (Date.now() - anchor.current.at) / 1000;
   if (pending.current && pending.current.until > Date.now() && pending.current.seek !== undefined) position = pending.current.seek;
   position = Math.max(0, duration > 0 ? Math.min(position, duration) : position);
-  const offline = sessions.isSuccess && !session;
   const volume = state?.VolumeLevel ?? 100;
 
   return (
@@ -204,7 +349,7 @@ export function RemoteBar() {
           compact
           onSeek={(seconds) => {
             pending.current = { seek: seconds, until: Date.now() + 2500 };
-            void command('Playing/Seek', { seekPositionTicks: secondsToTicks(seconds) });
+            controls.seek(seconds);
           }}
         />
       )}
@@ -219,28 +364,28 @@ export function RemoteBar() {
             </div>
             <div className="truncate text-xs text-muted">
               <Cast size={12} className="mr-1 inline align-[-1px] text-accent" />
-              Playing on {target.deviceName}
-              {target.client ? ` · ${target.client}` : ''}
+              Playing on {deviceName}
+              {client ? ` · ${client}` : ''}
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <button onClick={() => void command('Playing/PreviousTrack')} disabled={!item} className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block" aria-label="Previous">
+          <button onClick={controls.previous} disabled={!item} className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block" aria-label="Previous">
             <SkipBack size={20} fill="currentColor" />
           </button>
           <button
-            onClick={() => void command(paused ? 'Playing/Unpause' : 'Playing/Pause')}
+            onClick={() => controls.playPause(paused)}
             disabled={!item}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-fg text-base-900 transition hover:scale-105 disabled:opacity-30"
             aria-label={paused ? 'Play on device' : 'Pause on device'}
           >
             {paused ? <Play size={20} fill="currentColor" className="ml-0.5" /> : <Pause size={20} fill="currentColor" />}
           </button>
-          <button onClick={() => void command('Playing/NextTrack')} disabled={!item} className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block" aria-label="Next">
+          <button onClick={controls.next} disabled={!item} className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block" aria-label="Next">
             <SkipForward size={20} fill="currentColor" />
           </button>
-          <button onClick={() => void command('Playing/Stop')} disabled={!item} className="rounded-full p-2 text-fg hover:text-accent disabled:opacity-30" aria-label="Stop on device">
+          <button onClick={controls.stop} disabled={!item} className="rounded-full p-2 text-fg hover:text-accent disabled:opacity-30" aria-label="Stop on device">
             <Square size={18} fill="currentColor" />
           </button>
           {item && duration > 0 && (
@@ -252,7 +397,7 @@ export function RemoteBar() {
 
         <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
           <button
-            onClick={() => void command('Command', undefined, { Name: 'ToggleMute', Arguments: {} })}
+            onClick={controls.toggleMute}
             disabled={!item}
             className="hidden rounded-full p-2 text-muted hover:text-fg disabled:opacity-30 sm:block"
             aria-label="Mute device"
@@ -267,12 +412,12 @@ export function RemoteBar() {
             key={volume}
             defaultValue={volume}
             disabled={!item}
-            onChange={(e) => void command('Command', undefined, { Name: 'SetVolume', Arguments: { Volume: e.target.value } })}
+            onChange={(e) => controls.setVolume(Number(e.target.value))}
             className="hidden w-24 disabled:opacity-30 lg:block"
             aria-label="Device volume"
           />
           <button
-            onClick={() => setCastTarget(null)}
+            onClick={controls.disconnect}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted hover:bg-white/10 hover:text-fg"
             aria-label="Stop playing on device"
             title="Disconnect: play on this device again"
@@ -429,10 +574,10 @@ export function RemoteControlReceiver() {
             video.seek(seconds);
             break;
           case 'Rewind':
-            video.seek(video.video.currentTime - 10);
+            video.seek(video.video.currentTime - getSeekSteps().back);
             break;
           case 'FastForward':
-            video.seek(video.video.currentTime + 30);
+            video.seek(video.video.currentTime + getSeekSteps().forward);
             break;
           case 'NextTrack':
             video.next();
@@ -461,10 +606,10 @@ export function RemoteControlReceiver() {
           c.audio.seek(seconds);
           break;
         case 'Rewind':
-          c.audio.seek(c.audio.currentTime - 10);
+          c.audio.seek(c.audio.currentTime - getSeekSteps().back);
           break;
         case 'FastForward':
-          c.audio.seek(c.audio.currentTime + 30);
+          c.audio.seek(c.audio.currentTime + getSeekSteps().forward);
           break;
         case 'NextTrack':
           c.audio.next();

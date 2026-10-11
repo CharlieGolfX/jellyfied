@@ -1,42 +1,15 @@
 import clsx from 'clsx';
-import {
-  CheckCircle,
-  Circle,
-  Clapperboard,
-  Film,
-  Folder,
-  FolderMinus,
-  FolderPlus,
-  History,
-  Heart,
-  Image as ImageIcon,
-  ListMusic,
-  ListPlus,
-  MoreHorizontal,
-  Pencil,
-  Music,
-  Play,
-  Radio,
-  RotateCcw,
-  Tv,
-  User,
-} from 'lucide-react';
-import { lazy, memo, Suspense, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Check, CheckCircle, Clapperboard, Film, Folder, Image as ImageIcon, ListMusic, MoreHorizontal, Music, Play, Tv, User } from 'lucide-react';
+import { memo, type CSSProperties, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { cardImage, defaultShape, imageSrc, type CardShape } from '@/api/images';
-import { useClearProgress, useSetFavorite, useSetPlayed } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
-import { useApi, useIsAdmin } from '@/auth/AuthProvider';
+import { useApi } from '@/auth/AuthProvider';
 import { Img } from '@/components/ui/States';
-import { Menu, type MenuItem } from '@/components/ui/Menu';
-import { supportsMetadataEditing } from './metadataEditing';
-import { AddToCollectionDialog, supportsCollections, useCanManageCollections, useRemoveFromCollection } from './AddToCollection';
-import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
-import { useToast } from '@/components/ui/Toast';
-import { episodeLabel, playedPercent } from '@/lib/format';
-import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay } from '@/player/usePlay';
-
-const MetadataEditor = lazy(() => import('./MetadataEditor'));
+import { Menu } from '@/components/ui/Menu';
+import { episodeLabel } from '@/lib/format';
+import { useIsSelected, useSelection, useSelectionCount } from './selection';
+import { useItemActions } from './useItemActions';
 
 const aspect: Record<CardShape, string> = {
   poster: 'aspect-[2/3]',
@@ -82,7 +55,7 @@ export function fallbackIcon(item: BaseItemDto, size = 40): ReactNode {
   }
 }
 
-function defaultTitles(item: BaseItemDto, context?: 'series'): { title: string; subtitle: string } {
+export function defaultTitles(item: BaseItemDto, context?: 'series'): { title: string; subtitle: string } {
   const name = item.Name ?? '';
   switch (item.Type) {
     case 'Episode':
@@ -138,106 +111,16 @@ export const PosterCard = memo(function PosterCard({
   collectionId,
 }: PosterCardProps) {
   const api = useApi();
-  const navigate = useNavigate();
-  const play = usePlay();
-  const instantMix = useInstantMix();
-  const toast = useToast();
-  const setPlayed = useSetPlayed();
-  const setFavorite = useSetFavorite();
-  const clearProgress = useClearProgress();
-  const removeFromCollection = useRemoveFromCollection();
-  const canManageCollections = useCanManageCollections();
-  const [addingToCollection, setAddingToCollection] = useState(false);
-  const [addingToPlaylist, setAddingToPlaylist] = useState(false);
-  const isAdmin = useIsAdmin();
-  const [editing, setEditing] = useState(false);
-
   const s = shape ?? defaultShape(item);
   const src = imageSrc(api, cardImage(item, s), imageWidth[s]);
   const titles = defaultTitles(item, context);
-  const pct = item.UserData?.Played ? 0 : playedPercent(item);
-  const played = Boolean(item.UserData?.Played);
-  const unplayedCount = item.UserData?.UnplayedItemCount ?? 0;
-  const watchable = supportsWatchedState(item);
-  const playable = isPlayable(item);
-  const showUnplayedTriangle = watchable && !item.IsFolder && !played && pct === 0 && item.MediaType === 'Video';
-
-  const togglePlayed = () =>
-    setPlayed.mutate({ id: item.Id, played: !played }, { onError: (e) => toast.error(e) });
-
-  const menuItems: MenuItem[] = [];
-  if (playable) {
-    menuItems.push({ label: 'Play', icon: <Play size={16} />, onSelect: () => play(item) });
-    if (pct > 0)
-      menuItems.push({
-        label: 'Play from beginning',
-        icon: <RotateCcw size={16} />,
-        onSelect: () => play(item, { fromStart: true }),
-      });
-  }
-  if (supportsInstantMix(item)) {
-    menuItems.push({ label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(item) });
-  }
-  if (watchable) {
-    menuItems.push({
-      label: played ? 'Mark as unwatched' : 'Mark as watched',
-      icon: played ? <Circle size={16} /> : <CheckCircle size={16} />,
-      onSelect: togglePlayed,
-    });
-  }
-  if (item.Type !== 'Person' && item.Type !== 'UserView' && item.Type !== 'CollectionFolder') {
-    menuItems.push({
-      label: item.UserData?.IsFavorite ? 'Remove from favorites' : 'Add to favorites',
-      icon: <Heart size={16} />,
-      onSelect: () =>
-        setFavorite.mutate(
-          { id: item.Id, favorite: !item.UserData?.IsFavorite },
-          { onError: (e) => toast.error(e) },
-        ),
-    });
-  }
-  // Based on the saved position, not the progress bar: a watched item that is being rewatched has both.
-  if ((item.UserData?.PlaybackPositionTicks ?? 0) > 0 && item.MediaType === 'Video' && !item.IsFolder) {
-    menuItems.push({
-      label: 'Remove from Continue Watching',
-      icon: <History size={16} />,
-      // The card may be gone by the time the lists have refreshed, so don't rely on mutate() callbacks.
-      onSelect: () =>
-        void clearProgress.mutateAsync(item.Id).then(
-          () => toast.success('Removed from Continue Watching'),
-          (e) => toast.error(e),
-        ),
-    });
-  }
-  if (supportsPlaylists(item)) {
-    menuItems.push({ label: 'Add to playlist', icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
-  }
-  if (canManageCollections && supportsCollections(item)) {
-    menuItems.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
-    if (collectionId) {
-      menuItems.push({
-        label: 'Remove from collection',
-        icon: <FolderMinus size={16} />,
-        onSelect: () =>
-          void removeFromCollection.mutateAsync({ collectionId, itemId: item.Id }).then(
-            () => toast.success('Removed from collection'),
-            (e) => toast.error(e),
-          ),
-      });
-    }
-  }
-  if (isAdmin && supportsMetadataEditing(item) && item.Type !== 'Person') {
-    menuItems.push({ label: 'Edit metadata', icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
-  }
-  if (item.Type === 'Episode' && item.SeriesId) {
-    menuItems.push({ divider: true, label: '' });
-    menuItems.push({ label: 'Go to show', icon: <Tv size={16} />, onSelect: () => navigate(`/item/${item.SeriesId}`) });
-    if (item.SeasonId)
-      menuItems.push({ label: 'Go to season', icon: <Tv size={16} />, onSelect: () => navigate(`/item/${item.SeasonId}`) });
-  }
-  if (item.Type === 'Audio' && item.AlbumId) {
-    menuItems.push({ label: 'Go to album', icon: <Music size={16} />, onSelect: () => navigate(`/item/${item.AlbumId}`) });
-  }
+  const { menuItems, dialogs, play, togglePlayed, played, pct, unplayedCount, watchable, playable, showUnplayedTriangle } = useItemActions(
+    item,
+    collectionId,
+  );
+  const selection = useSelection();
+  const selected = useIsSelected(item.Id);
+  const selecting = useSelectionCount() > 0;
 
   const finalTitle = title ?? titles.title;
   const finalSubtitle = subtitle ?? titles.subtitle;
@@ -247,8 +130,18 @@ export const PosterCard = memo(function PosterCard({
     <div className={clsx('group/card relative min-w-0', className)} style={style}>
       <Link
         to={itemLink(item)}
+        // While items are being selected, a click on a card selects it instead of opening it.
+        onClick={
+          selecting && selection
+            ? (e) => {
+                e.preventDefault();
+                selection.toggle(item);
+              }
+            : undefined
+        }
         className={clsx(
-          'relative block overflow-hidden bg-base-800 shadow-md ring-white/0 transition-[box-shadow] duration-150 group-hover/card:ring-2 group-hover/card:ring-accent',
+          'relative block overflow-hidden bg-base-800 shadow-md transition-[box-shadow] duration-150 group-hover/card:ring-2 group-hover/card:ring-accent',
+          selected ? 'ring-2 ring-accent' : 'ring-white/0',
           round ? 'rounded-full' : 'rounded-md',
           aspect[s],
         )}
@@ -297,7 +190,22 @@ export const PosterCard = memo(function PosterCard({
       </Link>
 
       {/* Hover actions live outside the link so they don't trigger navigation. */}
-      {playable && !round && (
+      {selection && !round && (
+        <button
+          onClick={() => selection.toggle(item)}
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={`Select ${finalTitle}`}
+          className={clsx(
+            'absolute top-1.5 left-1.5 z-[1] flex h-6 w-6 items-center justify-center rounded-full border-2 shadow transition-opacity',
+            selected ? 'border-accent bg-accent text-accent-ink' : 'border-white/80 bg-black/50 text-transparent hover:text-white/80',
+            selected || selecting ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100',
+          )}
+        >
+          <Check size={14} strokeWidth={3} />
+        </button>
+      )}
+      {playable && !round && !selecting && (
         <button
           onClick={() => play(item)}
           aria-label={`Play ${finalTitle}`}
@@ -312,7 +220,7 @@ export const PosterCard = memo(function PosterCard({
           </span>
         </button>
       )}
-      {!round && menuItems.length > 0 && (
+      {!round && menuItems.length > 0 && !selecting && (
         <div className={clsx('pointer-events-none absolute top-0 left-0 w-full', aspect[s])}>
           <div className="absolute right-1.5 bottom-2.5 left-1.5 flex items-center justify-between opacity-0 transition-opacity group-hover/card:opacity-100 [&:has([aria-expanded=true])]:opacity-100">
             {watchable ? (
@@ -360,13 +268,7 @@ export const PosterCard = memo(function PosterCard({
           )}
         </div>
       )}
-      {addingToCollection && <AddToCollectionDialog item={item} onClose={() => setAddingToCollection(false)} />}
-      {addingToPlaylist && <AddToPlaylistDialog item={item} onClose={() => setAddingToPlaylist(false)} />}
-      {editing && (
-        <Suspense fallback={null}>
-          <MetadataEditor itemId={item.Id} onClose={() => setEditing(false)} />
-        </Suspense>
-      )}
+      {dialogs}
     </div>
   );
 });

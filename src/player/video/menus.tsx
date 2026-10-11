@@ -19,6 +19,7 @@ import {
   SUBTITLE_DELAY_SLIDER,
   type ActiveStream,
 } from './shared';
+import type { SubtitleKind } from './subtitleRenderers';
 
 /** The control-bar buttons that open a menu, each with its menu. */
 interface MenuProps {
@@ -84,7 +85,7 @@ export function SubtitlesMenu({
   stream,
   subtitleStreams,
   onSelect,
-  textSubtitles,
+  kind,
   delay,
   onDelayChange,
 }: MenuProps & {
@@ -92,13 +93,14 @@ export function SubtitlesMenu({
   subtitleStreams: MediaStream[];
   /** -1 turns subtitles off. */
   onSelect: (index: number) => void;
-  /** A text subtitle track is attached, so timing and size can be adjusted. */
-  textSubtitles: boolean;
+  /** How the selected track is drawn. Anything but 'none' can be shifted in time; only 'text' has a size. */
+  kind: SubtitleKind;
   delay: number;
   onDelayChange: (seconds: number) => void;
 }) {
   const [subtitleStyle, setSubtitleStyle] = useSubtitleStyle();
   const subIndex = stream?.subIndex ?? -1;
+  const textSubtitles = kind === 'text';
   return (
     <div className="relative">
       <ControlButton label="Subtitles" onClick={onToggle} active={open || subIndex >= 0}>
@@ -120,7 +122,7 @@ export function SubtitlesMenu({
           {subIndex >= 0 && (
             <>
               <PanelSection title="Subtitle delay">
-                {textSubtitles ? (
+                {kind !== 'none' ? (
                   <DelayControl
                     value={delay}
                     onChange={onDelayChange}
@@ -139,6 +141,13 @@ export function SubtitlesMenu({
                   <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available for subtitles that are burned into the video.</div>
                 )}
               </PanelSection>
+              {(kind === 'ass' || kind === 'pgs') && (
+                <div className="px-4 pb-2 text-xs text-white/40">
+                  {kind === 'ass'
+                    ? 'These subtitles bring their own fonts, colours and positions.'
+                    : 'These subtitles are pictures, so their size and colour are fixed.'}
+                </div>
+              )}
               {textSubtitles && (
                 <PanelSection title="Text size">
                   <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
@@ -265,6 +274,7 @@ export function SettingsMenu({
   onQualityChange,
   showInfo,
   onToggleInfo,
+  onShowShortcuts,
 }: MenuProps & {
   stream: ActiveStream | null;
   audioStreams: MediaStream[];
@@ -280,6 +290,7 @@ export function SettingsMenu({
   onQualityChange: (bitrate: number) => void;
   showInfo: boolean;
   onToggleInfo: () => void;
+  onShowShortcuts: () => void;
 }) {
   const sleep = useSleepTimer();
   return (
@@ -361,6 +372,9 @@ export function SettingsMenu({
           <div className="border-t border-white/10 py-1">
             <PanelOption selected={showInfo} onClick={onToggleInfo}>
               Playback info
+            </PanelOption>
+            <PanelOption selected={false} onClick={onShowShortcuts}>
+              Keyboard shortcuts
             </PanelOption>
           </div>
           {stream && (

@@ -7,6 +7,7 @@ import { Hub, HubRow } from '@/components/media/Hub';
 import { PersonCard } from '@/components/media/PersonCard';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/States';
+import { usePageTitle } from '@/lib/usePageTitle';
 
 const ROWS: { types: string; title: string }[] = [
   { types: 'Movie', title: 'Movies' },
@@ -29,6 +30,7 @@ function FavoriteRow({ types, title }: { types: string; title: string }) {
 }
 
 export default function FavoritesPage() {
+  usePageTitle('Favorites');
   const api = useApi();
   const { userId } = useSession();
   const any = useItems({ recursive: true, filters: 'IsFavorite', limit: 1, enableTotalRecordCount: true }, { key: ['favorites-any'] });

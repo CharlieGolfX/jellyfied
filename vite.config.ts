@@ -51,6 +51,9 @@ export default defineConfig(({ mode }) => {
     build: {
       chunkSizeWarningLimit: 1200,
     },
+    // The subtitle renderer finds its worker and WebAssembly files next to its own module, which
+    // only works when the dev server leaves the package as it is.
+    optimizeDeps: { exclude: ['jassub'] },
     test: {
       environment: 'jsdom',
       include: ['src/**/*.test.{ts,tsx}'],

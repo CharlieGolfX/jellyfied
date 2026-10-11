@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
+import { onPrefPulled, prefChanged } from './prefsBus';
 
-/** Interface colours: the accent colour and the background tone. Stored in this browser only. */
+/** Interface colours: the accent colour and the background tone. Synced with the account (see prefsSync). */
 export interface Theme {
   /** Accent colour as #rrggbb. */
   accent: string;
@@ -105,7 +106,14 @@ export function setTheme(patch: Partial<Theme>) {
   }
   apply(current);
   listeners.forEach((l) => l());
+  prefChanged(KEY);
 }
+
+onPrefPulled(KEY, () => {
+  current = read();
+  apply(current);
+  listeners.forEach((l) => l());
+});
 
 function subscribe(cb: () => void) {
   listeners.add(cb);

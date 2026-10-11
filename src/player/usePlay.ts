@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { generateId } from '@/api/device';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { getCastTarget, sendRemotePlay } from './castTarget';
+import { castPlay, getChromecast } from './chromecast';
 import { useSyncPlayManager } from './SyncPlayProvider';
 import { isPlayPath, useVideoSession } from './VideoSession';
 
@@ -73,15 +74,29 @@ function shuffle<T>(arr: T[]): T[] {
  */
 export function usePlay() {
   const api = useApi();
+  const { serverId } = useSession();
   const local = useLocalPlay();
   const toast = useToast();
   return useCallback(
     async (item: BaseItemDto, opts: PlayOptions = {}) => {
       const target = getCastTarget();
-      if (!target) return local(item, opts);
+      const chromecast = getChromecast();
+      if (!target && chromecast.status !== 'connected') return local(item, opts);
       try {
         // Containers (shows, albums, playlists…) are sent as they are; the receiving app expands them.
         const single = !item.IsFolder && !CONTAINER_TYPES.has(item.Type);
+        if (chromecast.status === 'connected') {
+          await castPlay({ api, serverId }, [item], {
+            shuffle: opts.shuffle,
+            startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
+            mediaSourceId: opts.mediaSourceId,
+            audioStreamIndex: opts.audioStreamIndex,
+            subtitleStreamIndex: opts.subtitleStreamIndex,
+          });
+          toast.info(`Playing on ${chromecast.deviceName}`);
+          return;
+        }
+        if (!target) return;
         await sendRemotePlay(api, target, [item.Id], {
           command: opts.shuffle ? 'PlayShuffle' : 'PlayNow',
           startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
@@ -91,7 +106,7 @@ export function usePlay() {
         toast.error(err);
       }
     },
-    [api, local, toast],
+    [api, serverId, local, toast],
   );
 }
 

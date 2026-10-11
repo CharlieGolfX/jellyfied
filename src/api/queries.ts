@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import type { Query } from './client';
-import type { BaseItemDto, ItemsResult, MediaSegment, QueryFilters } from './types';
+import type { BaseItemDto, ItemsResult, LegacyQueryFilters, MediaSegment, QueryFilters } from './types';
 
 export const CARD_FIELDS = [
   'PrimaryImageAspectRatio',
@@ -205,6 +205,30 @@ export function useFilters(parentId: string | undefined, includeItemTypes?: stri
     queryKey: [MEDIA, 'filters', parentId, includeItemTypes],
     queryFn: () => api.get<QueryFilters>('/Items/Filters2', { userId, parentId, includeItemTypes }),
     enabled: Boolean(parentId),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Years, age ratings and tags that occur in a library, for its filter menus. */
+export function useFilterValues(parentId: string | undefined, includeItemTypes?: string[]) {
+  const api = useApi();
+  const { userId } = useSession();
+  return useQuery({
+    queryKey: [MEDIA, 'filter-values', parentId, includeItemTypes],
+    queryFn: () => api.get<LegacyQueryFilters>('/Items/Filters', { userId, parentId, includeItemTypes }),
+    enabled: Boolean(parentId),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useStudios(parentId: string | undefined, includeItemTypes?: string[], enabled = true) {
+  const api = useApi();
+  const { userId } = useSession();
+  return useQuery({
+    queryKey: [MEDIA, 'studios', parentId, includeItemTypes],
+    queryFn: () =>
+      api.get<ItemsResult>('/Studios', { userId, parentId, includeItemTypes, sortBy: 'SortName', sortOrder: 'Ascending', enableImages: false }),
+    enabled: Boolean(parentId) && enabled,
     staleTime: 5 * 60_000,
   });
 }

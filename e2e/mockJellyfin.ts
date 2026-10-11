@@ -64,7 +64,9 @@ function answer(route: Route): { status?: number; body?: unknown } {
   if (path === `/Items/${movie.Id}`) return { body: movie };
   if (path === `/Items/${brokenMovie.Id}`) return { body: brokenMovie };
   if (/^\/Items\/[^/]+$/.test(path)) return { status: 404 };
-  if (/\/(SpecialFeatures|LocalTrailers)$/.test(path) || path === '/Sessions') return { body: [] };
+  if (/\/(SpecialFeatures|LocalTrailers)$/.test(path) || path === '/Sessions' || path === '/Localization/Cultures') return { body: [] };
+  // There is no media behind the mock movie: the player opens and reports that.
+  if (path === `/Items/${movie.Id}/PlaybackInfo`) return { body: { MediaSources: [], PlaySessionId: 'play-1' } };
   if (method !== 'GET') return { status: 204 };
   return { body: list([]) };
 }

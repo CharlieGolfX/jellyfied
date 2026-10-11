@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { ArrowLeft, KeyRound, Server, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, KeyRound, Server, User as UserIcon, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { JellyfinApi } from '@/api/client';
@@ -12,6 +12,7 @@ import { Field, Input } from '@/components/ui/Form';
 import { Spinner } from '@/components/ui/Spinner';
 import { Img } from '@/components/ui/States';
 import { errorMessage } from '@/components/ui/Toast';
+import { usePageTitle } from '@/lib/usePageTitle';
 
 function initialServer(): string {
   if (runtimeConfig.serverUrl) return runtimeConfig.serverUrl;
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
+  usePageTitle('Sign in');
 
   const [serverUrl, setServerUrl] = useState(initialServer);
   const [serverInput, setServerInput] = useState(serverUrl);
@@ -181,6 +183,9 @@ function LoginStep({
   onBack?: () => void;
   onAuthenticated: (r: AuthenticationResult) => void;
 }) {
+  const { otherAccounts, switchAccount, forgetAccount } = useAuth();
+  // Accounts that are still signed in on this browser can be continued without a password.
+  const saved = otherAccounts.filter((a) => a.serverUrl === api.serverUrl);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [quickConnect, setQuickConnect] = useState(false);
   const [username, setUsername] = useState('');
@@ -317,6 +322,35 @@ function LoginStep({
         <p className="rounded-md bg-star/10 px-3 py-2 text-sm text-star">
           This server has not finished its initial setup. Complete the setup wizard in the Jellyfin web interface first.
         </p>
+      )}
+
+      {saved.length > 0 && (
+        <div data-testid="saved-accounts">
+          <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">Signed in on this device</div>
+          <ul className="space-y-1">
+            {saved.map((a) => (
+              <li key={a.userId} className="flex items-center gap-1">
+                <button
+                  onClick={() => switchAccount(a)}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left transition hover:bg-white/10"
+                >
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent font-bold text-accent-ink">
+                    <Img src={api.userImageUrl(a.userId, undefined, 96)} className="absolute inset-0 h-full w-full object-cover" fallback={a.userName.charAt(0).toUpperCase()} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">Continue as {a.userName}</span>
+                </button>
+                <button
+                  onClick={() => void forgetAccount(a)}
+                  className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg"
+                  aria-label={`Sign ${a.userName} out`}
+                  title={`Sign ${a.userName} out`}
+                >
+                  <X size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {showPicker ? (

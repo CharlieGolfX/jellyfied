@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { CrashState } from '@/components/ui/CrashState';
+import { PrefsSync } from '@/lib/prefsSync';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PageSpinner } from '@/components/ui/Spinner';
 import HomePage from '@/pages/Home';
@@ -14,6 +15,7 @@ import FavoritesPage from '@/pages/Favorites';
 import NotFoundPage from '@/pages/NotFound';
 import { RemoteControlReceiver } from '@/player/RemoteControl';
 import { PlayRoute, useVideoSession } from '@/player/VideoSession';
+import { LiveUpdates } from '@/realtime/LiveUpdates';
 
 const GlobalVideoPlayer = lazy(() => import('@/player/VideoPlayer'));
 const SettingsPage = lazy(() => import('@/pages/Settings'));
@@ -61,6 +63,8 @@ function PlayerHost() {
   return (
     <>
       <RemoteControlReceiver />
+      <LiveUpdates />
+      <PrefsSync />
       {session && (
         <ErrorBoundary resetKey={session.key} fallback={() => <PlayerCrash />}>
           <Suspense fallback={null}>

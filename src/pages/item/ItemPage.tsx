@@ -2,6 +2,8 @@ import { Navigate, useParams } from 'react-router-dom';
 import { useItem } from '@/api/queries';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
+import { episodeLabel } from '@/lib/format';
+import { usePageTitle } from '@/lib/usePageTitle';
 import { AlbumDetails, ArtistDetails, PlaylistDetails } from './MusicDetails';
 import {
   CollectionDetails,
@@ -17,6 +19,9 @@ import { VideoDetails } from './VideoDetails';
 export default function ItemPage() {
   const { id } = useParams();
   const { data: item, isLoading, error, refetch } = useItem(id);
+  usePageTitle(
+    item?.Type === 'Episode' ? [item.SeriesName, episodeLabel(item), item.Name].filter(Boolean).join(' · ') : item?.Name,
+  );
 
   if (isLoading) return <PageSpinner />;
   if (error || !item) return <ErrorState error={error ?? 'Item not found'} onRetry={() => refetch()} />;

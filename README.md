@@ -22,11 +22,21 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Top bar with global search (type `/` to focus) and live results, collapsible library sidebar, account menu.
 - Drag libraries in the sidebar to reorder them. The order is saved to your Jellyfin account, so it
   also applies to the home page and other Jellyfin apps.
-- Home: Continue Watching (in-progress plus next-up episodes merged, like Plex's On Deck),
-  Continue Listening, and Recently Added per library.
+- Home: a featured title at the top, Continue Watching (in-progress plus next-up episodes merged,
+  like Plex's On Deck), Continue Listening, and Recently Added per library. "Customise home" at the
+  bottom of the page reorders or hides the rows and the featured title.
 - Libraries with Plex-style tabs: Recommended / Library / Collections / Categories for movies and TV,
   Albums / Artists / Genres for music, and folder browsing for home videos, photos, books and mixed libraries.
-  Sorting, watched/unwatched/in-progress/favorite filters, genre filter and infinite scroll.
+  Sorting, infinite scroll, and filters for watched state, favorites, genre, year, age rating,
+  resolution (4K / HD / SD), tag and studio.
+- An A–Z bar to jump to a letter in libraries sorted by title, and a list view as a denser
+  alternative to the poster grid.
+- Select several items (the tick on a card or row) to mark them watched or unwatched, add them to
+  a playlist or collection, or delete them in one go.
+- Pages update on their own: new media after a library scan, and watched state, favorites and
+  resume positions changed on your other devices, appear without a reload.
+- Live TV: the channels with what is on, what is airing now, and your recordings.
+- Photo slideshow, from a photo folder or from any photo (`Space` starts and pauses it).
 - Adjustable poster size on every page (top-bar zoom button, or the slider in library views). The
   setting applies to every row and grid and is remembered.
 - Detail pages for movies, shows, seasons, episodes, albums, artists, playlists, collections, people,
@@ -45,14 +55,25 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 **Playback**
 - Video player that plays files directly when the browser supports them and lets the server
-  transcode when it doesn't, switching over automatically if direct play fails.
+  transcode when it doesn't, switching over automatically if direct play fails. Transcodes use
+  AV1 or HEVC where the browser decodes them and the server is allowed to encode them, and H.264
+  otherwise, with 5.1 sound when the output has the channels for it.
+- HDR and Dolby Vision files with an HDR10, HLG or SDR fallback play directly on screens that can
+  show them.
 - Audio track, subtitle, quality and playback speed (0.5×–2×) switching. Text subtitles
   (SRT/ASS/VTT, embedded or sidecar) and image subtitles (PGS/VobSub) are both supported.
+- Styled subtitles (ASS/SSA) are drawn in the browser with their own fonts, colours, positions
+  and effects, and PGS image subtitles are drawn in the browser too, so neither makes the server
+  re-encode the video.
 - Resume, chapter markers and a chapter list to jump from, thumbnail previews on the seek bar
   (when the server has generated trickplay images), Skip Intro / Credits (when the server has
   media segments), Up Next with auto-play (honours the user's preference), keyboard shortcuts.
-- Subtitle delay (earlier or later in 0.1 s steps) and subtitle appearance (size, colour,
-  background, edge) for text subtitles.
+- Subtitle delay (earlier or later in 0.1 s steps) for every subtitle the browser draws, and
+  subtitle appearance (size, colour, background, edge) for plain text subtitles.
+- Touch controls: tap to show or hide the controls, double-tap the left or right side to skip,
+  double-tap the middle for full screen, and swipe sideways to seek.
+- Skip lengths of your choice (5 to 90 seconds, separately for back and forward), and a list of
+  the keyboard shortcuts on `?`.
 - Audio delay, to hold the sound back by up to 3 seconds when it is ahead of the picture. Both
   delays have a slider and step buttons in the player menus, as well as keyboard shortcuts.
 - Aspect ratio and zoom: fit, fill (crop) or stretch the picture, force 16:9, 4:3, 21:9 or
@@ -72,6 +93,10 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Play on another device: pick any Jellyfin app that supports remote control (TV apps, another
   browser tab, …) from the top bar, and what you play is sent there, with a remote-control bar for
   pause, seek, volume and stop. Jellyplex tabs can be controlled the same way from other apps.
+- Chromecast (Chrome, Edge and other Chromium browsers): pick "Chromecast…" in the same menu, or
+  the cast button in the player to move the video you are watching to the TV.
+- AirPlay (Safari): the AirPlay button in the player sends the video to an Apple TV or another
+  AirPlay device.
 - Mini player: press Back (or `Esc`) in the player and the video keeps playing in a small window,
   so you can browse and read media info while streaming. Click it to expand, or use its controls to
   pause or stop. Starting music pauses the video.
@@ -95,9 +120,15 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 **Account**
 - Quick Connect sign-in and authorization, profile picture, password, playback language and subtitle
-  preferences, and per-device settings for streaming quality, time display (24-hour by default,
-  or 12-hour), subtitle appearance and interface colours (accent colour, from presets or any
-  colour you pick, and background tone).
+  preferences, streaming quality per device, time display (24-hour by default, or 12-hour),
+  subtitle appearance and interface colours (accent colour, from presets or any colour you pick,
+  and background tone).
+- Several accounts on one device: "Add another account" in the account menu keeps the current one
+  signed in, and you switch between them from the same menu or the sign-in screen without typing
+  a password again.
+- Your preferences follow your account: colours, subtitle appearance, skip lengths, time display,
+  the home page layout and the tracks remembered per show are the same in every browser you sign
+  in to. This can be switched off under Account settings.
 
 ## Installation
 
@@ -223,15 +254,16 @@ Docker Compose additionally understands these:
 - HTTPS: put Jellyplex behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
   you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
 - The container serves a health check at `/healthz`.
-- Jellyplex stores only its session token and UI preferences in the browser's local storage.
+- Jellyplex stores only the session tokens of the signed-in accounts and UI preferences in the
+  browser's local storage.
 
 ## Keyboard shortcuts (player)
 
 | Key            | Action              |
 | -------------- | ------------------- |
 | `Space` / `K`  | Play / pause        |
-| `←` / `J`      | Back 10 seconds     |
-| `→` / `L`      | Forward 30 seconds  |
+| `←` / `J`      | Back 10 seconds ¹   |
+| `→` / `L`      | Forward 30 seconds ¹ |
 | `↑` / `↓`      | Volume              |
 | `M`            | Mute                |
 | `F`            | Full screen         |
@@ -241,7 +273,10 @@ Docker Compose additionally understands these:
 | `G` / `H`      | Subtitles earlier / later |
 | `Z` / `X`      | Less / more audio delay |
 | `I`            | Playback info       |
+| `?`            | Show this list in the player |
 | `Esc`          | Close menu / minimize to mini player |
+
+¹ Or the lengths chosen under *Account settings → This device*.
 
 `/` focuses search anywhere in the app.
 
@@ -314,18 +349,34 @@ docker/         container entrypoint that writes config.js and the nginx site
   Intro needs 10.10 or newer. Seek-bar previews only appear for videos with trickplay images.
 - Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in
   Jellyplex, and plugin settings pages open in the Jellyfin web UI.
-- Not implemented: Live TV / DVR and the photo slideshow (single-photo viewer only). Use the
-  regular Jellyfin web UI for those.
+- Live TV covers watching channels and recordings. The programme guide grid, and scheduling or
+  cancelling recordings (DVR), are not implemented; use the regular Jellyfin web UI for those.
+- Every account signed in on a device can be switched to from that device without a password,
+  like in other apps with an account switcher. On a shared device, sign out of accounts others
+  should not use.
 - "Play on another device" works with apps that are signed in to your Jellyfin server and accept
-  remote control. Casting straight to a Chromecast or AirPlay device that isn't running a Jellyfin
-  app is not supported.
+  remote control.
+- Chromecast uses Jellyfin's own receiver app, which fetches the media from your server itself.
+  The Chromecast therefore has to be able to open the address you use for Jellyplex: it does not
+  work when you browse on `localhost`, and a server behind HTTPS needs a certificate the Chromecast
+  trusts. The Cast software is loaded from Google (`www.gstatic.com`) the first time you pick
+  Chromecast, and not before. Shows, albums and playlists start from their beginning on a
+  Chromecast.
+- AirPlay shows the video and plays its sound on the other device. Subtitles are only shown there
+  when they are burned into the picture, and the address you use for Jellyplex has to be reachable
+  from the AirPlay device.
+- HEVC and AV1 transcoding has to be switched on in the server: *Dashboard → Playback →
+  Transcoding → Allow encoding in HEVC format / AV1 format*. Without it the server transcodes to
+  H.264 as before. Files that are already HEVC or AV1 are passed through either way.
 - SyncPlay covers video. Music played while in a group stays on your own device.
-- Subtitle delay and appearance apply to text subtitles. Image subtitles are burned into the video
-  by the server and can't be adjusted.
+- Subtitle appearance applies to plain text subtitles. Styled (ASS/SSA) subtitles keep the look
+  their author gave them, and PGS subtitles are pictures. VobSub (DVD) subtitles are still burned
+  into the video by the server and can't be shifted. Styled and image subtitles are not shown in
+  picture-in-picture.
 - Audio delay can only make the sound later, not earlier: a browser can't play sound ahead of the
   picture. It is not available in Safari on iPhone and iPad.
-- The remembered track per show and the interface colours are stored in the browser, so they
-  don't follow you to other devices.
+- Streaming quality, poster size, grid or list view and volume are stored per browser. The other
+  preferences are saved with your Jellyfin account, where only Jellyplex reads them.
 - SyncPlay and remote control use a WebSocket connection. If you put another reverse proxy in front
   of Jellyplex, make sure it forwards WebSocket upgrades.
 - Which formats play directly depends on the browser. Jellyplex tells the server exactly what the

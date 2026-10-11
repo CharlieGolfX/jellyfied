@@ -9,6 +9,7 @@ import { PersonCard } from '@/components/media/PersonCard';
 import { SEARCH_TYPES } from '@/components/layout/SearchBox';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
+import { usePageTitle } from '@/lib/usePageTitle';
 
 const GROUPS: { type: string; title: string }[] = [
   { type: 'Movie', title: 'Movies' },
@@ -28,6 +29,7 @@ export default function SearchPage() {
   const { userId } = useSession();
   const [params] = useSearchParams();
   const q = (params.get('q') ?? '').trim();
+  usePageTitle(q ? `“${q}”` : 'Search');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['search', q],

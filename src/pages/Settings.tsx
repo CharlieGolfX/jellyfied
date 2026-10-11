@@ -12,7 +12,10 @@ import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { ACCENT_PRESETS, BACKGROUNDS, backgroundSwatch, DEFAULT_THEME, useTheme } from '@/lib/theme';
 import { useTimeFormat, type TimeFormat } from '@/lib/timeFormat';
+import { usePageTitle } from '@/lib/usePageTitle';
+import { usePrefsSyncEnabled } from '@/lib/prefsSync';
 import { MAX_BITRATE } from '@/player/deviceProfile';
+import { SEEK_STEP_OPTIONS, useSeekSteps } from '@/player/seekSteps';
 import {
   SUBTITLE_BACKGROUNDS,
   SUBTITLE_COLORS,
@@ -61,6 +64,7 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 export default function SettingsPage() {
+  usePageTitle('Account settings');
   const api = useApi();
   const { userId } = useSession();
   const toast = useToast();
@@ -75,6 +79,8 @@ export default function SettingsPage() {
 
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [bitrate, setBitrate] = useState(() => Number(localStorage.getItem('jellyplex.maxBitrate')) || MAX_BITRATE);
+  const [seekSteps, setSeekSteps] = useSeekSteps();
+  const [syncPrefs, setSyncPrefs] = usePrefsSyncEnabled();
 
   const saveConfig = useMutation({
     mutationFn: (c: UserConfiguration) => api.post('/Users/Configuration', c, { userId }),
@@ -223,7 +229,18 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card title="This device" description="Settings stored in this browser only.">
+      <Card
+        title="This device"
+        description="Streaming quality is stored in this browser only. The other settings here, the colours and the subtitle appearance follow your account when syncing is on."
+      >
+        <div className="mb-3 border-b border-white/5 pb-2">
+          <Switch
+            label="Sync my preferences"
+            description="Keeps colours, subtitle appearance, skip lengths, time display, the home page layout and remembered tracks the same in every browser you sign in to."
+            checked={syncPrefs}
+            onChange={setSyncPrefs}
+          />
+        </div>
         <Field label="Default streaming quality" hint="Lower values make the server transcode to save bandwidth.">
           <Select
             value={bitrate}
@@ -260,6 +277,26 @@ export default function SettingsPage() {
             <option value="12h">12-hour (9:45 PM)</option>
           </Select>
         </Field>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Skip back" hint="The player’s back button, the ← and J keys, and a double tap on the left.">
+            <Select value={seekSteps.back} onChange={(e) => setSeekSteps({ back: Number(e.target.value) })}>
+              {SEEK_STEP_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s} seconds
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Skip forward" hint="The forward button, the → and L keys, and a double tap on the right.">
+            <Select value={seekSteps.forward} onChange={(e) => setSeekSteps({ forward: Number(e.target.value) })}>
+              {SEEK_STEP_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s} seconds
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </Card>
 
       <InterfaceColorsCard />

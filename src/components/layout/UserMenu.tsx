@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Settings, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, User, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Menu } from '@/components/ui/Menu';
@@ -23,7 +23,7 @@ export function Avatar({ userId, tag, name, size = 32 }: { userId: string; tag?:
 }
 
 export function UserMenu() {
-  const { logout } = useAuth();
+  const { logout, otherAccounts, switchAccount, addAccount } = useAuth();
   const session = useSession();
   const { data: user } = useCurrentUser();
   const navigate = useNavigate();
@@ -38,6 +38,13 @@ export function UserMenu() {
         ...(isAdmin
           ? [{ label: 'Server dashboard', icon: <LayoutDashboard size={16} />, onSelect: () => navigate('/admin') }]
           : []),
+        { divider: true, label: '' },
+        ...otherAccounts.map((a) => ({
+          label: `Switch to ${a.userName}${a.serverName !== session.serverName ? ` · ${a.serverName}` : ''}`,
+          icon: <Users size={16} />,
+          onSelect: () => switchAccount(a),
+        })),
+        { label: 'Add another account', icon: <UserPlus size={16} />, onSelect: addAccount },
         { divider: true, label: '' },
         {
           label: 'Sign out',

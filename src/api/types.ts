@@ -109,6 +109,15 @@ export interface MediaStream {
   BitDepth?: number | null;
 }
 
+/** A file embedded in a media file, such as a font used by its subtitles. */
+export interface MediaAttachment {
+  Index: number;
+  Codec?: string | null;
+  FileName?: string | null;
+  MimeType?: string | null;
+  DeliveryUrl?: string | null;
+}
+
 export interface MediaSourceInfo {
   Id: string;
   Name?: string | null;
@@ -126,9 +135,12 @@ export interface MediaSourceInfo {
   TranscodingSubProtocol?: string | null;
   TranscodingContainer?: string | null;
   MediaStreams?: MediaStream[];
+  MediaAttachments?: MediaAttachment[];
   DefaultAudioStreamIndex?: number | null;
   DefaultSubtitleStreamIndex?: number | null;
   LiveStreamId?: string | null;
+  /** A live broadcast: it has no end and no fixed start. */
+  IsInfiniteStream?: boolean;
 }
 
 export interface NameIdPair {
@@ -151,6 +163,12 @@ export interface ChapterInfo {
 }
 
 export interface BaseItemDto {
+  // Live TV: channels carry their number and what is on, programmes their channel and times.
+  ChannelNumber?: string | null;
+  CurrentProgram?: BaseItemDto | null;
+  ChannelId?: string | null;
+  ChannelName?: string | null;
+  StartDate?: string | null;
   Id: string;
   Name?: string | null;
   OriginalTitle?: string | null;
@@ -606,6 +624,14 @@ export interface MediaSegment {
 export interface QueryFilters {
   Genres?: NameIdPair[];
   Tags?: string[];
+}
+
+/** Answer of the older /Items/Filters endpoint, which also knows the years and age ratings. */
+export interface LegacyQueryFilters {
+  Genres?: string[] | null;
+  Tags?: string[] | null;
+  OfficialRatings?: string[] | null;
+  Years?: number[] | null;
 }
 
 export type EncodingOptions = Record<string, unknown> & {

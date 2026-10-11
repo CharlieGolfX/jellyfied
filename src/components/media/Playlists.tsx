@@ -70,7 +70,10 @@ export function useMovePlaylistItem(playlistId: string) {
 }
 
 /** Dialog to add an item to an existing playlist, or to a new one. */
-export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto; onClose: () => void }) {
+/** `item` may be several items, which are then all added. */
+export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto | BaseItemDto[]; onClose: () => void }) {
+  const items = Array.isArray(item) ? item : [item];
+  const ids = items.map((i) => i.Id);
   const api = useApi();
   const { userId } = useSession();
   const qc = useQueryClient();
@@ -97,7 +100,7 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto; onCl
   };
 
   const add = useMutation({
-    mutationFn: (playlist: BaseItemDto) => api.post(`/Playlists/${playlist.Id}/Items`, undefined, { ids: item.Id, userId }),
+    mutationFn: (playlist: BaseItemDto) => api.post(`/Playlists/${playlist.Id}/Items`, undefined, { ids, userId }),
     onSuccess: (_r, playlist) => done(playlist.Name ?? 'playlist'),
     onError: (e) => toast.error(e),
   });
@@ -106,9 +109,9 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto; onCl
     mutationFn: (playlistName: string) =>
       api.post('/Playlists', {
         Name: playlistName,
-        Ids: [item.Id],
+        Ids: ids,
         UserId: userId,
-        MediaType: AUDIO_TYPES.has(item.Type) ? 'Audio' : 'Video',
+        MediaType: items.every((i) => AUDIO_TYPES.has(i.Type)) ? 'Audio' : 'Video',
         IsPublic: false,
       }),
     onSuccess: (_r, playlistName) => done(playlistName),
@@ -120,7 +123,7 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto; onCl
 
   return (
     <Modal open onClose={onClose} title="Add to playlist" size="sm">
-      <p className="mb-3 truncate text-sm text-muted">{item.Name}</p>
+      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : `${items.length} items`}</p>
       <form
         className="flex gap-2"
         onSubmit={(e) => {

@@ -4,6 +4,8 @@ import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, UserDto } from '@/api/types';
 
 const SESSION_KEY = 'jellyplex.session';
+/** Every account signed in on this browser, the current one included, so users can switch without a password. */
+const ACCOUNTS_KEY = 'jellyplex.accounts';
 export const LAST_SERVER_KEY = 'jellyplex.lastServer';
 
 export interface StoredSession {
@@ -20,6 +22,44 @@ interface AuthState {
   api: JellyfinApi | null;
   completeLogin: (serverUrl: string, serverName: string, result: AuthenticationResult) => void;
   logout: () => Promise<void>;
+  /** The other accounts that are signed in on this browser. */
+  otherAccounts: StoredSession[];
+  /** Continues as another signed-in account. Reloads the app, so nothing of the previous user lingers. */
+  switchAccount: (account: StoredSession) => void;
+  /** Leaves the current account signed in and opens the sign-in screen for another one. */
+  addAccount: () => void;
+  /** Signs a saved account out and forgets it. */
+  forgetAccount: (account: StoredSession) => Promise<void>;
+}
+
+export const sameAccount = (a: StoredSession, b: StoredSession) => a.userId === b.userId && a.serverUrl === b.serverUrl;
+
+function validSession(s: unknown): s is StoredSession {
+  const v = s as Partial<StoredSession> | null;
+  return Boolean(v && typeof v === 'object' && v.accessToken && v.serverUrl && v.userId);
+}
+
+/** The saved accounts with `account` added or replaced (newest first), or removed. */
+export function withAccount(accounts: StoredSession[], account: StoredSession, remove = false): StoredSession[] {
+  const rest = accounts.filter((a) => !sameAccount(a, account));
+  return remove ? rest : [account, ...rest];
+}
+
+export function loadAccounts(): StoredSession[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter(validSession) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAccounts(accounts: StoredSession[]) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch {
+    /* ignore */
+  }
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -37,7 +77,21 @@ function loadSession(): StoredSession | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<StoredSession | null>(loadSession);
+  const [accounts, setAccounts] = useState<StoredSession[]>(() => {
+    // A session from before accounts were remembered counts as the first one.
+    const saved = loadAccounts();
+    const current = loadSession();
+    return current && !saved.some((a) => sameAccount(a, current)) ? [current, ...saved] : saved;
+  });
   const queryClient = useQueryClient();
+
+  const updateAccounts = useCallback((change: (accounts: StoredSession[]) => StoredSession[]) => {
+    setAccounts((prev) => {
+      const next = change(prev);
+      saveAccounts(next);
+      return next;
+    });
+  }, []);
 
   const api = useMemo(
     () => (session ? new JellyfinApi(session.serverUrl, session.accessToken, session.userId) : null),
@@ -50,9 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    // The token is gone or no longer valid, so the account can't be switched to any more either.
+    if (session) updateAccounts((list) => withAccount(list, session, true));
     setSession(null);
     queryClient.clear();
-  }, [queryClient]);
+  }, [queryClient, session, updateAccounts]);
 
   useEffect(() => {
     if (api) api.onUnauthorized = clear;
@@ -74,11 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
+      updateAccounts((list) => withAccount(list, next));
       queryClient.clear();
       queryClient.setQueryData(['me', result.User.Id], result.User);
       setSession(next);
     },
-    [queryClient],
+    [queryClient, updateAccounts],
   );
 
   const logout = useCallback(async () => {
@@ -92,7 +149,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clear();
   }, [api, clear]);
 
-  const value = useMemo(() => ({ session, api, completeLogin, logout }), [session, api, completeLogin, logout]);
+  const switchAccount = useCallback((account: StoredSession) => {
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(account));
+    } catch {
+      return;
+    }
+    window.location.assign('/');
+  }, []);
+
+  const addAccount = useCallback(() => {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      return;
+    }
+    window.location.assign('/login');
+  }, []);
+
+  const forgetAccount = useCallback(
+    async (account: StoredSession) => {
+      try {
+        await new JellyfinApi(account.serverUrl, account.accessToken, account.userId).post('/Sessions/Logout');
+      } catch {
+        /* token may already be invalid */
+      }
+      updateAccounts((list) => withAccount(list, account, true));
+    },
+    [updateAccounts],
+  );
+
+  const otherAccounts = useMemo(() => accounts.filter((a) => !session || !sameAccount(a, session)), [accounts, session]);
+
+  const value = useMemo(
+    () => ({ session, api, completeLogin, logout, otherAccounts, switchAccount, addAccount, forgetAccount }),
+    [session, api, completeLogin, logout, otherAccounts, switchAccount, addAccount, forgetAccount],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

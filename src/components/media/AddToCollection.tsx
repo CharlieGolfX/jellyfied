@@ -32,8 +32,10 @@ export function useRemoveFromCollection() {
   });
 }
 
-/** Dialog to add an item to an existing collection, or to a new one. */
-export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto; onClose: () => void }) {
+/** Dialog to add an item (or several) to an existing collection, or to a new one. */
+export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto | BaseItemDto[]; onClose: () => void }) {
+  const items = Array.isArray(item) ? item : [item];
+  const ids = items.map((i) => i.Id);
   const api = useApi();
   const { userId } = useSession();
   const qc = useQueryClient();
@@ -60,13 +62,13 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto; on
   };
 
   const add = useMutation({
-    mutationFn: (collection: BaseItemDto) => api.post(`/Collections/${collection.Id}/Items`, undefined, { ids: item.Id }),
+    mutationFn: (collection: BaseItemDto) => api.post(`/Collections/${collection.Id}/Items`, undefined, { ids }),
     onSuccess: (_r, collection) => done(collection.Name ?? 'collection'),
     onError: (e) => toast.error(e),
   });
 
   const create = useMutation({
-    mutationFn: (collectionName: string) => api.post('/Collections', undefined, { name: collectionName, ids: item.Id }),
+    mutationFn: (collectionName: string) => api.post('/Collections', undefined, { name: collectionName, ids }),
     onSuccess: (_r, collectionName) => done(collectionName),
     onError: (e) => toast.error(e),
   });
@@ -76,7 +78,7 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto; on
 
   return (
     <Modal open onClose={onClose} title="Add to collection" size="sm">
-      <p className="mb-3 truncate text-sm text-muted">{item.Name}</p>
+      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : `${items.length} items`}</p>
       <form
         className="flex gap-2"
         onSubmit={(e) => {

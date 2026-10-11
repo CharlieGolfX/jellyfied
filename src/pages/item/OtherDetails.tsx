@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Presentation, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteItems, useItems } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
@@ -83,12 +83,28 @@ export function CollectionDetails({ item }: { item: BaseItemDto }) {
   );
 }
 
+/** Seconds each photo stays up in a slideshow. */
+export const SLIDESHOW_SECONDS = 5;
+
 export function FolderDetails({ item }: { item: BaseItemDto }) {
   const shape = item.Type === 'PhotoAlbum' ? 'square' : item.CollectionType === 'homevideos' ? 'landscape' : 'poster';
+  // The first photo in the folder, to start a slideshow from.
+  const firstPhoto = useItems(
+    { parentId: item.Id, includeItemTypes: 'Photo', sortBy: 'SortName', sortOrder: 'Ascending', limit: 1, fields: [] },
+    { key: ['first-photo', item.Id] },
+  ).data?.Items[0];
   return (
     <div className="pb-10">
-      <div className="px-4 pt-8 sm:px-8 lg:px-10">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-8 sm:px-8 lg:px-10">
         <h1 className="text-2xl font-bold">{item.Name}</h1>
+        {firstPhoto && (
+          <Link
+            to={`/item/${firstPhoto.Id}?slideshow=1`}
+            className="flex h-9 items-center gap-2 rounded-md bg-white/10 px-3 text-sm font-semibold transition-colors hover:bg-white/20"
+          >
+            <Presentation size={16} /> Slideshow
+          </Link>
+        )}
       </div>
       <FolderGrid
         parentId={item.Id}
@@ -152,19 +168,42 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
   const prev = index > 0 ? list[index - 1] : undefined;
   const next = index >= 0 && index < list.length - 1 ? list[index + 1] : undefined;
 
-  const go = useCallback((p?: BaseItemDto) => p && navigate(`/item/${p.Id}`, { replace: true }), [navigate]);
+  // The viewer is opened again for every photo, so whether the slideshow runs lives in the address.
+  const [params] = useSearchParams();
+  const playing = params.has('slideshow');
+  const address = useCallback((p: BaseItemDto, slideshow: boolean) => `/item/${p.Id}${slideshow ? '?slideshow=1' : ''}`, []);
+  const go = useCallback((p?: BaseItemDto) => p && navigate(address(p, playing), { replace: true }), [navigate, address, playing]);
+  const toggleSlideshow = useCallback(() => navigate(address(item, !playing), { replace: true }), [navigate, address, item, playing]);
+  // A slideshow starts over after the last photo.
+  const upcoming = next ?? (list.length > 1 ? list[0] : undefined);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') go(prev);
       else if (e.key === 'ArrowRight') go(next);
-      else if (e.key === 'Escape') navigate(-1);
+      else if (e.key === ' ') {
+        e.preventDefault();
+        toggleSlideshow();
+      } else if (e.key === 'Escape') navigate(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, prev, next, navigate]);
+  }, [go, prev, next, navigate, toggleSlideshow]);
 
-  const src = api.imageUrl(item.Id, 'Primary', { tag: item.ImageTags?.Primary, maxWidth: 2560, quality: 95 });
+  const photoSrc = useCallback(
+    (p: BaseItemDto) => api.imageUrl(p.Id, 'Primary', { tag: p.ImageTags?.Primary, maxWidth: 2560, quality: 95 }),
+    [api],
+  );
+  const src = photoSrc(item);
+
+  useEffect(() => {
+    if (!playing || !upcoming) return;
+    // Fetch the next photo ahead of time, so it is there when its turn comes.
+    const preload = new Image();
+    preload.src = photoSrc(upcoming);
+    const timer = window.setTimeout(() => go(upcoming), SLIDESHOW_SECONDS * 1000);
+    return () => window.clearTimeout(timer);
+  }, [playing, upcoming, go, photoSrc]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black">
@@ -174,9 +213,21 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
           <div className="truncate font-semibold">{item.Name}</div>
           {list.length > 0 && index >= 0 && <div className="text-sm text-muted">{index + 1} of {list.length}</div>}
         </div>
-        <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-white/10" aria-label="Close">
-          <X size={24} />
-        </button>
+        <div className="flex items-center gap-1">
+          {list.length > 1 && (
+            <button
+              onClick={toggleSlideshow}
+              className={`rounded-full p-2 hover:bg-white/10 ${playing ? 'text-accent' : ''}`}
+              aria-label={playing ? 'Pause slideshow' : 'Start slideshow'}
+              title={playing ? 'Pause slideshow (Space)' : 'Start slideshow (Space)'}
+            >
+              {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}
+            </button>
+          )}
+          <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-white/10" aria-label="Close">
+            <X size={24} />
+          </button>
+        </div>
       </div>
       {prev && (
         <button onClick={() => go(prev)} className="absolute left-4 rounded-full bg-black/50 p-3 hover:bg-black/80" aria-label="Previous">

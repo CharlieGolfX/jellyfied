@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
+import { onPrefPulled, prefChanged } from './prefsBus';
 
-/** Clock style for wall-clock times (24-hour by default). Stored in this browser only. */
+/** Clock style for wall-clock times (24-hour by default). Synced with the account (see prefsSync). */
 export type TimeFormat = '24h' | '12h';
 
 const KEY = 'jellyplex.timeFormat';
@@ -28,7 +29,13 @@ export function setTimeFormat(v: TimeFormat) {
     /* ignore */
   }
   listeners.forEach((l) => l());
+  prefChanged(KEY);
 }
+
+onPrefPulled(KEY, () => {
+  current = read();
+  listeners.forEach((l) => l());
+});
 
 function subscribe(cb: () => void) {
   listeners.add(cb);

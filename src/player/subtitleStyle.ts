@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type CSSProperties } from 'react';
+import { onPrefPulled, prefChanged } from '@/lib/prefsBus';
 
-/** How text subtitles are drawn in the player. Stored in this browser only. */
+/** How text subtitles are drawn in the player. Synced with the account (see prefsSync). */
 export interface SubtitleStyle {
   size: 'small' | 'medium' | 'large' | 'xlarge';
   color: 'white' | 'yellow' | 'cyan' | 'green' | 'grey';
@@ -72,7 +73,13 @@ export function setSubtitleStyle(patch: Partial<SubtitleStyle>) {
     /* ignore */
   }
   listeners.forEach((l) => l());
+  prefChanged(KEY);
 }
+
+onPrefPulled(KEY, () => {
+  current = read();
+  listeners.forEach((l) => l());
+});
 
 function subscribe(cb: () => void) {
   listeners.add(cb);

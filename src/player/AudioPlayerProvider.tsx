@@ -15,6 +15,7 @@ import { generateId } from '@/api/device';
 import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped } from './reporting';
 import { getCastTarget, sendRemotePlay, type RemotePlayCommand } from './castTarget';
+import { castPlay, getChromecast } from './chromecast';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -286,6 +287,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const sendToCastTarget = useCallback((items: BaseItemDto[], command: RemotePlayCommand, startIndex = 0): boolean => {
     const target = getCastTarget();
     const a = stateRef.current.api;
+    if (a && getChromecast().status === 'connected') {
+      void castPlay({ api: a, serverId: items[0]?.ServerId ?? '' }, items, {
+        shuffle: command === 'PlayShuffle',
+        queue: command === 'PlayNext' || command === 'PlayLast' ? command : undefined,
+        startIndex,
+      }).catch(() => {});
+      return true;
+    }
     if (!target || !a) return false;
     void sendRemotePlay(
       a,

@@ -30,6 +30,7 @@ import PlaybackPage from './Playback';
 import PluginsPage from './Plugins';
 import TasksPage from './Tasks';
 import UserEditPage from './UserEdit';
+import { usePageTitle } from '@/lib/usePageTitle';
 import UsersPage from './Users';
 
 const NAV: { to: string; label: string; icon: ReactNode; end?: boolean; group: string }[] = [
@@ -81,6 +82,7 @@ function AdminNav() {
 }
 
 export default function AdminRoutes() {
+  usePageTitle('Server dashboard');
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading) return <PageSpinner />;
   if (!user?.Policy?.IsAdministrator) {
