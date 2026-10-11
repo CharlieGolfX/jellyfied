@@ -7,30 +7,31 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select } from '@/components/ui/Form';
 import { Card } from '@/pages/Settings';
 import { parseList } from './shared';
+import { t } from '@/i18n';
 
 const UNRATED: [string, string][] = [
-  ['Movie', 'Movies'],
-  ['Series', 'Shows'],
-  ['Music', 'Music'],
-  ['Book', 'Books'],
-  ['Trailer', 'Trailers'],
-  ['LiveTvChannel', 'Live TV channels'],
-  ['LiveTvProgram', 'Live TV programmes'],
-  ['ChannelContent', 'Channel content'],
-  ['Other', 'Everything else'],
+  ['Movie', t('admin.parentalControls.unrated.movies')],
+  ['Series', t('admin.parentalControls.unrated.shows')],
+  ['Music', t('admin.parentalControls.unrated.music')],
+  ['Book', t('admin.parentalControls.unrated.books')],
+  ['Trailer', t('admin.parentalControls.unrated.trailers')],
+  ['LiveTvChannel', t('admin.parentalControls.liveTvChannels')],
+  ['LiveTvProgram', t('admin.parentalControls.liveTvProgrammes')],
+  ['ChannelContent', t('admin.parentalControls.channelContent')],
+  ['Other', t('admin.parentalControls.everythingElse')],
 ];
 
 const DAYS: [NonNullable<AccessSchedule['DayOfWeek']>, string][] = [
-  ['Everyday', 'Every day'],
-  ['Weekday', 'Weekdays'],
-  ['Weekend', 'Weekends'],
-  ['Monday', 'Monday'],
-  ['Tuesday', 'Tuesday'],
-  ['Wednesday', 'Wednesday'],
-  ['Thursday', 'Thursday'],
-  ['Friday', 'Friday'],
-  ['Saturday', 'Saturday'],
-  ['Sunday', 'Sunday'],
+  ['Everyday', t('admin.parentalControls.everyDay')],
+  ['Weekday', t('admin.parentalControls.days.weekday')],
+  ['Weekend', t('admin.parentalControls.days.weekend')],
+  ['Monday', t('admin.parentalControls.days.monday')],
+  ['Tuesday', t('admin.parentalControls.days.tuesday')],
+  ['Wednesday', t('admin.parentalControls.days.wednesday')],
+  ['Thursday', t('admin.parentalControls.days.thursday')],
+  ['Friday', t('admin.parentalControls.days.friday')],
+  ['Saturday', t('admin.parentalControls.days.saturday')],
+  ['Sunday', t('admin.parentalControls.days.sunday')],
 ];
 
 /** Half-hour steps of a day: 0, 0.5, … 24. */
@@ -91,10 +92,10 @@ export function ParentalControls({
 
   return (
     <>
-      <Card title="Ratings" description="Hides everything rated above the chosen level from this user.">
-        <Field label="Highest allowed rating" className="max-w-md">
+      <Card title={t('admin.parentalControls.ratings')} description={t('admin.parentalControls.hidesEverythingRatedAboveThe')}>
+        <Field label={t('admin.parentalControls.highestAllowedRating')} className="max-w-md">
           <Select
-            aria-label="Highest allowed rating"
+            aria-label={t('admin.parentalControls.highestAllowedRating')}
             value={current}
             onChange={(e) => {
               const level = levels.find((l) => l.key === e.target.value);
@@ -102,17 +103,21 @@ export function ParentalControls({
               if ('MaxParentalSubRating' in policy || level?.subScore) onChange('MaxParentalSubRating', level?.subScore ?? null);
             }}
           >
-            <option value="">No limit</option>
+            <option value="">{t('admin.parentalControls.noLimit')}</option>
             {levels.map((l) => (
               <option key={l.key} value={l.key}>
                 {l.label}
               </option>
             ))}
-            {current && !levels.some((l) => l.key === current) && <option value={current}>Level {current}</option>}
+            {current && !levels.some((l) => l.key === current) && (
+              <option value={current}>
+                {t('admin.parentalControls.level')} {current}
+              </option>
+            )}
           </Select>
         </Field>
         <div className="mt-4">
-          <div className="mb-1 text-sm font-medium">Also hide items that have no rating</div>
+          <div className="mb-1 text-sm font-medium">{t('admin.parentalControls.alsoHideItemsThatHave')}</div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3">
             {UNRATED.map(([value, label]) => (
               <Checkbox
@@ -126,16 +131,16 @@ export function ParentalControls({
         </div>
       </Card>
 
-      <Card title="Tags" description="Tags are set on items in the metadata editor. Separate several with commas.">
+      <Card title={t('admin.parentalControls.tags')} description={t('admin.parentalControls.tagsAreSetOnItems')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Only show items with one of these tags" hint="Empty shows everything the rating allows.">
+          <Field label={t('admin.parentalControls.onlyShowItemsWithOne')} hint={t('admin.parentalControls.emptyShowsEverythingTheRating')}>
             <Input
               defaultValue={(policy.AllowedTags ?? []).join(', ')}
               onChange={(e) => onChange('AllowedTags', parseList(e.target.value))}
-              placeholder="kids, family"
+              placeholder={t('admin.parentalControls.kidsFamily')}
             />
           </Field>
-          <Field label="Hide items with any of these tags">
+          <Field label={t('admin.parentalControls.hideItemsWithAnyOf')}>
             <Input
               defaultValue={(policy.BlockedTags ?? []).join(', ')}
               onChange={(e) => onChange('BlockedTags', parseList(e.target.value))}
@@ -145,15 +150,12 @@ export function ParentalControls({
         </div>
       </Card>
 
-      <Card
-        title="Access schedule"
-        description="When this user may use the server. Without a schedule there is no restriction. Administrators are never restricted."
-      >
+      <Card title={t('admin.parentalControls.accessSchedule')} description={t('admin.parentalControls.whenThisUserMayUse')}>
         <ul className="space-y-2">
           {schedules.map((s, i) => (
             <li key={i} className="flex flex-wrap items-center gap-2" data-testid="access-schedule">
               <Select
-                aria-label="Days"
+                aria-label={t('admin.parentalControls.daysLabel')}
                 className="w-40"
                 value={s.DayOfWeek ?? 'Everyday'}
                 onChange={(e) => setSchedule(i, { DayOfWeek: e.target.value as AccessSchedule['DayOfWeek'] })}
@@ -164,9 +166,9 @@ export function ParentalControls({
                   </option>
                 ))}
               </Select>
-              <span className="text-sm text-muted">from</span>
+              <span className="text-sm text-muted">{t('admin.parentalControls.fromTime')}</span>
               <Select
-                aria-label="From"
+                aria-label={t('admin.parentalControls.from')}
                 className="w-24"
                 value={s.StartHour ?? 0}
                 onChange={(e) => setSchedule(i, { StartHour: Number(e.target.value) })}
@@ -177,9 +179,9 @@ export function ParentalControls({
                   </option>
                 ))}
               </Select>
-              <span className="text-sm text-muted">to</span>
+              <span className="text-sm text-muted">{t('admin.parentalControls.toTime')}</span>
               <Select
-                aria-label="To"
+                aria-label={t('admin.parentalControls.to')}
                 className="w-24"
                 value={s.EndHour ?? 24}
                 onChange={(e) => setSchedule(i, { EndHour: Number(e.target.value) })}
@@ -193,7 +195,7 @@ export function ParentalControls({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Remove this time"
+                aria-label={t('admin.parentalControls.removeThisTime')}
                 onClick={() =>
                   onChange(
                     'AccessSchedules',
@@ -206,7 +208,7 @@ export function ParentalControls({
             </li>
           ))}
         </ul>
-        {schedules.length === 0 && <p className="text-sm text-muted">No restriction: the user can sign in at any time.</p>}
+        {schedules.length === 0 && <p className="text-sm text-muted">{t('admin.parentalControls.noRestrictionTheUserCan')}</p>}
         <Button
           className="mt-3"
           variant="secondary"
@@ -214,7 +216,7 @@ export function ParentalControls({
           icon={<Plus size={15} />}
           onClick={() => onChange('AccessSchedules', [...schedules, { DayOfWeek: 'Everyday', StartHour: 8, EndHour: 20 }])}
         >
-          Add a time
+          {t('admin.parentalControls.addATime')}
         </Button>
       </Card>
     </>

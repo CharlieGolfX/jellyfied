@@ -128,7 +128,8 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
   }
 
   // Everything else needs the token the login handed out.
-  if (!(request.headers().authorization ?? '').includes('Token="mock-token"')) return { status: 401 };
+  // (A second account, "guest", can be put in the browser's storage by a test; it has its own token.)
+  if (!/Token="(mock|guest)-token"/.test(request.headers().authorization ?? '')) return { status: 401 };
 
   if (path === '/Users/Me') return { body: me };
   // The server dashboard.

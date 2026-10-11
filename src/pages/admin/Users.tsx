@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatRelative } from '@/lib/format';
 import { AdminPage, StatusPill } from './shared';
+import { t } from '@/i18n';
 
 export function useUsers() {
   const api = useApi();
@@ -32,7 +33,7 @@ export default function UsersPage() {
   const create = useMutation({
     mutationFn: () => api.post<UserDto>('/Users/New', { Name: name.trim(), Password: password }),
     onSuccess: (user) => {
-      toast.success(`Created ${user.Name}`);
+      toast.success(t('admin.users.created', { name: user.Name }));
       setOpen(false);
       setName('');
       setPassword('');
@@ -44,11 +45,11 @@ export default function UsersPage() {
 
   return (
     <AdminPage
-      title="Users"
-      description="Manage who can sign in, what they can access and what they’re allowed to do."
+      title={t('admin.users.users')}
+      description={t('admin.users.manageWhoCanSignIn')}
       actions={
         <Button variant="primary" icon={<UserPlus size={16} />} onClick={() => setOpen(true)}>
-          Add user
+          {t('admin.users.addUser')}
         </Button>
       }
     >
@@ -68,14 +69,18 @@ export default function UsersPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-semibold">{u.Name}</span>
-                  {u.Policy.IsAdministrator && <ShieldCheck size={15} className="shrink-0 text-accent" aria-label="Administrator" />}
+                  {u.Policy.IsAdministrator && (
+                    <ShieldCheck size={15} className="shrink-0 text-accent" aria-label={t('admin.users.administrator')} />
+                  )}
                 </div>
-                <div className="truncate text-xs text-muted">Last active {formatRelative(u.LastActivityDate)}</div>
+                <div className="truncate text-xs text-muted">
+                  {t('admin.users.lastActive')} {formatRelative(u.LastActivityDate)}
+                </div>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {u.Policy.IsDisabled && <StatusPill tone="red">Disabled</StatusPill>}
-                  {u.Policy.IsHidden && <StatusPill tone="gray">Hidden</StatusPill>}
-                  {!u.HasPassword && <StatusPill tone="amber">No password</StatusPill>}
-                  {u.Policy.IsAdministrator && <StatusPill tone="blue">Admin</StatusPill>}
+                  {u.Policy.IsDisabled && <StatusPill tone="red">{t('admin.users.disabled')}</StatusPill>}
+                  {u.Policy.IsHidden && <StatusPill tone="gray">{t('admin.users.hidden')}</StatusPill>}
+                  {!u.HasPassword && <StatusPill tone="amber">{t('admin.users.noPassword')}</StatusPill>}
+                  {u.Policy.IsAdministrator && <StatusPill tone="blue">{t('admin.users.admin')}</StatusPill>}
                 </div>
               </div>
             </Link>
@@ -86,15 +91,15 @@ export default function UsersPage() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Add user"
+        title={t('admin.users.addUser')}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" loading={create.isPending} disabled={!name.trim()} onClick={() => create.mutate()}>
-              Create
+              {t('common.create')}
             </Button>
           </>
         }
@@ -106,10 +111,10 @@ export default function UsersPage() {
             if (name.trim()) create.mutate();
           }}
         >
-          <Field label="Username">
+          <Field label={t('admin.users.username')}>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
           </Field>
-          <Field label="Password" hint="Optional. Users without a password can sign in by tapping their profile.">
+          <Field label={t('common.password')} hint={t('admin.users.optionalUsersWithoutAPassword')}>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </Field>
           <button type="submit" className="hidden" />

@@ -7,7 +7,7 @@ import { MEDIA, useUserViews } from '@/api/queries';
 import type { ItemsResult, UserDto } from '@/api/types';
 import { useApi, useIsAdmin, useSession } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ui/Toast';
-import { useT } from '@/i18n';
+import { t } from '@/i18n';
 import { LibraryIcon } from './libraryIcon';
 
 function SideLink({
@@ -146,7 +146,6 @@ function useLibraryOrder(views: ItemsResult | undefined) {
 }
 
 export function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
-  const t = useT();
   const { data: views, isLoading } = useUserViews();
   const isAdmin = useIsAdmin();
   const { items, dragId, dragProps, containerProps } = useLibraryOrder(views);

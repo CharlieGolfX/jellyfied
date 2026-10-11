@@ -9,6 +9,8 @@ import { Field, Input, Switch } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
+import { t } from '@/i18n';
+import { plural } from '@/lib/format';
 
 const AUDIO_TYPES = new Set(['Audio', 'MusicAlbum', 'MusicArtist', 'MusicGenre', 'AudioBook']);
 const VIDEO_TYPES = new Set(['Movie', 'Episode', 'Series', 'Season', 'Video', 'MusicVideo', 'BoxSet']);
@@ -95,7 +97,7 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto | Bas
 
   const done = (playlistName: string) => {
     void qc.invalidateQueries({ queryKey: [MEDIA] });
-    toast.success(`Added to ${playlistName}`);
+    toast.success(t('media.playlists.addedTo', { playlistName }));
     onClose();
   };
 
@@ -122,8 +124,8 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto | Bas
   const busy = add.isPending || create.isPending;
 
   return (
-    <Modal open onClose={onClose} title="Add to playlist" size="sm">
-      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : `${items.length} items`}</p>
+    <Modal open onClose={onClose} title={t('common.addToPlaylist')} size="sm">
+      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : plural(items.length, 'item')}</p>
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -134,12 +136,12 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto | Bas
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="New playlist name"
-          aria-label="New playlist name"
+          placeholder={t('media.playlists.newPlaylistName')}
+          aria-label={t('media.playlists.newPlaylistName')}
           maxLength={200}
         />
         <Button type="submit" variant="primary" icon={<Plus size={16} />} disabled={!name.trim() || busy} loading={create.isPending}>
-          Create
+          {t('common.create')}
         </Button>
       </form>
 
@@ -149,7 +151,7 @@ export function AddToPlaylistDialog({ item, onClose }: { item: BaseItemDto | Bas
             <Spinner size={24} />
           </div>
         ) : list.length === 0 ? (
-          <p className="px-2 py-4 text-sm text-faint">There are no playlists yet. Enter a name above to create the first one.</p>
+          <p className="px-2 py-4 text-sm text-faint">{t('media.playlists.thereAreNoPlaylistsYet')}</p>
         ) : (
           list.map((p) => (
             <button
@@ -183,7 +185,7 @@ export function EditPlaylistDialog({ playlist, onClose }: { playlist: BaseItemDt
     mutationFn: () => api.post(`/Playlists/${playlist.Id}`, { Name: name.trim(), IsPublic: publicValue }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [MEDIA] });
-      toast.success('Playlist saved');
+      toast.success(t('media.playlists.playlistSaved'));
       onClose();
     },
     onError: (e) => toast.error(e),
@@ -193,15 +195,15 @@ export function EditPlaylistDialog({ playlist, onClose }: { playlist: BaseItemDt
     <Modal
       open
       onClose={onClose}
-      title="Edit playlist"
+      title={t('media.playlists.editPlaylist')}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" loading={save.isPending} disabled={!name.trim() || access.isLoading} onClick={() => save.mutate()}>
-            Save
+            {t('common.save')}
           </Button>
         </>
       }
@@ -212,13 +214,13 @@ export function EditPlaylistDialog({ playlist, onClose }: { playlist: BaseItemDt
           if (name.trim() && !access.isLoading) save.mutate();
         }}
       >
-        <Field label="Name">
+        <Field label={t('common.name')}>
           <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} autoFocus />
         </Field>
         <div className="mt-3">
           <Switch
-            label="Visible to all users"
-            description="Other users can see and play this playlist, but not change it."
+            label={t('media.playlists.visibleToAllUsers')}
+            description={t('media.playlists.otherUsersCanSeeAnd')}
             checked={publicValue}
             disabled={access.isLoading}
             onChange={setIsPublic}

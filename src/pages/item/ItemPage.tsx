@@ -8,6 +8,7 @@ import { AlbumDetails, ArtistDetails, PlaylistDetails } from './MusicDetails';
 import { CollectionDetails, FolderDetails, GenericDetails, PersonDetails, PhotoViewer, TagDetails } from './OtherDetails';
 import { SeasonDetails, SeriesDetails } from './SeriesDetails';
 import { VideoDetails } from './VideoDetails';
+import { t } from '@/i18n';
 
 export default function ItemPage() {
   const { id } = useParams();
@@ -15,7 +16,7 @@ export default function ItemPage() {
   usePageTitle(item?.Type === 'Episode' ? [item.SeriesName, episodeLabel(item), item.Name].filter(Boolean).join(' · ') : item?.Name);
 
   if (isLoading) return <PageSpinner />;
-  if (error || !item) return <ErrorState error={error ?? 'Item not found'} onRetry={() => refetch()} />;
+  if (error || !item) return <ErrorState error={error ?? t('item.itemPage.itemNotFound')} onRetry={() => refetch()} />;
 
   // Key by id so per-item state (selected tracks etc.) resets when navigating between items.
   const key = item.Id;

@@ -11,6 +11,7 @@ import { supportsWatchedState } from '@/player/usePlay';
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections } from './AddToCollection';
 import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
 import { useSelectedItems, useSelection } from './selection';
+import { t } from '@/i18n';
 
 function BarButton({
   label,
@@ -71,13 +72,17 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
   const collectable = canManageCollections && items.every(supportsCollections);
 
   /** Runs one request per item and reports how it went. */
-  const forEach = async (targets: BaseItemDto[], action: (item: BaseItemDto) => Promise<unknown>, done: string) => {
+  const forEach = async (
+    targets: BaseItemDto[],
+    action: (item: BaseItemDto) => Promise<unknown>,
+    done: 'watched' | 'unwatched' | 'deleted',
+  ) => {
     setBusy(true);
     const result = countSettled(await Promise.allSettled(targets.map(action)));
     setBusy(false);
     void qc.invalidateQueries({ queryKey: [MEDIA] });
-    if (result.failed) toast.error(`${plural(result.failed, 'item')} could not be changed.`);
-    if (result.done) toast.success(`${plural(result.done, 'item')} ${done}`);
+    if (result.failed) toast.error(t('media.bulkBar.couldNotBeChanged', { items: plural(result.failed, 'item') }));
+    if (result.done) toast.success(t(`media.bulkBar.done.${done}`, { count: result.done, n: result.done.toLocaleString() }));
     selection.clear();
   };
 
@@ -86,51 +91,57 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
       watchable,
       (item) =>
         played ? api.post(`/UserPlayedItems/${item.Id}`, undefined, { userId }) : api.delete(`/UserPlayedItems/${item.Id}`, { userId }),
-      played ? 'marked as watched' : 'marked as unwatched',
+      played ? 'watched' : 'unwatched',
     );
 
   return (
     <>
       <div
         role="toolbar"
-        aria-label="Actions for the selected items"
+        aria-label={t('media.bulkBar.actionsForTheSelectedItems')}
         data-testid="bulk-bar"
         className="animate-pop-in fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 rounded-lg bg-base-750 px-2 py-1.5 shadow-2xl ring-1 ring-white/15"
       >
-        <span className="px-2 text-sm font-semibold whitespace-nowrap text-accent">{items.length} selected</span>
+        <span className="px-2 text-sm font-semibold whitespace-nowrap text-accent">
+          {t('media.bulkBar.selected', { count: items.length })}
+        </span>
         {watchable.length > 0 && (
           <>
-            <BarButton label="Watched" onClick={() => void setPlayed(true)} disabled={busy}>
+            <BarButton label={t('media.bulkBar.watched')} onClick={() => void setPlayed(true)} disabled={busy}>
               <CheckCircle size={17} />
             </BarButton>
-            <BarButton label="Unwatched" onClick={() => void setPlayed(false)} disabled={busy}>
+            <BarButton label={t('common.unwatched')} onClick={() => void setPlayed(false)} disabled={busy}>
               <Circle size={17} />
             </BarButton>
           </>
         )}
         {playlistable && (
-          <BarButton label="Add to playlist" onClick={() => setDialog('playlist')} disabled={busy}>
+          <BarButton label={t('common.addToPlaylist')} onClick={() => setDialog('playlist')} disabled={busy}>
             <ListPlus size={17} />
           </BarButton>
         )}
         {collectable && (
-          <BarButton label="Add to collection" onClick={() => setDialog('collection')} disabled={busy}>
+          <BarButton label={t('common.addToCollection')} onClick={() => setDialog('collection')} disabled={busy}>
             <FolderPlus size={17} />
           </BarButton>
         )}
         {canDelete && (
-          <BarButton label="Delete" onClick={() => setDialog('delete')} disabled={busy} danger>
+          <BarButton label={t('common.delete')} onClick={() => setDialog('delete')} disabled={busy} danger>
             <Trash2 size={17} />
           </BarButton>
         )}
         <span className="mx-1 h-5 w-px bg-white/15" />
-        <BarButton label="Select all" onClick={() => selection.add(allItems)} disabled={busy || items.length >= allItems.length}>
+        <BarButton
+          label={t('media.bulkBar.selectAll')}
+          onClick={() => selection.add(allItems)}
+          disabled={busy || items.length >= allItems.length}
+        >
           <ListChecks size={17} />
         </BarButton>
         <button
           onClick={() => selection.clear()}
           className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg"
-          aria-label="Clear selection"
+          aria-label={t('media.bulkBar.clearSelection')}
         >
           <X size={17} />
         </button>
@@ -140,21 +151,21 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
       {dialog === 'collection' && <AddToCollectionDialog item={items} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'delete'}
-        title={`Delete ${plural(items.length, 'item')}?`}
+        title={t('media.bulkBar.delete', { items: plural(items.length, 'item') })}
         message={
           <>
-            This deletes the files from the server’s disk and can’t be undone:
+            {t('media.bulkBar.thisDeletesTheFilesFrom')}
             <span className="mt-2 block max-h-32 overflow-y-auto text-fg">
               {items.slice(0, 30).map((i) => (
                 <span key={i.Id} className="block truncate">
                   {i.Name}
                 </span>
               ))}
-              {items.length > 30 && <span className="block text-muted">…and {items.length - 30} more</span>}
+              {items.length > 30 && <span className="block text-muted">{t('media.bulkBar.andMore', { count: items.length - 30 })}</span>}
             </span>
           </>
         }
-        confirmLabel="Delete"
+        confirmLabel={t('common.delete')}
         danger
         loading={busy}
         onClose={() => setDialog(null)}

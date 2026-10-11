@@ -10,6 +10,7 @@ import { getCastTarget, sendRemotePlay } from './castTarget';
 import { castPlay, getChromecast } from './chromecast';
 import { useSyncPlayManager } from './SyncPlayProvider';
 import { isPlayPath, useVideoSession } from './VideoSession';
+import { t } from '@/i18n';
 
 export interface PlayOptions {
   shuffle?: boolean;
@@ -93,7 +94,7 @@ export function usePlay() {
             audioStreamIndex: opts.audioStreamIndex,
             subtitleStreamIndex: opts.subtitleStreamIndex,
           });
-          toast.info(`Playing on ${chromecast.deviceName}`);
+          toast.info(t('player.usePlay.playingOn', { deviceName: chromecast.deviceName }));
           return;
         }
         if (!target) return;
@@ -101,7 +102,7 @@ export function usePlay() {
           command: opts.shuffle ? 'PlayShuffle' : 'PlayNow',
           startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
         });
-        toast.info(`Playing on ${target.deviceName}`);
+        toast.info(t('player.usePlay.playingOn', { deviceName: target.deviceName }));
       } catch (err) {
         toast.error(err);
       }
@@ -251,7 +252,7 @@ export function useLocalPlay() {
           const episodes = await fetchChildren(item, false);
           const startId = nextUp.Items[0]?.Id;
           const start = Math.max(0, startId ? episodes.findIndex((e) => e.Id === startId) : 0);
-          if (!episodes.length) throw new Error('No playable episodes found.');
+          if (!episodes.length) throw new Error(t('player.usePlay.noPlayableEpisodesFound'));
           playVideoQueue(
             episodes.map((e) => e.Id),
             start,
@@ -262,7 +263,7 @@ export function useLocalPlay() {
 
         const children = await fetchChildren(item, Boolean(opts.shuffle));
         if (!children.length) {
-          toast.info('Nothing to play here.');
+          toast.info(t('player.usePlay.nothingToPlayHere'));
           return;
         }
         if (children[0].MediaType === 'Audio') {
@@ -314,7 +315,7 @@ export function useInstantMix() {
         });
         const tracks = result.Items.filter((i) => i.MediaType === 'Audio');
         if (!tracks.length) {
-          toast.info('No similar music found for an Instant Mix.');
+          toast.info(t('player.usePlay.noSimilarMusicFoundFor'));
           return;
         }
         audio.play(tracks);

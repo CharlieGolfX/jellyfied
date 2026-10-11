@@ -6,16 +6,17 @@ import { ErrorState } from '@/components/ui/States';
 import { Card } from '@/pages/Settings';
 import { AdminPage, useConfigEditor } from './shared';
 import { useDraft } from '@/lib/useDraft';
+import { t } from '@/i18n';
 
 const HW_ACCEL = [
-  { value: 'none', label: 'None (software)' },
-  { value: 'qsv', label: 'Intel Quick Sync (QSV)' },
-  { value: 'vaapi', label: 'Video Acceleration API (VA-API)' },
-  { value: 'nvenc', label: 'NVIDIA NVENC' },
-  { value: 'amf', label: 'AMD AMF' },
-  { value: 'videotoolbox', label: 'Apple VideoToolbox' },
-  { value: 'v4l2m2m', label: 'Video4Linux2 (V4L2)' },
-  { value: 'rkmpp', label: 'Rockchip MPP (RKMPP)' },
+  { value: 'none', label: t('admin.playback.noneSoftware') },
+  { value: 'qsv', label: t('admin.playback.intelQuickSyncQsv') },
+  { value: 'vaapi', label: t('admin.playback.videoAccelerationApiVaApi') },
+  { value: 'nvenc', label: t('admin.playback.nvidiaNvenc') },
+  { value: 'amf', label: t('admin.playback.amdAmf') },
+  { value: 'videotoolbox', label: t('admin.playback.appleVideotoolbox') },
+  { value: 'v4l2m2m', label: t('admin.playback.video4linux2V4l2') },
+  { value: 'rkmpp', label: t('admin.playback.rockchipMppRkmpp') },
 ];
 
 const DECODE_CODECS = ['h264', 'hevc', 'mpeg2video', 'mpeg4', 'vc1', 'vp8', 'vp9', 'av1'];
@@ -23,8 +24,8 @@ const DECODE_CODECS = ['h264', 'hevc', 'mpeg2video', 'mpeg4', 'vc1', 'vp8', 'vp9
 const PRESETS = ['', 'veryslow', 'slower', 'slow', 'medium', 'fast', 'faster', 'veryfast', 'superfast', 'ultrafast'];
 
 export default function PlaybackPage() {
-  const encoding = useConfigEditor<EncodingOptions>('/System/Configuration/encoding', 'Transcoding settings');
-  const server = useConfigEditor<ServerConfiguration>('/System/Configuration', 'Resume settings');
+  const encoding = useConfigEditor<EncodingOptions>('/System/Configuration/encoding', t('admin.playback.transcodingSettings'));
+  const server = useConfigEditor<ServerConfiguration>('/System/Configuration', t('admin.playback.resumeSettings'));
   const [enc, setEnc] = useDraft(encoding.query.data);
   const [srv, setSrv] = useDraft(server.query.data);
 
@@ -45,8 +46,8 @@ export default function PlaybackPage() {
 
   return (
     <AdminPage
-      title="Transcoding"
-      description="Configure how Jellyfin converts media for devices that can’t play it directly."
+      title={t('common.transcoding')}
+      description={t('admin.playback.configureHowJellyfinConvertsMedia')}
       actions={
         <Button
           variant="primary"
@@ -56,13 +57,13 @@ export default function PlaybackPage() {
             server.save.mutate(srv);
           }}
         >
-          Save changes
+          {t('common.saveChanges')}
         </Button>
       }
     >
-      <Card title="Hardware acceleration">
+      <Card title={t('admin.playback.hardwareAcceleration')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Acceleration">
+          <Field label={t('admin.playback.acceleration')}>
             <Select value={hw} onChange={(ev) => e('HardwareAccelerationType', ev.target.value)}>
               {HW_ACCEL.map((h) => (
                 <option key={h.value} value={h.value}>
@@ -72,19 +73,19 @@ export default function PlaybackPage() {
             </Select>
           </Field>
           {hw === 'vaapi' && (
-            <Field label="VA-API device">
+            <Field label={t('admin.playback.vaApiDevice')}>
               <Input className="font-mono" value={enc.VaapiDevice ?? ''} onChange={(ev) => e('VaapiDevice', ev.target.value)} />
             </Field>
           )}
           {hw === 'qsv' && 'QsvDevice' in enc && (
-            <Field label="QSV device" hint="Optional">
+            <Field label={t('admin.playback.qsvDevice')} hint={t('admin.playback.optional')}>
               <Input className="font-mono" value={enc.QsvDevice ?? ''} onChange={(ev) => e('QsvDevice', ev.target.value)} />
             </Field>
           )}
         </div>
         {hw !== 'none' && (
           <>
-            <div className="mt-4 mb-1 text-sm font-medium">Hardware decoding for</div>
+            <div className="mt-4 mb-1 text-sm font-medium">{t('admin.playback.hardwareDecodingFor')}</div>
             <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-4">
               {DECODE_CODECS.map((c) => (
                 <Checkbox
@@ -97,17 +98,17 @@ export default function PlaybackPage() {
             </div>
             <div className="mt-3 divide-y divide-white/5">
               <Switch
-                label="Enable hardware encoding"
+                label={t('admin.playback.enableHardwareEncoding')}
                 checked={enc.EnableHardwareEncoding}
                 onChange={(v) => e('EnableHardwareEncoding', v)}
               />
               <Switch
-                label="Enable 10-bit HEVC hardware decoding"
+                label={t('admin.playback.enable10BitHevcHardware')}
                 checked={enc.EnableDecodingColorDepth10Hevc}
                 onChange={(v) => e('EnableDecodingColorDepth10Hevc', v)}
               />
               <Switch
-                label="Enable 10-bit VP9 hardware decoding"
+                label={t('admin.playback.enable10BitVp9Hardware')}
                 checked={enc.EnableDecodingColorDepth10Vp9}
                 onChange={(v) => e('EnableDecodingColorDepth10Vp9', v)}
               />
@@ -116,26 +117,34 @@ export default function PlaybackPage() {
         )}
       </Card>
 
-      <Card title="Encoding">
+      <Card title={t('admin.playback.encoding')}>
         <div className="divide-y divide-white/5">
-          <Switch label="Allow encoding in HEVC format" checked={enc.AllowHevcEncoding} onChange={(v) => e('AllowHevcEncoding', v)} />
+          <Switch
+            label={t('admin.playback.allowEncodingInHevcFormat')}
+            checked={enc.AllowHevcEncoding}
+            onChange={(v) => e('AllowHevcEncoding', v)}
+          />
           {'AllowAv1Encoding' in enc && (
-            <Switch label="Allow encoding in AV1 format" checked={enc.AllowAv1Encoding} onChange={(v) => e('AllowAv1Encoding', v)} />
+            <Switch
+              label={t('admin.playback.allowEncodingInAv1Format')}
+              checked={enc.AllowAv1Encoding}
+              onChange={(v) => e('AllowAv1Encoding', v)}
+            />
           )}
           <Switch
-            label="Enable tone mapping"
-            description="Convert HDR to SDR when transcoding. Requires a capable GPU or significant CPU."
+            label={t('admin.playback.enableToneMapping')}
+            description={t('admin.playback.convertHdrToSdrWhen')}
             checked={enc.EnableTonemapping}
             onChange={(v) => e('EnableTonemapping', v)}
           />
           <Switch
-            label="Allow subtitle extraction on the fly"
+            label={t('admin.playback.allowSubtitleExtractionOnThe')}
             checked={enc.EnableSubtitleExtraction}
             onChange={(v) => e('EnableSubtitleExtraction', v)}
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Encoding threads" hint="-1 = automatic">
+          <Field label={t('admin.playback.encodingThreads')} hint={t('admin.playback.n1Automatic')}>
             <Input
               type="number"
               min={-1}
@@ -143,22 +152,22 @@ export default function PlaybackPage() {
               onChange={(ev) => e('EncodingThreadCount', num(ev.target.value, -1))}
             />
           </Field>
-          <Field label="Encoder preset">
+          <Field label={t('admin.playback.encoderPreset')}>
             <Select value={enc.EncoderPreset ?? ''} onChange={(ev) => e('EncoderPreset', ev.target.value || null)}>
               {PRESETS.map((p) => (
                 <option key={p} value={p}>
-                  {p || 'Auto'}
+                  {p || t('admin.playback.auto')}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="H.264 CRF" hint="Lower = better quality">
+          <Field label={t('admin.playback.h264Crf')} hint={t('admin.playback.lowerBetterQuality')}>
             <Input type="number" min={0} max={51} value={enc.H264Crf} onChange={(ev) => e('H264Crf', num(ev.target.value, 23))} />
           </Field>
-          <Field label="H.265 CRF">
+          <Field label={t('admin.playback.h265Crf')}>
             <Input type="number" min={0} max={51} value={enc.H265Crf} onChange={(ev) => e('H265Crf', num(ev.target.value, 28))} />
           </Field>
-          <Field label="Audio downmix boost">
+          <Field label={t('admin.playback.audioDownmixBoost')}>
             <Input
               type="number"
               step={0.1}
@@ -170,7 +179,7 @@ export default function PlaybackPage() {
           </Field>
         </div>
         <div className="mt-4">
-          <Field label="Transcode path" hint="Leave empty for the default.">
+          <Field label={t('admin.playback.transcodePath')} hint={t('admin.playback.leaveEmptyForTheDefault')}>
             <Input
               className="font-mono"
               value={enc.TranscodingTempPath ?? ''}
@@ -180,23 +189,23 @@ export default function PlaybackPage() {
         </div>
       </Card>
 
-      <Card title="Throttling & segments">
+      <Card title={t('admin.playback.throttlingSegments')}>
         <div className="divide-y divide-white/5">
           <Switch
-            label="Throttle transcodes"
-            description="Pause transcoding once enough is buffered ahead of the playback position."
+            label={t('admin.playback.throttleTranscodes')}
+            description={t('admin.playback.pauseTranscodingOnceEnoughIs')}
             checked={enc.EnableThrottling}
             onChange={(v) => e('EnableThrottling', v)}
           />
           <Switch
-            label="Delete old segments"
-            description="Remove already-played segments to save disk space."
+            label={t('admin.playback.deleteOldSegments')}
+            description={t('admin.playback.removeAlreadyPlayedSegmentsTo')}
             checked={enc.EnableSegmentDeletion}
             onChange={(v) => e('EnableSegmentDeletion', v)}
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Throttle after (seconds)">
+          <Field label={t('admin.playback.throttleAfterSeconds')}>
             <Input
               type="number"
               min={0}
@@ -204,7 +213,7 @@ export default function PlaybackPage() {
               onChange={(ev) => e('ThrottleDelaySeconds', num(ev.target.value, 180))}
             />
           </Field>
-          <Field label="Keep segments for (seconds)">
+          <Field label={t('admin.playback.keepSegmentsForSeconds')}>
             <Input
               type="number"
               min={0}
@@ -215,12 +224,12 @@ export default function PlaybackPage() {
         </div>
       </Card>
 
-      <Card title="Resume" description="When playback progress is saved and when an item counts as watched.">
+      <Card title={t('admin.playback.resume')} description={t('admin.playback.whenPlaybackProgressIsSaved')}>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Minimum resume %" hint="Below this, progress isn’t saved.">
+          <Field label={t('admin.playback.minimumResume')} hint={t('admin.playback.belowThisProgressIsnT')}>
             <Input type="number" min={0} max={100} value={srv.MinResumePct} onChange={(ev) => s('MinResumePct', num(ev.target.value, 5))} />
           </Field>
-          <Field label="Maximum resume %" hint="Above this, the item is marked watched.">
+          <Field label={t('admin.playback.maximumResume')} hint={t('admin.playback.aboveThisTheItemIs')}>
             <Input
               type="number"
               min={1}
@@ -229,7 +238,7 @@ export default function PlaybackPage() {
               onChange={(ev) => s('MaxResumePct', num(ev.target.value, 90))}
             />
           </Field>
-          <Field label="Minimum duration (seconds)" hint="Shorter items are never resumable.">
+          <Field label={t('admin.playback.minimumDurationSeconds')} hint={t('admin.playback.shorterItemsAreNeverResumable')}>
             <Input
               type="number"
               min={0}
@@ -239,7 +248,7 @@ export default function PlaybackPage() {
           </Field>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="Remote client bitrate limit (Mbps)" hint="0 = no limit">
+          <Field label={t('admin.playback.remoteClientBitrateLimitMbps')} hint={t('admin.playback.n0NoLimit')}>
             <Input
               type="number"
               min={0}

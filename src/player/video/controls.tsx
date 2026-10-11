@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Check, Minus, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { clampStep } from './shared';
+import { t } from '@/i18n';
 
 export function ControlButton({
   label,
@@ -112,7 +113,7 @@ export function DelayControl({
         </PanelIconButton>
         {value !== 0 && (
           <button onClick={() => onChange(0)} className="ml-auto rounded px-2 py-1 text-xs text-white/70 hover:bg-white/10">
-            Reset
+            {t('common.reset')}
           </button>
         )}
       </div>

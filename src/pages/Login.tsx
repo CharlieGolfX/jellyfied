@@ -6,7 +6,7 @@ import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, PublicSystemInfo, QuickConnectResult, UserDto } from '@/api/types';
 import { LAST_SERVER_KEY, useAuth } from '@/auth/AuthProvider';
 import { useGuardedSwitch } from '@/auth/PinPrompt';
-import { useT } from '@/i18n';
+import { t } from '@/i18n';
 import { APP_VERSION, normalizeServerUrl, runtimeConfig } from '@/config';
 import { Logo } from '@/components/layout/Logo';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +31,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
-  const t = useT();
   usePageTitle(t('login.title'));
 
   const [serverUrl, setServerUrl] = useState(initialServer);
@@ -42,28 +41,25 @@ export default function LoginPage() {
 
   const api = useMemo(() => (serverUrl ? new JellyfinApi(serverUrl) : null), [serverUrl]);
 
-  const connect = useCallback(
-    async (url: string) => {
-      setChecking(true);
-      setServerError(null);
-      try {
-        const normalized = normalizeServerUrl(url);
-        const probe = new JellyfinApi(normalized);
-        const result = await probe.get<PublicSystemInfo>('/System/Info/Public');
-        if (!result || typeof result !== 'object' || !result.Id) {
-          throw new Error(t('login.notJellyfin'));
-        }
-        setServerUrl(normalized);
-        setInfo(result);
-      } catch (err) {
-        setInfo(null);
-        setServerError(err instanceof TypeError ? t('login.invalidAddress') : errorMessage(err));
-      } finally {
-        setChecking(false);
+  const connect = useCallback(async (url: string) => {
+    setChecking(true);
+    setServerError(null);
+    try {
+      const normalized = normalizeServerUrl(url);
+      const probe = new JellyfinApi(normalized);
+      const result = await probe.get<PublicSystemInfo>('/System/Info/Public');
+      if (!result || typeof result !== 'object' || !result.Id) {
+        throw new Error(t('login.notJellyfin'));
       }
-    },
-    [t],
-  );
+      setServerUrl(normalized);
+      setInfo(result);
+    } catch (err) {
+      setInfo(null);
+      setServerError(err instanceof TypeError ? t('login.invalidAddress') : errorMessage(err));
+    } finally {
+      setChecking(false);
+    }
+  }, []);
 
   // Only on first mount: check the server that is already known (configured, or used last time).
   // oxlint-disable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
@@ -141,7 +137,6 @@ function ServerStep({
   loading: boolean;
   onSubmit: () => void;
 }) {
-  const t = useT();
   return (
     <form
       onSubmit={(e) => {
@@ -189,7 +184,6 @@ function LoginStep({
   onBack?: () => void;
   onAuthenticated: (r: AuthenticationResult) => void;
 }) {
-  const t = useT();
   const { otherAccounts, forgetAccount } = useAuth();
   const { switchTo, dialog: pinDialog } = useGuardedSwitch();
   // Accounts that are still signed in on this browser can be continued without a password.

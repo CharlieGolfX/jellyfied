@@ -1,60 +1,9 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
-import { ApiError } from '@/api/client';
-import { appPath, BASE_PATH, stripBasePath } from '@/lib/basePath';
-import { AuthProvider } from '@/auth/AuthProvider';
-import { ToastProvider } from '@/components/ui/Toast';
-import { AudioPlayerProvider } from '@/player/AudioPlayerProvider';
-import { SyncPlayProvider } from '@/player/SyncPlayProvider';
-import { RealtimeProvider } from '@/realtime/RealtimeProvider';
-import { VideoSessionProvider } from '@/player/VideoSession';
-import { ready as i18nReady } from '@/i18n';
-import App from './App';
 import './index.css';
-// Applies the saved interface colours before the first render.
+// Applies the saved interface colours before anything is shown.
 import '@/lib/theme';
+import { ready } from '@/i18n';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      refetchOnWindowFocus: false,
-      retry: (count, err) => {
-        if (err instanceof ApiError && err.status >= 400 && err.status < 500) return false;
-        return count < 2;
-      },
-    },
-  },
-});
-
-// Served under a path, but opened outside it (e.g. the bare host name): go to the app.
-if (BASE_PATH && stripBasePath(window.location.pathname) === window.location.pathname) {
-  window.location.replace(appPath('/'));
-}
-
-// The chosen language's text is loaded first, so the page does not start in English and then change.
-await i18nReady;
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename={BASE_PATH || undefined}>
-        <ToastProvider>
-          <AuthProvider>
-            <RealtimeProvider>
-              <AudioPlayerProvider>
-                <VideoSessionProvider>
-                  <SyncPlayProvider>
-                    <App />
-                  </SyncPlayProvider>
-                </VideoSessionProvider>
-              </AudioPlayerProvider>
-            </RealtimeProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
-);
+// The language's text first, then the app: the app's modules may use text while they are being
+// set up, and that has to be in the right language from the start.
+await ready;
+await import('./bootstrap');

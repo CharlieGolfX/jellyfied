@@ -12,6 +12,7 @@ import { EmptyState, ErrorState } from '@/components/ui/States';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { arrangeRows, DEFAULT_HOME_LAYOUT, moveRow, moveRowTo, useHomeLayout } from '@/lib/homeLayout';
 import { usePageTitle } from '@/lib/usePageTitle';
+import { t } from '@/i18n';
 
 const LATEST_EXCLUDED = new Set(['livetv', 'playlists', 'boxsets', 'folders']);
 
@@ -23,7 +24,9 @@ function LatestHub({ view }: { view: BaseItemDto }) {
       : view.CollectionType === 'homevideos' || view.CollectionType === 'photos'
         ? 'landscape'
         : 'poster';
-  return <Hub title={`Recently Added in ${view.Name}`} to={`/library/${view.Id}`} items={data} loading={isLoading} shape={shape} />;
+  return (
+    <Hub title={t('home.recentlyAddedIn', { name: view.Name })} to={`/library/${view.Id}`} items={data} loading={isLoading} shape={shape} />
+  );
 }
 
 /** Dialog to reorder and hide the home page's rows. */
@@ -49,28 +52,30 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
     <Modal
       open
       onClose={onClose}
-      title="Customise home"
+      title={t('home.customiseHome')}
       size="sm"
       footer={
         <>
           {changed && (
             <Button variant="ghost" onClick={() => setLayout(DEFAULT_HOME_LAYOUT)}>
-              Reset
+              {t('common.reset')}
             </Button>
           )}
           <Button variant="primary" onClick={onClose}>
-            Done
+            {t('home.done')}
           </Button>
         </>
       }
     >
       <Switch
-        label="Featured title"
-        description="A large banner with a recently added film or show at the top."
+        label={t('home.featuredTitle')}
+        description={t('home.aLargeBannerWithA')}
         checked={layout.banner}
         onChange={(banner) => setLayout({ banner })}
       />
-      <div className="mt-3 border-t border-white/10 pt-3 text-[11px] font-semibold tracking-wider text-faint uppercase">Rows</div>
+      <div className="mt-3 border-t border-white/10 pt-3 text-[11px] font-semibold tracking-wider text-faint uppercase">
+        {t('home.rows')}
+      </div>
       <ul className="mt-1" ref={listRef}>
         {rows.map((row, i) => (
           <li
@@ -82,7 +87,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
             <span
               // Keyboard users have the arrow buttons; the handle is for mouse and touch.
               aria-hidden
-              title="Drag to reorder"
+              title={t('home.dragToReorder')}
               data-testid="home-row-handle"
               className={clsx('-ml-1 touch-none p-1.5 text-faint hover:text-fg', dragging === row.id ? 'cursor-grabbing' : 'cursor-grab')}
               onPointerDown={(e) => {
@@ -106,7 +111,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
             <button
               onClick={() => setLayout({ order: moveRow(ids, row.id, -1) })}
               disabled={i === 0}
-              aria-label={`Move ${row.label} up`}
+              aria-label={t('home.moveUp', { label: row.label })}
               className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg disabled:opacity-25"
             >
               <ArrowUp size={16} />
@@ -114,7 +119,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
             <button
               onClick={() => setLayout({ order: moveRow(ids, row.id, 1) })}
               disabled={i === rows.length - 1}
-              aria-label={`Move ${row.label} down`}
+              aria-label={t('home.moveDown', { label: row.label })}
               className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg disabled:opacity-25"
             >
               <ArrowDown size={16} />
@@ -127,7 +132,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
 }
 
 export default function HomePage() {
-  usePageTitle('Home');
+  usePageTitle(t('common.home'));
   const views = useUserViews();
   const resume = useResume();
   const nextUp = useNextUp({ limit: 24 });
@@ -154,27 +159,33 @@ export default function HomePage() {
   const libraries = views.data?.Items ?? [];
   if (libraries.length === 0) {
     return (
-      <EmptyState icon={<HomeIcon size={48} strokeWidth={1.25} />} title="No libraries yet">
-        Your account doesn’t have access to any libraries. An administrator can add libraries from the dashboard.
+      <EmptyState icon={<HomeIcon size={48} strokeWidth={1.25} />} title={t('home.noLibrariesYet')}>
+        {t('home.yourAccountDoesnTHave')}
       </EmptyState>
     );
   }
 
   const latest = libraries.filter((v) => !LATEST_EXCLUDED.has(v.CollectionType ?? ''));
   const labels = new Map<string, string>([
-    ['continue', 'Continue Watching'],
-    ['listening', 'Continue Listening'],
-    ...latest.map((v) => [`latest:${v.Id}`, `Recently Added in ${v.Name}`] as [string, string]),
+    ['continue', t('home.continueWatching')],
+    ['listening', t('home.continueListening')],
+    ...latest.map((v) => [`latest:${v.Id}`, t('home.recentlyAddedIn', { name: v.Name })] as [string, string]),
   ]);
   const rows = arrangeRows([...labels.keys()], layout);
 
   const render = (id: string) => {
     if (id === 'continue') {
       return (
-        <Hub key={id} title="Continue Watching" items={continueWatching} loading={resume.isLoading || nextUp.isLoading} shape="landscape" />
+        <Hub
+          key={id}
+          title={t('home.continueWatching')}
+          items={continueWatching}
+          loading={resume.isLoading || nextUp.isLoading}
+          shape="landscape"
+        />
       );
     }
-    if (id === 'listening') return <Hub key={id} title="Continue Listening" items={resumeAudio.data?.Items} shape="square" />;
+    if (id === 'listening') return <Hub key={id} title={t('home.continueListening')} items={resumeAudio.data?.Items} shape="square" />;
     const view = latest.find((v) => `latest:${v.Id}` === id);
     return view ? <LatestHub key={id} view={view} /> : null;
   };
@@ -185,7 +196,7 @@ export default function HomePage() {
       {rows.filter((r) => !r.hidden).map((r) => render(r.id))}
       <div className="flex justify-center pt-2">
         <Button variant="ghost" size="sm" icon={<SlidersHorizontal size={15} />} onClick={() => setCustomizing(true)}>
-          Customise home
+          {t('home.customiseHome')}
         </Button>
       </div>
       {customizing && (

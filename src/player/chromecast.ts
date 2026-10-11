@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { JellyfinApi } from '@/api/client';
 import { isChromium } from '@/api/device';
 import type { BaseItemDto } from '@/api/types';
+import { t } from '@/i18n';
 
 /**
  * Chromecast, through Google's Cast SDK and Jellyfin's own receiver app (the one the official
@@ -127,8 +128,8 @@ function onMessage(_namespace: string, raw: string) {
   if (message.type === 'playbackerror' || message.type === 'connectionerror') {
     errorHandler?.(
       message.type === 'connectionerror'
-        ? 'The Chromecast could not reach the Jellyfin server. It needs an address it can open itself, not localhost.'
-        : 'The Chromecast could not play this.',
+        ? t('player.chromecast.theChromecastCouldNotReach')
+        : t('player.chromecast.theChromecastCouldNotPlay'),
     );
     return;
   }
@@ -277,7 +278,7 @@ function serverVersion(auth: CastAuth): Promise<string | undefined> {
 async function send(auth: CastAuth, command: string, options: Record<string, unknown> = {}): Promise<unknown> {
   const version = await serverVersion(auth);
   const session = win().cast?.framework.CastContext.getInstance().getCurrentSession();
-  if (!session) throw new Error('Not connected to a Chromecast.');
+  if (!session) throw new Error(t('player.chromecast.notConnectedToAChromecast'));
   return session.sendMessage(NAMESPACE, {
     options,
     command,
@@ -306,11 +307,7 @@ export interface CastPlayOptions {
 /** Plays items on the Chromecast. Shows, albums and other containers are expanded by the receiver. */
 export function castPlay(auth: CastAuth, items: BaseItemDto[], opts: CastPlayOptions = {}): Promise<unknown> {
   if (isLocalOnlyAddress(castServerAddress(auth.api.serverUrl))) {
-    return Promise.reject(
-      new Error(
-        'A Chromecast can’t reach a server at “localhost”. Open Jellyplex through an address other devices on your network can use.',
-      ),
-    );
+    return Promise.reject(new Error(t('player.chromecast.aChromecastCanTReach')));
   }
   return send(auth, opts.queue ?? (opts.shuffle ? 'Shuffle' : 'PlayNow'), {
     // The receiver looks the items up itself, so it only needs to know which ones.

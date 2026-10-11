@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage } from '@/components/ui/Toast';
+import { t } from '@/i18n';
 
 /** Browses the server's filesystem to pick a media folder. */
 export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (path: string) => void }) {
@@ -59,12 +60,12 @@ export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose
     <Modal
       open={open}
       onClose={onClose}
-      title="Select folder"
+      title={t('admin.folderPicker.selectFolder')}
       size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -74,7 +75,7 @@ export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose
               onClose();
             }}
           >
-            Select
+            {t('admin.folderPicker.select')}
           </Button>
         </>
       }
@@ -87,12 +88,19 @@ export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose
             if (typed.trim()) setPath(typed.trim());
           }}
         >
-          <Button size="icon" variant="secondary" onClick={goUp} disabled={!path} aria-label="Parent folder" className="rounded-md">
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={goUp}
+            disabled={!path}
+            aria-label={t('admin.folderPicker.parentFolder')}
+            className="rounded-md"
+          >
             <ArrowUp size={16} />
           </Button>
           <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="/media/movies" className="font-mono" />
         </form>
-        <p className="text-xs text-faint">Paths are on the Jellyfin server (inside its container, if it runs in Docker).</p>
+        <p className="text-xs text-faint">{t('admin.folderPicker.pathsAreOnTheJellyfin')}</p>
         <div className="h-72 overflow-y-auto rounded-md bg-black/25 p-1 ring-1 ring-white/5">
           {listing.isLoading ? (
             <div className="flex h-full items-center justify-center text-accent">
@@ -101,7 +109,7 @@ export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose
           ) : listing.error ? (
             <p className="p-3 text-sm text-danger">{errorMessage(listing.error)}</p>
           ) : listing.data?.length === 0 ? (
-            <p className="p-3 text-sm text-muted">No subfolders.</p>
+            <p className="p-3 text-sm text-muted">{t('admin.folderPicker.noSubfolders')}</p>
           ) : (
             listing.data?.map((entry) => (
               <button

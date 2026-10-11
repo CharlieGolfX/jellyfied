@@ -137,7 +137,7 @@ describe('plural', () => {
   it('picks the word by count', () => {
     expect(plural(1, 'item')).toBe('1 item');
     expect(plural(0, 'item')).toBe('0 items');
-    expect(plural(2, 'library', 'libraries')).toBe('2 libraries');
+    expect(plural(2340, 'episodeTitle')).toBe(`${(2340).toLocaleString()} Episodes`);
   });
 });
 

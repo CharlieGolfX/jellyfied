@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import { AlertTriangle } from 'lucide-react';
-import { useState, type ImgHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { errorMessage } from './Toast';
 import { Button } from './Button';
+import { t } from '@/i18n';
 
 export function ErrorState({ error, onRetry, className }: { error: unknown; onRetry?: () => void; className?: string }) {
   return (
@@ -11,7 +12,7 @@ export function ErrorState({ error, onRetry, className }: { error: unknown; onRe
       <p className="max-w-md text-sm text-muted">{errorMessage(error)}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          Try again
+          {t('ui.states.tryAgain')}
         </Button>
       )}
     </div>
@@ -48,10 +49,23 @@ export function Img({ src, fallback, className, alt = '', ...rest }: ImgHTMLAttr
   // Reset when the source changes.
   if (state.src !== src) setState({ src: src as string | undefined, loaded: false, failed: false });
 
+  // An image that is taken off the page stops loading. Browsers do not all do that by themselves,
+  // and a queue of posters nobody is looking at any more holds up the requests that matter.
+  const ref = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const img = ref.current;
+    return () => {
+      if (img && !img.isConnected && !img.complete) img.removeAttribute('src');
+    };
+  }, []);
+
   if (!src || state.failed) return <>{fallback ?? null}</>;
   return (
     <img
+      ref={ref}
       src={src}
+      // Artwork waits for data: the page's own requests go first when connections are scarce.
+      fetchPriority="low"
       alt={alt}
       loading="lazy"
       decoding="async"

@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import { useLatest } from '@/lib/useLatest';
+import { t } from '@/i18n';
 
 interface ModalProps {
   open: boolean;
@@ -55,7 +56,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         {title !== undefined && (
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <h2 className="text-lg font-semibold">{title}</h2>
-            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t('common.close')}>
               <X size={18} />
             </Button>
           </div>
@@ -89,7 +90,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>
             {confirmLabel}

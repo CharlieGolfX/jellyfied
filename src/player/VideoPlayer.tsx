@@ -1,24 +1,6 @@
 import clsx from 'clsx';
 import Hls from 'hls.js';
-import {
-  Airplay,
-  ArrowLeft,
-  Cast,
-  ChevronDown,
-  Maximize,
-  Minimize,
-  Pause,
-  PictureInPicture2,
-  Play,
-  RotateCcw,
-  RotateCw,
-  SkipForward,
-  Users,
-  Volume1,
-  Volume2,
-  VolumeX,
-  X,
-} from 'lucide-react';
+import { Airplay, Cast, PictureInPicture2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -28,13 +10,12 @@ import type { ItemsResult } from '@/api/types';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage, useToast } from '@/components/ui/Toast';
-import { episodeLabel, formatClock, secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { episodeLabel, secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { registerActiveVideo, type ActiveVideo } from './activePlayer';
 import { audioDelaySupported, getLastAudioDelay, hasAudioGraph, releaseAudioDelay, setAudioDelay as applyAudioDelay } from './audioDelay';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { castPlay, chromecastSupported, connectChromecast, useChromecast } from './chromecast';
-import { SeekBar } from './SeekBar';
 import { useSeekSteps } from './seekSteps';
 import { PlaybackInfo } from './PlaybackInfo';
 import { pictureStyle, readPictureFit, storePictureFit, type PictureAspect, type PictureFit } from './picture';
@@ -48,7 +29,8 @@ import { ControlButton } from './video/controls';
 import { EndsAt, SleepIndicator } from './video/indicators';
 import { ChaptersMenu, PictureMenu, SettingsMenu, SubtitlesMenu } from './video/menus';
 import { MiniOverlay } from './video/MiniOverlay';
-import { pipSupported, readNumber, SEGMENT_LABELS, TRICKPLAY_PREVIEW_WIDTH, VOLUME_KEY, type PlayerPanel } from './video/shared';
+import { ControlBar, TopBar } from './video/PlayerBars';
+import { pipSupported, readNumber, SEGMENT_LABELS, VOLUME_KEY, type PlayerPanel } from './video/shared';
 import { ShortcutsHelp } from './video/ShortcutsHelp';
 import { UpNextCard } from './video/UpNextCard';
 import { useAirPlay } from './video/useAirPlay';
@@ -66,6 +48,7 @@ import { usePlayerShortcuts } from './video/usePlayerShortcuts';
 import { useTouchGestures } from './video/useTouchGestures';
 import { useVideoMediaSession } from './video/useVideoMediaSession';
 import { useLatest } from '@/lib/useLatest';
+import { t } from '@/i18n';
 
 /** App-level player: renders the current video session full screen or as the mini player. */
 export default function GlobalVideoPlayer() {
@@ -285,7 +268,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       }
     }
     if (!applyAudioDelay(video, audioDelay) && audioDelay !== 0) {
-      toast.error('Audio delay isn’t available in this browser.');
+      toast.error(t('player.videoPlayer.audioDelayIsnTAvailable'));
       setAudioDelay(0);
     }
   }, [audioDelay, audioDelayAvailable, api, load, maxBitrate, toast, streamRef, hlsRef]);
@@ -319,7 +302,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     () =>
       onSleepTimerFired(() => {
         videoRef.current?.pause();
-        toast.info('Sleep timer: playback paused');
+        toast.info(t('player.videoPlayer.sleepTimerPlaybackPaused'));
       }),
     [toast],
   );
@@ -336,11 +319,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   }, [pauseAudio]);
 
   const seekTo = useCallback(
-    (t: number) => {
+    (entry: number) => {
       const video = videoRef.current;
       if (!video) return;
       const max = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity;
-      video.currentTime = Math.min(Math.max(0, t), max - 0.25);
+      video.currentTime = Math.min(Math.max(0, entry), max - 0.25);
       setCurrentTime(video.currentTime);
     },
     [setCurrentTime],
@@ -413,7 +396,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       subtitleStreamIndex: s && s.subIndex >= 0 ? s.subIndex : undefined,
     })
       .then(() => {
-        toast.info(`Playing on ${cast.deviceName}`);
+        toast.info(t('player.videoPlayer.playingOn', { deviceName: cast.deviceName }));
         exit();
       })
       .catch((err: unknown) => toast.error(err));
@@ -522,7 +505,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const inOutro = activeSegment?.Type === 'Outro';
   const showUpNext = Boolean(nextItem) && !upNextDismissed && duration > 60 && (remaining <= 25 || inOutro) && !error;
   const chapterMarks = useMemo(
-    () => (item?.Chapters ?? []).map((c) => ticksToSeconds(c.StartPositionTicks)).filter((t) => t > 0),
+    () => (item?.Chapters ?? []).map((c) => ticksToSeconds(c.StartPositionTicks)).filter((seconds) => seconds > 0),
     [item?.Chapters],
   );
 
@@ -531,7 +514,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       (item?.Chapters ?? []).map((c, index) => ({
         index,
         start: ticksToSeconds(c.StartPositionTicks),
-        name: c.Name || `Chapter ${index + 1}`,
+        name: c.Name || t('player.chapterNumber', { number: index + 1 }),
         tag: c.ImageTag,
       })),
     [item?.Chapters],
@@ -568,7 +551,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       <div className={clsx(frameClass, 'flex flex-col items-center justify-center gap-3 p-4 text-center')}>
         <p className="text-sm text-muted">{errorMessage(itemError)}</p>
         <button onClick={exit} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
-          {isFull ? 'Go back' : 'Close'}
+          {isFull ? t('player.videoPlayer.goBack') : t('common.close')}
         </button>
       </div>
     );
@@ -581,7 +564,6 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       : item?.ProductionYear
         ? String(item.ProductionYear)
         : '';
-  const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
     <div
@@ -638,15 +620,15 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
           <p className={clsx('max-w-lg text-fg', !isFull && 'line-clamp-3')}>{error}</p>
           <div className="flex flex-wrap justify-center gap-2">
             <button onClick={retry} className="rounded-md bg-accent px-4 py-2 font-semibold text-accent-ink hover:bg-accent-hover">
-              Retry
+              {t('player.videoPlayer.retry')}
             </button>
             {isFull && stream?.method !== 'Transcode' && (
               <button onClick={retryTranscode} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
-                Try transcoding
+                {t('player.videoPlayer.tryTranscoding')}
               </button>
             )}
             <button onClick={exit} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
-              {isFull ? 'Go back' : 'Close'}
+              {isFull ? t('player.videoPlayer.goBack') : t('common.close')}
             </button>
           </div>
         </div>
@@ -705,205 +687,137 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             />
           )}
 
-          {/* Top bar */}
-          <div
-            className={clsx(
-              'absolute inset-x-0 top-0 z-10 flex items-center gap-4 bg-gradient-to-b from-black/80 to-transparent px-4 pt-4 pb-12 transition-opacity duration-300 sm:px-6',
-              showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
-            )}
+          <TopBar
+            visible={showControls}
+            title={title ?? ''}
+            subtitle={subtitle}
+            group={inSync ? sync.group : null}
+            onMinimize={minimize}
+            onExit={exit}
+          />
+
+          <ControlBar
+            visible={showControls}
+            playing={playing}
+            currentTime={currentTime}
+            duration={duration}
+            buffered={buffered}
+            markers={chapterMarks}
+            renderPreview={renderTrickplay}
+            seekSteps={seekSteps}
+            muted={muted}
+            volume={volume}
+            isFullscreen={isFullscreen}
+            onSeek={seekTo}
+            onTogglePlay={togglePlay}
+            onSkip={skip}
+            onNext={nextId ? goNext : undefined}
+            onMutedChange={setMuted}
+            onVolumeChange={setVolume}
+            onToggleFullscreen={toggleFullscreen}
+            indicators={
+              <>
+                <SleepIndicator />
+                {duration > 0 && remaining > 0 && <EndsAt remaining={remaining} speed={inSync ? 1 : speed} />}
+                {speed !== 1 && !inSync && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
+                {stream && (
+                  <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">
+                    {stream.method === 'DirectPlay'
+                      ? t('player.videoPlayer.directPlay')
+                      : stream.method === 'DirectStream'
+                        ? t('player.videoPlayer.directStream')
+                        : t('player.videoPlayer.transcode')}
+                  </span>
+                )}
+              </>
+            }
           >
-            <button
-              onClick={minimize}
-              className="rounded-full p-2 text-white hover:bg-white/15"
-              aria-label="Back"
-              title="Back (keeps playing in the mini player)"
-            >
-              <ArrowLeft size={26} />
-            </button>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-lg font-semibold">{title}</div>
-              {subtitle && <div className="truncate text-sm text-white/70">{subtitle}</div>}
-            </div>
-            {inSync && sync.group && (
-              <span
-                data-testid="syncplay-badge"
-                className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent sm:flex"
-                title={`SyncPlay: watching with ${sync.group.Participants.join(', ')}`}
+            {chapters.length > 1 && (
+              <ChaptersMenu
+                open={panel === 'chapters'}
+                onToggle={() => setPanel((p) => (p === 'chapters' ? 'none' : 'chapters'))}
+                itemId={itemId}
+                chapters={chapters}
+                current={currentChapter}
+                onSelect={(c) => {
+                  seekTo(c.start);
+                  setPanel('none');
+                }}
+              />
+            )}
+            <SubtitlesMenu
+              open={panel === 'subtitles'}
+              onToggle={() => setPanel((p) => (p === 'subtitles' ? 'none' : 'subtitles'))}
+              stream={stream}
+              subtitleStreams={subtitleStreams}
+              onSelect={changeSubtitle}
+              kind={subtitleKind}
+              delay={subtitleDelay}
+              onDelayChange={setSubtitleDelay}
+            />
+            <PictureMenu
+              open={panel === 'picture'}
+              onToggle={() => setPanel((p) => (p === 'picture' ? 'none' : 'picture'))}
+              fit={pictureFit}
+              aspect={pictureAspect}
+              zoom={pictureZoom}
+              changed={pictureChanged}
+              onFitChange={changePictureFit}
+              onAspectChange={setPictureAspect}
+              onZoomChange={setPictureZoom}
+            />
+            <SettingsMenu
+              open={panel === 'settings'}
+              onToggle={() => setPanel((p) => (p === 'settings' ? 'none' : 'settings'))}
+              stream={stream}
+              audioStreams={audioStreams}
+              onAudioSelect={changeAudio}
+              audioDelay={audioDelay}
+              onAudioDelayChange={setAudioDelay}
+              audioDelayAvailable={audioDelayAvailable}
+              inSync={inSync}
+              speed={speed}
+              onSpeedChange={setSpeed}
+              maxBitrate={maxBitrate}
+              onQualityChange={changeQuality}
+              showInfo={showInfo}
+              onToggleInfo={() => {
+                setShowInfo((v) => !v);
+                setPanel('none');
+              }}
+              onShowShortcuts={() => {
+                setShowShortcuts(true);
+                setPanel('none');
+              }}
+            />
+            {airPlay.available && (
+              <ControlButton
+                label={airPlay.active ? t('player.videoPlayer.airplayPlayingOnAnotherDevice') : t('player.videoPlayer.airplay')}
+                onClick={airPlay.pick}
+                active={airPlay.active}
               >
-                <Users size={15} /> {sync.group.GroupName} · {sync.group.Participants.length}
-              </span>
+                <Airplay size={24} />
+              </ControlButton>
             )}
-            <button
-              onClick={minimize}
-              className="rounded-full p-2 text-white hover:bg-white/15"
-              aria-label="Minimize player"
-              title="Minimize player"
-            >
-              <ChevronDown size={26} />
-            </button>
-            <button
-              onClick={exit}
-              className="rounded-full p-2 text-white hover:bg-white/15"
-              aria-label="Stop playback"
-              title="Stop playback"
-            >
-              <X size={26} />
-            </button>
-          </div>
-
-          {/* Bottom controls */}
-          <div
-            className={clsx(
-              'absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-4 pt-16 pb-4 transition-opacity duration-300 sm:px-6',
-              showControls ? 'opacity-100' : 'pointer-events-none opacity-0',
+            {chromecastSupported && !inSync && (
+              <ControlButton
+                label={t('player.videoPlayer.playOnAChromecast')}
+                onClick={() => void connectChromecast()}
+                active={cast.status === 'loading'}
+              >
+                <Cast size={24} />
+              </ControlButton>
             )}
-          >
-            <div className="flex items-center gap-3 text-sm text-white/80 tabular-nums">
-              <span className="w-16">{formatClock(currentTime)}</span>
-              <SeekBar
-                className="flex-1"
-                current={currentTime}
-                duration={duration}
-                buffered={buffered}
-                onSeek={seekTo}
-                markers={chapterMarks}
-                renderPreview={renderTrickplay}
-                previewWidth={renderTrickplay ? TRICKPLAY_PREVIEW_WIDTH : undefined}
-              />
-              <span className="w-16 text-right">-{formatClock(Math.max(0, remaining))}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1 sm:gap-2">
-              <ControlButton label={playing ? 'Pause' : 'Play'} onClick={togglePlay}>
-                {playing ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+            {pipSupported && (
+              <ControlButton
+                label={inPip ? t('player.videoPlayer.exitPictureInPicture') : t('player.videoPlayer.pictureInPicture')}
+                onClick={togglePip}
+                active={inPip}
+              >
+                <PictureInPicture2 size={24} />
               </ControlButton>
-              <ControlButton label={`Back ${seekSteps.back} seconds`} onClick={() => skip(-seekSteps.back)}>
-                <span className="relative">
-                  <RotateCcw size={24} />
-                  <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{seekSteps.back}</span>
-                </span>
-              </ControlButton>
-              <ControlButton label={`Forward ${seekSteps.forward} seconds`} onClick={() => skip(seekSteps.forward)}>
-                <span className="relative">
-                  <RotateCw size={24} />
-                  <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">{seekSteps.forward}</span>
-                </span>
-              </ControlButton>
-              {nextId && (
-                <ControlButton label="Next" onClick={goNext}>
-                  <SkipForward size={24} fill="currentColor" />
-                </ControlButton>
-              )}
-              <div className="group/vol ml-1 flex items-center">
-                <ControlButton label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((m) => !m)}>
-                  <VolumeIcon size={24} />
-                </ControlButton>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.02}
-                  value={muted ? 0 : volume}
-                  onChange={(e) => {
-                    setVolume(Number(e.target.value));
-                    setMuted(false);
-                  }}
-                  className="w-0 opacity-0 transition-all group-hover/vol:w-24 group-hover/vol:opacity-100 focus:w-24 focus:opacity-100"
-                  aria-label="Volume"
-                />
-              </div>
-
-              <div className="flex-1" />
-
-              <SleepIndicator />
-              {duration > 0 && remaining > 0 && <EndsAt remaining={remaining} speed={inSync ? 1 : speed} />}
-              {speed !== 1 && !inSync && <span className="mr-1 text-sm font-semibold text-accent tabular-nums">{speed}×</span>}
-              {stream && (
-                <span className="mr-2 hidden rounded border border-white/20 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/60 uppercase sm:inline">
-                  {stream.method === 'DirectPlay' ? 'Direct Play' : stream.method === 'DirectStream' ? 'Direct Stream' : 'Transcode'}
-                </span>
-              )}
-              {chapters.length > 1 && (
-                <ChaptersMenu
-                  open={panel === 'chapters'}
-                  onToggle={() => setPanel((p) => (p === 'chapters' ? 'none' : 'chapters'))}
-                  itemId={itemId}
-                  chapters={chapters}
-                  current={currentChapter}
-                  onSelect={(c) => {
-                    seekTo(c.start);
-                    setPanel('none');
-                  }}
-                />
-              )}
-              <SubtitlesMenu
-                open={panel === 'subtitles'}
-                onToggle={() => setPanel((p) => (p === 'subtitles' ? 'none' : 'subtitles'))}
-                stream={stream}
-                subtitleStreams={subtitleStreams}
-                onSelect={changeSubtitle}
-                kind={subtitleKind}
-                delay={subtitleDelay}
-                onDelayChange={setSubtitleDelay}
-              />
-              <PictureMenu
-                open={panel === 'picture'}
-                onToggle={() => setPanel((p) => (p === 'picture' ? 'none' : 'picture'))}
-                fit={pictureFit}
-                aspect={pictureAspect}
-                zoom={pictureZoom}
-                changed={pictureChanged}
-                onFitChange={changePictureFit}
-                onAspectChange={setPictureAspect}
-                onZoomChange={setPictureZoom}
-              />
-              <SettingsMenu
-                open={panel === 'settings'}
-                onToggle={() => setPanel((p) => (p === 'settings' ? 'none' : 'settings'))}
-                stream={stream}
-                audioStreams={audioStreams}
-                onAudioSelect={changeAudio}
-                audioDelay={audioDelay}
-                onAudioDelayChange={setAudioDelay}
-                audioDelayAvailable={audioDelayAvailable}
-                inSync={inSync}
-                speed={speed}
-                onSpeedChange={setSpeed}
-                maxBitrate={maxBitrate}
-                onQualityChange={changeQuality}
-                showInfo={showInfo}
-                onToggleInfo={() => {
-                  setShowInfo((v) => !v);
-                  setPanel('none');
-                }}
-                onShowShortcuts={() => {
-                  setShowShortcuts(true);
-                  setPanel('none');
-                }}
-              />
-              {airPlay.available && (
-                <ControlButton
-                  label={airPlay.active ? 'AirPlay (playing on another device)' : 'AirPlay'}
-                  onClick={airPlay.pick}
-                  active={airPlay.active}
-                >
-                  <Airplay size={24} />
-                </ControlButton>
-              )}
-              {chromecastSupported && !inSync && (
-                <ControlButton label="Play on a Chromecast" onClick={() => void connectChromecast()} active={cast.status === 'loading'}>
-                  <Cast size={24} />
-                </ControlButton>
-              )}
-              {pipSupported && (
-                <ControlButton label={inPip ? 'Exit picture-in-picture' : 'Picture-in-picture'} onClick={togglePip} active={inPip}>
-                  <PictureInPicture2 size={24} />
-                </ControlButton>
-              )}
-              <ControlButton label={isFullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
-                {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
-              </ControlButton>
-            </div>
-          </div>
+            )}
+          </ControlBar>
         </>
       )}
 

@@ -29,3 +29,16 @@ export function onPrefPulled(key: string, listener: () => void): () => void {
   set.add(listener);
   return () => set.delete(listener);
 }
+
+const flushers = new Set<() => Promise<void>>();
+
+/** The part that sends preferences to the account says how to send what is waiting right away. */
+export function onFlushPrefs(flush: () => Promise<void>): () => void {
+  flushers.add(flush);
+  return () => flushers.delete(flush);
+}
+
+/** Sends changed preferences to the account now instead of in a moment. For just before the page is reloaded. */
+export async function flushPrefs(): Promise<void> {
+  await Promise.all(Array.from(flushers, (flush) => flush().catch(() => {})));
+}

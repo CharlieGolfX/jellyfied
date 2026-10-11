@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { format, languageName, matchLanguage, t } from './index';
+import { format, languageName, matchLanguage, t, tRich } from './index';
 import en from './locales/en.json';
 
 const catalogue = {
@@ -34,6 +34,16 @@ describe('t', () => {
     expect(t('login.signIn')).toBe('Sign in');
     expect(t('userMenu.switchTo', { name: 'Ada' })).toBe('Switch to Ada');
     expect(t('settings.language.count', { count: 1 })).toBe('1 language is available.');
+  });
+});
+
+describe('tRich', () => {
+  it('puts an element where its placeholder is and keeps the sentence around it', () => {
+    const parts = tRich('admin.userEdit.deleteConfirm', { name: 'ADA' }) as unknown[];
+    expect(parts).toHaveLength(3);
+    expect(parts[0]).toBe('Delete ');
+    expect((parts[1] as { props: { children: unknown } }).props.children).toBe('ADA');
+    expect(String(parts[2])).toContain('watch history');
   });
 });
 

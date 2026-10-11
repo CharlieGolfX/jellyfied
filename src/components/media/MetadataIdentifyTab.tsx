@@ -10,6 +10,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { toNumber } from './MetadataDetailsTab';
 import type { RemoteSearchResult } from './metadataEditorTypes';
+import { t } from '@/i18n';
 
 // ---------------------------------------------------------------------------
 // Identify
@@ -39,7 +40,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
     mutationFn: (result: RemoteSearchResult) =>
       api.post(`/Items/RemoteSearch/Apply/${item.Id}`, result, { replaceAllImages: replaceImages }),
     onSuccess: () => {
-      toast.success('Item identified. Its metadata is being refreshed.');
+      toast.success(t('media.metadataIdentifyTab.itemIdentifiedItsMetadataIs'));
       // The server refreshes the item in the background; pick the changes up shortly after.
       window.setTimeout(() => void qc.invalidateQueries({ queryKey: [MEDIA] }), 2500);
       void qc.invalidateQueries({ queryKey: [MEDIA] });
@@ -65,7 +66,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
       </div>
     );
   } else if (results && results.length === 0) {
-    body = <p className="py-10 text-center text-sm text-faint">No matches found. Try a different title or leave the year empty.</p>;
+    body = <p className="py-10 text-center text-sm text-faint">{t('media.metadataIdentifyTab.noMatchesFoundTryA')}</p>;
   } else if (results) {
     body = (
       <div className="grid gap-3 sm:grid-cols-2">
@@ -93,9 +94,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
-        Search the server&apos;s metadata providers and pick the right match. The item&apos;s metadata is then replaced with the match.
-      </p>
+      <p className="text-sm text-muted">{t('media.metadataIdentifyTab.searchTheServerSMetadata')}</p>
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
@@ -103,14 +102,14 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
           if (name.trim()) search.mutate();
         }}
       >
-        <Field label="Title" className="min-w-48 flex-1">
+        <Field label={t('common.title')} className="min-w-48 flex-1">
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Year" className="w-28">
+        <Field label={t('common.year')} className="w-28">
           <Input value={year} onChange={(e) => setYear(e.target.value)} inputMode="numeric" />
         </Field>
         <Button type="submit" variant="primary" icon={<Search size={16} />} disabled={!name.trim()} loading={search.isPending}>
-          Search
+          {t('common.search')}
         </Button>
       </form>
       <label className="flex items-center gap-2 text-sm text-muted">
@@ -120,9 +119,9 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
           checked={replaceImages}
           onChange={(e) => setReplaceImages(e.target.checked)}
         />
-        Also replace the existing images
+        {t('media.metadataIdentifyTab.alsoReplaceTheExistingImages')}
       </label>
-      {apply.isPending && <p className="text-sm text-muted">Applying match…</p>}
+      {apply.isPending && <p className="text-sm text-muted">{t('media.metadataIdentifyTab.applyingMatch')}</p>}
       {body}
     </div>
   );

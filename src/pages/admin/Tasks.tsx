@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatRelative } from '@/lib/format';
 import { Card } from '@/pages/Settings';
 import { AdminPage, StatusPill } from './shared';
+import { t } from '@/i18n';
 
 function duration(start?: string, end?: string): string {
   if (!start || !end) return '';
@@ -41,8 +42,8 @@ function TaskRow({ task }: { task: TaskInfo }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-medium">{task.Name}</span>
-          {last?.Status === 'Failed' && <StatusPill tone="red">Failed</StatusPill>}
-          {last?.Status === 'Cancelled' && <StatusPill tone="gray">Cancelled</StatusPill>}
+          {last?.Status === 'Failed' && <StatusPill tone="red">{t('admin.tasks.failed')}</StatusPill>}
+          {last?.Status === 'Cancelled' && <StatusPill tone="gray">{t('admin.tasks.cancelled')}</StatusPill>}
         </div>
         {task.Description && <div className="truncate text-sm text-muted">{task.Description}</div>}
         {runningNow ? (
@@ -51,14 +52,19 @@ function TaskRow({ task }: { task: TaskInfo }) {
               <div className="h-full bg-accent transition-all" style={{ width: `${task.CurrentProgressPercentage ?? 0}%` }} />
             </div>
             <span className="text-xs text-muted tabular-nums">
-              {task.State === 'Cancelling' ? 'Stopping…' : `${Math.round(task.CurrentProgressPercentage ?? 0)}%`}
+              {task.State === 'Cancelling' ? t('admin.tasks.stopping') : `${Math.round(task.CurrentProgressPercentage ?? 0)}%`}
             </span>
           </div>
         ) : (
           <div className="mt-0.5 text-xs text-faint">
             {last?.EndTimeUtc
-              ? `Last ran ${formatRelative(last.EndTimeUtc)}${duration(last.StartTimeUtc, last.EndTimeUtc) ? `, took ${duration(last.StartTimeUtc, last.EndTimeUtc)}` : ''}`
-              : 'Never run'}
+              ? duration(last.StartTimeUtc, last.EndTimeUtc)
+                ? t('admin.tasks.lastRanTook', {
+                    when: formatRelative(last.EndTimeUtc),
+                    took: duration(last.StartTimeUtc, last.EndTimeUtc),
+                  })
+                : t('admin.tasks.lastRan', { when: formatRelative(last.EndTimeUtc) })
+              : t('admin.tasks.neverRun')}
             {last?.Status === 'Failed' && last.ErrorMessage ? ` — ${last.ErrorMessage}` : ''}
           </div>
         )}
@@ -72,11 +78,11 @@ function TaskRow({ task }: { task: TaskInfo }) {
           disabled={task.State === 'Cancelling'}
           onClick={() => stop.mutate()}
         >
-          Stop
+          {t('admin.tasks.stop')}
         </Button>
       ) : (
         <Button size="sm" icon={<Play size={14} />} loading={run.isPending} onClick={() => run.mutate()}>
-          Run
+          {t('admin.tasks.run')}
         </Button>
       )}
     </div>
@@ -88,20 +94,20 @@ export default function TasksPage() {
   const tasks = useQuery({
     queryKey: ['admin', 'tasks'],
     queryFn: () => api.get<TaskInfo[]>('/ScheduledTasks', { isHidden: false }),
-    refetchInterval: (q) => ((q.state.data ?? []).some((t) => t.State !== 'Idle') ? 1500 : 10_000),
+    refetchInterval: (q) => ((q.state.data ?? []).some((entry) => entry.State !== 'Idle') ? 1500 : 10_000),
   });
 
   if (tasks.isLoading) return <PageSpinner />;
   if (tasks.error) return <ErrorState error={tasks.error} onRetry={() => tasks.refetch()} />;
 
   const groups = new Map<string, TaskInfo[]>();
-  for (const t of tasks.data ?? []) {
-    const key = t.Category || 'Other';
-    groups.set(key, [...(groups.get(key) ?? []), t]);
+  for (const entry of tasks.data ?? []) {
+    const key = entry.Category || t('admin.tasks.otherCategory');
+    groups.set(key, [...(groups.get(key) ?? []), entry]);
   }
 
   return (
-    <AdminPage title="Scheduled Tasks" description="Maintenance jobs that Jellyfin runs on a schedule. You can also run them manually.">
+    <AdminPage title={t('admin.tasks.scheduledTasks')} description={t('admin.tasks.maintenanceJobsThatJellyfinRuns')}>
       {[...groups.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([category, list]) => (
@@ -109,8 +115,8 @@ export default function TasksPage() {
             <div className="-my-3 divide-y divide-white/5">
               {list
                 .sort((a, b) => a.Name.localeCompare(b.Name))
-                .map((t) => (
-                  <TaskRow key={t.Id} task={t} />
+                .map((entry) => (
+                  <TaskRow key={entry.Id} task={entry} />
                 ))}
             </div>
           </Card>

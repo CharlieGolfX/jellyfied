@@ -28,9 +28,16 @@ test.describe('a large library', () => {
     await expect(page.getByText('260 items')).toBeVisible();
     await expect(card(page, 'O film 01')).toBeAttached();
 
-    // The titles before the letter are loaded above it, without moving what is on screen.
+    // The titles before the letter are not fetched until someone scrolls up towards them…
+    await expect(page.getByTestId('earlier-titles')).toBeVisible();
+    await expect(card(page, 'L film 10')).toHaveCount(0);
+    // …and then they are added above, without moving what is on screen.
+    // (A moment later, as a person would: the page's own scrolling to the letter does not count.)
+    await page.waitForTimeout(400);
+    await page.getByTestId('earlier-titles').hover();
+    await page.mouse.wheel(0, -30);
     await expect(card(page, 'M film 10')).toBeAttached();
-    await expect(card(page, 'N film 01')).toBeInViewport({ ratio: 1 });
+    await expect(card(page, 'N film 01')).toBeInViewport();
     await expect.poll(() => isAbove(page, 'L film 10', 'N film 01')).toBe(true);
     // Rows are whole, as in the full list: the 130 titles before N fill their rows, and N follows on.
     const { columns, before } = await page.evaluate(() => {
@@ -43,12 +50,17 @@ test.describe('a large library', () => {
       };
     });
     expect(before).toBe(130 % columns);
-    // The bar is still there to pick another letter, and the letter's row is right under it.
-    const bar = page.getByTestId('alphabet-bar');
-    await expect(bar).toBeInViewport({ ratio: 1 });
-    const gap = (await card(page, 'N film 01').boundingBox())!.y - (await bar.boundingBox())!.y - (await bar.boundingBox())!.height;
-    expect(gap).toBeGreaterThanOrEqual(0);
-    expect(gap).toBeLessThan(80);
+    // The tools are still there: another letter, or a filter, which keeps the place in the alphabet.
+    await expect(page.getByRole('button', { name: 'Year', exact: true })).toBeInViewport({ ratio: 1 });
+    await page.getByRole('button', { name: 'Year', exact: true }).click();
+    await page.getByRole('menuitemcheckbox', { name: '2001' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/letter=N.*year=2001|year=2001.*letter=N/);
+    await expect(page.getByText('87 items')).toBeVisible();
+    await expect(page.locator('#main-scroll .grid a[aria-label^="N film"]').first()).toBeInViewport();
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByText('260 items')).toBeVisible();
+    await expect(page.getByTestId('alphabet-bar')).toBeInViewport({ ratio: 1 });
 
     // The same letter again goes back to the start.
     await page.getByTestId('alphabet-bar').getByRole('button', { name: 'N', exact: true }).click();
@@ -61,8 +73,65 @@ test.describe('a large library', () => {
     await expect(card(page, 'Z film 10')).toBeVisible();
     await page.getByTestId('alphabet-bar').getByRole('button', { name: 'C', exact: true }).click();
     await expect(card(page, 'C film 10')).toBeInViewport({ ratio: 1 });
+    await page.getByRole('button', { name: 'Earlier titles' }).click();
     await expect(card(page, 'D film 01')).toBeAttached();
     await expect.poll(() => isAbove(page, 'E film 01', 'C film 10')).toBe(true);
+  });
+
+  test('only the rows near the screen are in the page, however long the list', async ({ page }) => {
+    const grid = page.locator('#main-scroll .grid');
+    await expect(grid).toHaveAttribute('data-total', '100');
+    const mounted = () => grid.locator('a[aria-label]').count();
+    expect(await mounted()).toBeLessThan(80);
+
+    // Scrolling on loads the rest of the library; the page still only holds what is near the screen.
+    for (let i = 0; i < 12 && (await grid.getAttribute('data-total')) !== '260'; i++) {
+      await page.locator('#main-scroll').evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+      await page.waitForTimeout(250);
+    }
+    await expect(grid).toHaveAttribute('data-total', '260');
+    await page.locator('#main-scroll').evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+    await expect(card(page, 'Z film 10')).toBeInViewport();
+    expect(await mounted()).toBeLessThan(80);
+    await expect(card(page, 'A film 01')).toHaveCount(0);
+
+    // And back at the top, the first rows are there again.
+    await page.locator('#main-scroll').evaluate((el) => el.scrollTo({ top: 0 }));
+    await expect(card(page, 'A film 01')).toBeInViewport();
+  });
+
+  test('going back returns to the same place in the list', async ({ page }) => {
+    const scroller = page.locator('#main-scroll');
+    await scroller.evaluate((el) => el.scrollTo({ top: 1400 }));
+    await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(1400);
+    // A card whose corner is on screen, so clicking it does not scroll the page first.
+    const name = await page.evaluate(() => {
+      const view = document.getElementById('main-scroll')!.getBoundingClientRect();
+      const cards = [...document.querySelectorAll('#main-scroll .grid a[aria-label]')];
+      // Its top corner is below the bars that stick to the top, and well above the bottom edge.
+      const inside = cards.find((a) => a.getBoundingClientRect().top > view.top + 120 && a.getBoundingClientRect().top < view.bottom - 80);
+      return inside!.getAttribute('aria-label');
+    });
+    // The corner of the poster: its middle is the play button.
+    await page.getByLabel(name!, { exact: true }).click({ position: { x: 6, y: 6 } });
+    await expect(page).toHaveURL(/\/item\/film-/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/library\/lib-movies/);
+    await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(1400);
+    await expect(page.getByLabel(name!, { exact: true })).toBeInViewport();
+  });
+
+  test('marking something watched shows at once, before the server has answered', async ({ page }) => {
+    await page.getByRole('button', { name: 'List view' }).click();
+    const row = page.getByTestId('item-list').getByRole('listitem').filter({ hasText: 'A film 03' });
+    // A server that takes its time.
+    await page.route('**/UserPlayedItems/**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    await row.getByRole('button', { name: 'Mark as watched' }).click();
+    await expect(row.getByRole('button', { name: 'Mark as unwatched' })).toBeVisible({ timeout: 1000 });
   });
 
   test('a filter takes several values', async ({ page }) => {
@@ -164,11 +233,13 @@ test('an account can be protected with a PIN that is asked for when switching to
   // A second account signs in on this browser and becomes the current one.
   await page.evaluate(() => {
     const demo = JSON.parse(localStorage.getItem('jellyplex.session')!);
-    const guest = { ...demo, userId: 'user-2', userName: 'guest' };
+    const guest = { ...demo, userId: 'user-2', userName: 'guest', accessToken: 'guest-token' };
     localStorage.setItem('jellyplex.session', JSON.stringify(guest));
-    localStorage.setItem('jellyplex.accounts', JSON.stringify([guest, demo]));
+    localStorage.setItem('jellyplex.accounts', JSON.stringify([guest, ...JSON.parse(localStorage.getItem('jellyplex.accounts')!)]));
   });
   await page.goto('/');
+  // With someone else using the browser, the protected account's sign-in is nowhere to be read.
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain('mock-token');
   await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByText(`Switch to ${USER.name}`).click();
 
@@ -181,6 +252,7 @@ test('an account can be protected with a PIN that is asked for when switching to
   await prompt.getByLabel('PIN').fill('4821');
   await prompt.getByRole('button', { name: 'Switch' }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).userName)).toBe(USER.name);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).accessToken)).toBe('mock-token');
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
 });
 

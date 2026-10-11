@@ -13,12 +13,13 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState, Img } from '@/components/ui/States';
 import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
 import { usePlay } from '@/player/usePlay';
+import { t } from '@/i18n';
 
 type TabId = 'channels' | 'now' | 'recordings';
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'channels', label: 'Channels' },
-  { id: 'now', label: 'On Now' },
-  { id: 'recordings', label: 'Recordings' },
+  { id: 'channels', label: t('liveTv.channels') },
+  { id: 'now', label: t('liveTv.onNow') },
+  { id: 'recordings', label: t('liveTv.recordings') },
 ];
 
 /** How far through its slot a programme is, 0–100, or null when its times are unknown. */
@@ -81,8 +82,8 @@ function Channels() {
   const channels = data?.Items ?? [];
   if (channels.length === 0) {
     return (
-      <EmptyState icon={<Tv size={48} strokeWidth={1.25} />} title="No channels">
-        Live TV has no channels yet. A tuner and a guide are set up in the Jellyfin dashboard.
+      <EmptyState icon={<Tv size={48} strokeWidth={1.25} />} title={t('liveTv.noChannels')}>
+        {t('liveTv.liveTvHasNoChannels')}
       </EmptyState>
     );
   }
@@ -97,7 +98,7 @@ function Channels() {
             <button
               onClick={() => void playChannel(channel.Id, channel.Name)}
               className="group flex w-full items-center gap-4 rounded-md px-2 py-2 text-left transition-colors hover:bg-white/5"
-              aria-label={`Watch ${channel.Name}`}
+              aria-label={t('liveTv.watch', { name: channel.Name })}
             >
               <span className="w-10 shrink-0 text-right text-sm text-muted tabular-nums">{channel.ChannelNumber}</span>
               <span className="relative flex h-12 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-base-800 text-faint">
@@ -119,7 +120,7 @@ function Channels() {
                       </span>
                     </>
                   ) : (
-                    'No guide information'
+                    t('liveTv.noGuideInformation')
                   )}
                 </span>
                 {progress !== null && (
@@ -162,7 +163,7 @@ function OnNow() {
   if (isLoading) return <PageSpinner />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   const programs = (data?.Items ?? []).filter((p) => p.ChannelId);
-  if (programs.length === 0) return <EmptyState title="Nothing in the guide right now" />;
+  if (programs.length === 0) return <EmptyState title={t('liveTv.nothingInTheGuideRight')} />;
 
   return (
     <div
@@ -232,7 +233,7 @@ function Recordings() {
   });
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!isLoading && (data?.Items.length ?? 0) === 0) {
-    return <EmptyState title="No recordings">Programmes recorded by the server show up here.</EmptyState>;
+    return <EmptyState title={t('liveTv.noRecordings')}>{t('liveTv.programmesRecordedByTheServer')}</EmptyState>;
   }
   return (
     <div className="px-4 pt-6 sm:px-8 lg:px-10">
@@ -244,7 +245,7 @@ function Recordings() {
 /** Live TV: the channels with what is on, what is airing now, and the recordings. */
 export default function LiveTvPage({ library }: { library: BaseItemDto }) {
   const [params, setParams] = useSearchParams();
-  const tab = TABS.find((t) => t.id === params.get('tab'))?.id ?? 'channels';
+  const tab = TABS.find((entry) => entry.id === params.get('tab'))?.id ?? 'channels';
 
   return (
     <div className="pb-10">
@@ -257,17 +258,17 @@ export default function LiveTvPage({ library }: { library: BaseItemDto }) {
             {library.Name}
           </div>
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            {TABS.map((t) => (
+            {TABS.map((entry) => (
               <button
-                key={t.id}
-                onClick={() => setParams({ tab: t.id }, { replace: true })}
+                key={entry.id}
+                onClick={() => setParams({ tab: entry.id }, { replace: true })}
                 className={clsx(
                   'relative h-9 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                  tab === t.id ? 'text-fg' : 'text-muted hover:text-fg',
+                  tab === entry.id ? 'text-fg' : 'text-muted hover:text-fg',
                 )}
               >
-                {t.label}
-                {tab === t.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
+                {entry.label}
+                {tab === entry.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
               </button>
             ))}
           </div>

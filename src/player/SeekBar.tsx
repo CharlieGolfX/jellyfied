@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatClock } from '@/lib/format';
+import { t } from '@/i18n';
 
 interface SeekBarProps {
   current: number;
@@ -36,9 +37,9 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
   };
   const onPointerMove = (e: ReactPointerEvent) => {
     if (!valid) return;
-    const t = fromEvent(e.clientX);
-    setHover(t);
-    if (drag !== null) setDrag(t);
+    const entry = fromEvent(e.clientX);
+    setHover(entry);
+    if (drag !== null) setDrag(entry);
   };
   const onPointerUp = (e: ReactPointerEvent) => {
     if (drag === null) return;
@@ -61,7 +62,7 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
       onPointerUp={onPointerUp}
       onPointerLeave={() => setHover(null)}
       role="slider"
-      aria-label="Seek"
+      aria-label={t('player.seekBar.seek')}
       aria-valuemin={0}
       aria-valuemax={Math.round(duration)}
       aria-valuenow={Math.round(shown)}

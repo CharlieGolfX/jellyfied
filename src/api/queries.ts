@@ -1,7 +1,8 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { useMemo, useRef } from 'react';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import type { Query } from './client';
-import type { BaseItemDto, ItemsResult, LegacyQueryFilters, MediaSegment, QueryFilters } from './types';
+import type { BaseItemDto, ItemsResult, LegacyQueryFilters, MediaSegment, QueryFilters, UserItemData } from './types';
 
 export const CARD_FIELDS = [
   'PrimaryImageAspectRatio',
@@ -41,6 +42,35 @@ export function useItem(id: string | undefined) {
     queryFn: () => api.get<BaseItemDto>(`/Items/${id}`, { userId }),
     enabled: Boolean(id),
   });
+}
+
+/**
+ * Loads an item's details when the pointer rests on its card, so its page opens without a wait.
+ * Spread the result on the card's element.
+ */
+export function usePrefetchItem(id: string) {
+  const api = useApi();
+  const { userId } = useSession();
+  const qc = useQueryClient();
+  const timer = useRef(0);
+  return useMemo(
+    () => ({
+      onPointerEnter: (e: { pointerType: string }) => {
+        // A finger has no "resting on": the tap that follows opens the page anyway.
+        if (e.pointerType !== 'mouse') return;
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => {
+          void qc.prefetchQuery({
+            queryKey: [MEDIA, 'item', id],
+            queryFn: () => api.get<BaseItemDto>(`/Items/${id}`, { userId }),
+            staleTime: 30_000,
+          });
+        }, 150);
+      },
+      onPointerLeave: () => window.clearTimeout(timer.current),
+    }),
+    [api, userId, qc, id],
+  );
 }
 
 export function useItems(query: Query, opts: { enabled?: boolean; key?: QueryKey } = {}) {
@@ -286,6 +316,42 @@ export function useMediaSegments(itemId: string | undefined) {
   });
 }
 
+/** `data` with the user data of item `id` changed wherever that item occurs in it; the same object if nowhere. */
+export function patchUserData<T>(data: T, id: string, patch: Partial<UserItemData>): T {
+  if (Array.isArray(data)) {
+    let changed = false;
+    const next = data.map((entry: unknown) => {
+      const patched = patchUserData(entry, id, patch);
+      if (patched !== entry) changed = true;
+      return patched;
+    });
+    return changed ? (next as T) : data;
+  }
+  if (!data || typeof data !== 'object') return data;
+  const node = data as Record<string, unknown>;
+  if (node.Id === id && 'UserData' in node) return { ...node, UserData: { ...(node.UserData as object), ...patch } } as T;
+  // Lists ({ Items }) and lists loaded a page at a time ({ pages }).
+  for (const key of ['Items', 'pages'] as const) {
+    if (Array.isArray(node[key])) {
+      const next = patchUserData(node[key], id, patch);
+      if (next !== node[key]) return { ...node, [key]: next } as T;
+    }
+  }
+  return data;
+}
+
+/**
+ * Shows a change to an item's user data everywhere right away, without waiting for the server.
+ * Returns how to take it back, for when the server says no.
+ */
+function showAtOnce(qc: QueryClient, id: string, patch: Partial<UserItemData>): () => void {
+  const before = qc.getQueriesData({ queryKey: [MEDIA] });
+  // Answers that are on their way would put the old state back.
+  void qc.cancelQueries({ queryKey: [MEDIA] });
+  qc.setQueriesData({ queryKey: [MEDIA] }, (data: unknown) => patchUserData(data, id, patch));
+  return () => before.forEach(([key, data]) => qc.setQueryData(key, data));
+}
+
 export function useSetPlayed() {
   const api = useApi();
   const { userId } = useSession();
@@ -293,7 +359,16 @@ export function useSetPlayed() {
   return useMutation({
     mutationFn: ({ id, played }: { id: string; played: boolean }) =>
       played ? api.post(`/UserPlayedItems/${id}`, undefined, { userId }) : api.delete(`/UserPlayedItems/${id}`, { userId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
+    onMutate: ({ id, played }) =>
+      showAtOnce(qc, id, {
+        Played: played,
+        PlaybackPositionTicks: 0,
+        PlayedPercentage: undefined,
+        ...(played ? { UnplayedItemCount: 0 } : {}),
+      }),
+    onError: (_error, _vars, undo) => undo?.(),
+    // The server knows the rest: counts on the show and season, Continue Watching.
+    onSettled: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
   });
 }
 
@@ -304,7 +379,9 @@ export function useSetFavorite() {
   return useMutation({
     mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
       favorite ? api.post(`/UserFavoriteItems/${id}`, undefined, { userId }) : api.delete(`/UserFavoriteItems/${id}`, { userId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
+    onMutate: ({ id, favorite }) => showAtOnce(qc, id, { IsFavorite: favorite }),
+    onError: (_error, _vars, undo) => undo?.(),
+    onSettled: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
   });
 }
 

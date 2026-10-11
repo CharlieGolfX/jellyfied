@@ -14,20 +14,21 @@ import { useToast } from '@/components/ui/Toast';
 import { MEDIA } from '@/api/queries';
 import { AdminPage } from './shared';
 import { FolderPicker } from './FolderPicker';
+import { t, tRich } from '@/i18n';
 
 const TYPES: { value: string; label: string }[] = [
-  { value: 'movies', label: 'Movies' },
-  { value: 'tvshows', label: 'Shows' },
-  { value: 'music', label: 'Music' },
-  { value: 'musicvideos', label: 'Music Videos' },
-  { value: 'homevideos', label: 'Home Videos & Photos' },
-  { value: 'books', label: 'Books' },
-  { value: 'boxsets', label: 'Collections' },
-  { value: 'mixed', label: 'Mixed Movies & Shows' },
+  { value: 'movies', label: t('common.movies') },
+  { value: 'tvshows', label: t('admin.libraries.shows') },
+  { value: 'music', label: t('admin.libraries.music') },
+  { value: 'musicvideos', label: t('admin.libraries.musicVideos') },
+  { value: 'homevideos', label: t('admin.libraries.homeVideosPhotos') },
+  { value: 'books', label: t('admin.libraries.books') },
+  { value: 'boxsets', label: t('common.collections') },
+  { value: 'mixed', label: t('admin.libraries.mixedMoviesShows') },
 ];
 
-function typeLabel(t?: CollectionType | null | string): string {
-  return TYPES.find((x) => x.value === t)?.label ?? (t ? t : 'Mixed content');
+function typeLabel(entry?: CollectionType | null | string): string {
+  return TYPES.find((x) => x.value === entry)?.label ?? (entry ? entry : t('admin.libraries.mixedContent'));
 }
 
 function useLibraries() {
@@ -57,7 +58,7 @@ export default function LibrariesPage() {
   const scanAll = useMutation({
     mutationFn: () => api.post('/Library/Refresh'),
     onSuccess: () => {
-      toast.success('Scanning all libraries');
+      toast.success(t('admin.libraries.scanningAllLibraries'));
       invalidate();
     },
     onError: (e) => toast.error(e),
@@ -73,7 +74,9 @@ export default function LibrariesPage() {
         ReplaceAllImages: full,
       }),
     onSuccess: (_d, { lib, full }) => {
-      toast.success(full ? `Refreshing all metadata in ${lib.Name}` : `Scanning ${lib.Name}`);
+      toast.success(
+        full ? t('admin.libraries.refreshingAllMetadataIn', { name: lib.Name }) : t('admin.libraries.scanning', { name: lib.Name }),
+      );
       invalidate();
     },
     onError: (e) => toast.error(e),
@@ -82,7 +85,7 @@ export default function LibrariesPage() {
   const remove = useMutation({
     mutationFn: (lib: VirtualFolderInfo) => api.delete('/Library/VirtualFolders', { name: lib.Name, refreshLibrary: true }),
     onSuccess: () => {
-      toast.success('Library removed');
+      toast.success(t('admin.libraries.libraryRemoved'));
       setDeleting(null);
       invalidate();
     },
@@ -93,7 +96,7 @@ export default function LibrariesPage() {
     mutationFn: ({ lib, path }: { lib: VirtualFolderInfo; path: string }) =>
       api.post('/Library/VirtualFolders/Paths', { Name: lib.Name, PathInfo: { Path: path } }, { refreshLibrary: true }),
     onSuccess: () => {
-      toast.success('Folder added');
+      toast.success(t('admin.libraries.folderAdded'));
       invalidate();
     },
     onError: (e) => toast.error(e),
@@ -103,7 +106,7 @@ export default function LibrariesPage() {
     mutationFn: ({ lib, path }: { lib: VirtualFolderInfo; path: string }) =>
       api.delete('/Library/VirtualFolders/Paths', { name: lib.Name, path, refreshLibrary: true }),
     onSuccess: () => {
-      toast.success('Folder removed');
+      toast.success(t('admin.libraries.folderRemoved'));
       invalidate();
     },
     onError: (e) => toast.error(e),
@@ -111,15 +114,15 @@ export default function LibrariesPage() {
 
   return (
     <AdminPage
-      title="Libraries"
-      description="Libraries organise media folders on the server. Jellyfin scans them for new content and fetches metadata."
+      title={t('admin.libraries.libraries')}
+      description={t('admin.libraries.librariesOrganiseMediaFoldersOn')}
       actions={
         <>
           <Button icon={<RefreshCw size={16} />} loading={scanAll.isPending} onClick={() => scanAll.mutate()}>
-            Scan all
+            {t('admin.libraries.scanAll')}
           </Button>
           <Button variant="primary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>
-            Add library
+            {t('admin.libraries.addLibrary')}
           </Button>
         </>
       }
@@ -129,7 +132,7 @@ export default function LibrariesPage() {
       ) : libraries.error ? (
         <ErrorState error={libraries.error} onRetry={() => libraries.refetch()} />
       ) : libraries.data!.length === 0 ? (
-        <EmptyState title="No libraries yet">Add a library to start organising your media.</EmptyState>
+        <EmptyState title={t('admin.libraries.noLibrariesYet')}>{t('admin.libraries.addALibraryToStart')}</EmptyState>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {libraries.data!.map((lib) => (
@@ -152,7 +155,7 @@ export default function LibrariesPage() {
                   {lib.RefreshStatus === 'Active' && (
                     <div className="mt-2">
                       <div className="flex justify-between text-xs text-muted">
-                        <span>Scanning…</span>
+                        <span>{t('admin.libraries.scanning2')}</span>
                         <span className="tabular-nums">{Math.round(lib.RefreshProgress ?? 0)}%</span>
                       </div>
                       <div className="mt-1 h-1 overflow-hidden rounded bg-white/10">
@@ -163,23 +166,42 @@ export default function LibrariesPage() {
                 </div>
                 <Menu
                   items={[
-                    { label: 'Scan library files', icon: <RefreshCw size={16} />, onSelect: () => refresh.mutate({ lib, full: false }) },
-                    { label: 'Replace all metadata', icon: <RefreshCw size={16} />, onSelect: () => refresh.mutate({ lib, full: true }) },
-                    { label: 'Add folder', icon: <FolderPlus size={16} />, onSelect: () => setPickerFor(lib) },
-                    { label: 'Rename', icon: <Pencil size={16} />, onSelect: () => setRenaming(lib) },
+                    {
+                      label: t('admin.libraries.scanLibraryFiles'),
+                      icon: <RefreshCw size={16} />,
+                      onSelect: () => refresh.mutate({ lib, full: false }),
+                    },
+                    {
+                      label: t('admin.libraries.replaceAllMetadata'),
+                      icon: <RefreshCw size={16} />,
+                      onSelect: () => refresh.mutate({ lib, full: true }),
+                    },
+                    { label: t('admin.libraries.addFolder'), icon: <FolderPlus size={16} />, onSelect: () => setPickerFor(lib) },
+                    { label: t('admin.libraries.rename'), icon: <Pencil size={16} />, onSelect: () => setRenaming(lib) },
                     { divider: true, label: '' },
-                    { label: 'Remove library', icon: <Trash2 size={16} />, danger: true, onSelect: () => setDeleting(lib) },
+                    {
+                      label: t('admin.libraries.removeLibrary'),
+                      icon: <Trash2 size={16} />,
+                      danger: true,
+                      onSelect: () => setDeleting(lib),
+                    },
                   ]}
                   trigger={({ toggle, open }) => (
-                    <Button size="icon-sm" variant="ghost" onClick={toggle} aria-expanded={open} aria-label="Library actions">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={toggle}
+                      aria-expanded={open}
+                      aria-label={t('admin.libraries.libraryActions')}
+                    >
                       <MoreHorizontal size={18} />
                     </Button>
                   )}
                 />
               </div>
               <div className="border-t border-white/5 px-4 py-3">
-                <div className="mb-1.5 text-xs font-semibold tracking-wider text-faint uppercase">Folders</div>
-                {lib.Locations.length === 0 && <p className="text-sm text-muted">No folders.</p>}
+                <div className="mb-1.5 text-xs font-semibold tracking-wider text-faint uppercase">{t('admin.libraries.folders')}</div>
+                {lib.Locations.length === 0 && <p className="text-sm text-muted">{t('admin.libraries.noFolders')}</p>}
                 {lib.Locations.map((loc) => (
                   <div key={loc} className="group flex items-center gap-2 py-1">
                     <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg/85" title={loc}>
@@ -188,8 +210,8 @@ export default function LibrariesPage() {
                     <button
                       onClick={() => removePath.mutate({ lib, path: loc })}
                       className="rounded p-1 text-faint opacity-0 group-hover:opacity-100 hover:bg-white/10 hover:text-danger"
-                      aria-label={`Remove ${loc}`}
-                      title="Remove folder"
+                      aria-label={t('admin.libraries.remove', { loc })}
+                      title={t('admin.libraries.removeFolder')}
                     >
                       <X size={14} />
                     </button>
@@ -199,7 +221,7 @@ export default function LibrariesPage() {
                   onClick={() => setPickerFor(lib)}
                   className="mt-1 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
                 >
-                  <FolderPlus size={14} /> Add folder
+                  <FolderPlus size={14} /> {t('admin.libraries.addFolder')}
                 </button>
               </div>
             </div>
@@ -220,16 +242,11 @@ export default function LibrariesPage() {
       />
       <ConfirmDialog
         open={deleting !== null}
-        title="Remove library"
+        title={t('admin.libraries.removeLibrary')}
         danger
-        confirmLabel="Remove"
+        confirmLabel={t('admin.libraries.remove2')}
         loading={remove.isPending}
-        message={
-          <>
-            Remove <strong className="text-fg">{deleting?.Name}</strong> from Jellyfin? Your media files are not deleted, but watch history
-            for this library will be lost.
-          </>
-        }
+        message={<>{tRich('admin.libraries.removeConfirm', { name: <strong className="text-fg">{deleting?.Name}</strong> })}</>}
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting)}
       />
@@ -259,7 +276,7 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
         { name: name.trim(), collectionType: type === 'mixed' ? undefined : type, refreshLibrary: true },
       ),
     onSuccess: () => {
-      toast.success(`Library “${name.trim()}” created`);
+      toast.success(t('admin.libraries.libraryCreated', { name: name.trim() }));
       reset();
       onClose();
       onCreated();
@@ -272,11 +289,11 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
       <Modal
         open={open && !picker}
         onClose={onClose}
-        title="Add library"
+        title={t('admin.libraries.addLibrary')}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -284,32 +301,32 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
               disabled={!name.trim() || paths.length === 0}
               onClick={() => create.mutate()}
             >
-              Add library
+              {t('admin.libraries.addLibrary')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Field label="Content type">
+          <Field label={t('admin.libraries.contentType')}>
             <Select
               value={type}
               onChange={(e) => {
                 setType(e.target.value);
-                if (!name) setName(TYPES.find((t) => t.value === e.target.value)?.label ?? '');
+                if (!name) setName(TYPES.find((entry) => entry.value === e.target.value)?.label ?? '');
               }}
             >
-              {TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
+              {TYPES.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Movies" />
+          <Field label={t('common.name')}>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('common.movies')} />
           </Field>
           <div>
-            <div className="mb-1.5 text-sm font-medium">Folders</div>
+            <div className="mb-1.5 text-sm font-medium">{t('admin.libraries.folders')}</div>
             <div className="space-y-1.5">
               {paths.map((p) => (
                 <div key={p} className="flex items-center gap-2 rounded-md bg-black/25 px-3 py-2">
@@ -317,7 +334,7 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
                   <button
                     onClick={() => setPaths((ps) => ps.filter((x) => x !== p))}
                     className="text-faint hover:text-danger"
-                    aria-label="Remove"
+                    aria-label={t('admin.libraries.remove2')}
                   >
                     <X size={14} />
                   </button>
@@ -325,7 +342,7 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
               ))}
             </div>
             <Button size="sm" variant="outline" className="mt-2" icon={<FolderPlus size={14} />} onClick={() => setPicker(true)}>
-              Browse for folder
+              {t('admin.libraries.browseForFolder')}
             </Button>
           </div>
         </div>
@@ -357,7 +374,7 @@ function RenameModal({ library, onClose, onDone }: { library: VirtualFolderInfo 
       qc.setQueryData<VirtualFolderInfo[]>(['admin', 'virtualfolders'], (list) =>
         list?.map((l) => (l.ItemId === library!.ItemId ? { ...l, Name: newName } : l)),
       );
-      toast.success('Library renamed');
+      toast.success(t('admin.libraries.libraryRenamed'));
       onClose();
       onDone();
     },
@@ -367,12 +384,12 @@ function RenameModal({ library, onClose, onDone }: { library: VirtualFolderInfo 
     <Modal
       open={library !== null}
       onClose={onClose}
-      title="Rename library"
+      title={t('admin.libraries.renameLibrary')}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -380,12 +397,12 @@ function RenameModal({ library, onClose, onDone }: { library: VirtualFolderInfo 
             disabled={!name.trim() || name.trim() === library?.Name}
             onClick={() => rename.mutate()}
           >
-            Rename
+            {t('admin.libraries.rename')}
           </Button>
         </>
       }
     >
-      <Field label="Name">
+      <Field label={t('common.name')}>
         <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
     </Modal>

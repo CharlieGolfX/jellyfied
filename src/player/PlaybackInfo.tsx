@@ -5,6 +5,7 @@ import type { MediaSourceInfo, MediaStream, SessionInfo } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { formatBitrate, formatBytes } from '@/lib/format';
 import type { PlayMethod } from './reporting';
+import { t } from '@/i18n';
 
 interface LiveStats {
   width: number;
@@ -40,9 +41,9 @@ function channels(s: MediaStream): string {
 }
 
 const METHOD_LABEL: Record<PlayMethod, string> = {
-  DirectPlay: 'Direct play',
-  DirectStream: 'Direct stream',
-  Transcode: 'Transcode',
+  DirectPlay: t('player.playbackInfo.directPlay'),
+  DirectStream: t('player.playbackInfo.directStream'),
+  Transcode: t('player.playbackInfo.transcode'),
 };
 
 /** "Stats for nerds": what is being played, how, and why the server is transcoding. */
@@ -94,8 +95,8 @@ export function PlaybackInfo({
   const subtitle = subIndex >= 0 ? streams.find((s) => s.Type === 'Subtitle' && s.Index === subIndex) : undefined;
 
   const rows: [string, string][] = [];
-  rows.push(['Play method', `${METHOD_LABEL[method]}${isHls ? ' (HLS)' : ''}`]);
-  if (transcodeReasons.length) rows.push(['Transcode reason', transcodeReasons.join(', ')]);
+  rows.push([t('player.playbackInfo.playMethod'), `${METHOD_LABEL[method]}${isHls ? ' (HLS)' : ''}`]);
+  if (transcodeReasons.length) rows.push([t('player.playbackInfo.transcodeReason'), transcodeReasons.join(', ')]);
   if (transcode) {
     const parts = [
       transcode.IsVideoDirect ? 'video copied' : transcode.VideoCodec ? `video → ${transcode.VideoCodec.toUpperCase()}` : '',
@@ -111,12 +112,12 @@ export function PlaybackInfo({
         ? `hardware (${transcode.HardwareAccelerationType})`
         : 'software',
     ].filter(Boolean);
-    rows.push(['Transcode output', speed.join(' · ')]);
+    rows.push([t('player.playbackInfo.transcodeOutput'), speed.join(' · ')]);
   }
-  if (stats && stats.width > 0) rows.push(['Player resolution', `${stats.width}×${stats.height}`]);
+  if (stats && stats.width > 0) rows.push([t('player.playbackInfo.playerResolution'), `${stats.width}×${stats.height}`]);
   if (video) {
     rows.push([
-      'Source video',
+      t('player.playbackInfo.sourceVideo'),
       [
         video.Width && video.Height ? `${video.Width}×${video.Height}` : '',
         [video.Codec?.toUpperCase(), video.Profile].filter(Boolean).join(' '),
@@ -133,7 +134,7 @@ export function PlaybackInfo({
   }
   if (audio) {
     rows.push([
-      'Source audio',
+      t('player.playbackInfo.sourceAudio'),
       [
         audio.Codec?.toUpperCase(),
         channels(audio),
@@ -165,7 +166,7 @@ export function PlaybackInfo({
   ]);
   if (stats) {
     rows.push(['Buffer', `${stats.buffer.toFixed(1)} s`]);
-    if (stats.total > 0) rows.push(['Dropped frames', `${stats.dropped} of ${stats.total}`]);
+    if (stats.total > 0) rows.push([t('player.playbackInfo.droppedFrames'), `${stats.dropped} of ${stats.total}`]);
     if (stats.rate !== 1) rows.push(['Speed', `${stats.rate}×`]);
   }
 
@@ -176,11 +177,11 @@ export function PlaybackInfo({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">Playback info</span>
+        <span className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">{t('player.playbackInfo.playbackInfo')}</span>
         <button
           onClick={onClose}
           className="rounded-full p-1 text-white/60 hover:bg-white/15 hover:text-white"
-          aria-label="Close playback info"
+          aria-label={t('player.playbackInfo.closePlaybackInfo')}
         >
           <X size={14} />
         </button>

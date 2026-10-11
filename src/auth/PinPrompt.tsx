@@ -5,6 +5,7 @@ import { Field, Input } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { checkPin, hasPin } from './accountPin';
 import { useAuth, type StoredSession } from './AuthProvider';
+import { t } from '@/i18n';
 
 /** A PIN field: digits only, hidden as they are typed. */
 export function PinInput({ value, onChange, autoFocus }: { value: string; onChange: (pin: string) => void; autoFocus?: boolean }) {
@@ -22,38 +23,46 @@ export function PinInput({ value, onChange, autoFocus }: { value: string; onChan
   );
 }
 
-function PinPrompt({ account, onClose, onUnlocked }: { account: StoredSession; onClose: () => void; onUnlocked: () => void }) {
+function PinPrompt({
+  account,
+  onClose,
+  onUnlocked,
+}: {
+  account: StoredSession;
+  onClose: () => void;
+  onUnlocked: (accessToken?: string) => void;
+}) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const result = checkPin(account, pin);
-    if (result.ok) return onUnlocked();
+    if (result.ok) return onUnlocked(result.accessToken);
     setPin('');
     setError(
       result.lockedFor
-        ? `Too many wrong tries. Try again in ${Math.ceil(result.lockedFor / 1000)} seconds.`
-        : `Wrong PIN. ${result.triesLeft} ${result.triesLeft === 1 ? 'try' : 'tries'} left.`,
+        ? t('auth.pin.locked', { seconds: Math.ceil(result.lockedFor / 1000) })
+        : t('auth.pin.wrong', { count: result.triesLeft ?? 0 }),
     );
   };
 
   return (
-    <Modal open onClose={onClose} title={`Switch to ${account.userName}`} size="sm">
+    <Modal open onClose={onClose} title={t('auth.pinPrompt.switchTo', { userName: account.userName })} size="sm">
       <form onSubmit={submit} className="space-y-4" data-testid="pin-prompt">
         <p className="flex items-start gap-2 text-sm text-muted">
           <Lock size={16} className="mt-0.5 shrink-0" />
-          This account is protected by a PIN on this device.
+          {t('auth.pinPrompt.thisAccountIsProtectedBy')}
         </p>
-        <Field label="PIN" hint={error ? <span className="text-danger">{error}</span> : undefined}>
+        <Field label={t('auth.pinPrompt.pin')} hint={error ? <span className="text-danger">{error}</span> : undefined}>
           <PinInput value={pin} onChange={setPin} autoFocus />
         </Field>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={pin.length < 4}>
-            Switch
+            {t('auth.pinPrompt.switch')}
           </Button>
         </div>
       </form>
@@ -67,6 +76,8 @@ export function useGuardedSwitch(): { switchTo: (account: StoredSession) => void
   const [asking, setAsking] = useState<StoredSession | null>(null);
   return {
     switchTo: (account) => (hasPin(account) ? setAsking(account) : switchAccount(account)),
-    dialog: asking && <PinPrompt account={asking} onClose={() => setAsking(null)} onUnlocked={() => switchAccount(asking)} />,
+    dialog: asking && (
+      <PinPrompt account={asking} onClose={() => setAsking(null)} onUnlocked={(accessToken) => switchAccount(asking, accessToken)} />
+    ),
   };
 }

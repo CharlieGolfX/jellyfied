@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Select, Switch, TextArea } from '@/components/ui/Form';
 import { useToast } from '@/components/ui/Toast';
 import type { EditorInfo } from './metadataEditorTypes';
+import { t } from '@/i18n';
 
 // ---------------------------------------------------------------------------
 // Details
@@ -125,7 +126,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [MEDIA] });
-      toast.success('Metadata saved');
+      toast.success(t('media.metadataDetailsTab.metadataSaved'));
       onSaved();
     },
     onError: (e) => toast.error(e),
@@ -134,7 +135,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!form.Name.trim()) {
-      toast.error('The title cannot be empty.');
+      toast.error(t('media.metadataDetailsTab.theTitleCannotBeEmpty'));
       return;
     }
     save.mutate();
@@ -149,51 +150,59 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Title" className="sm:col-span-2">
+        <Field label={t('common.title')} className="sm:col-span-2">
           <Input {...text('Name')} required />
         </Field>
-        <Field label="Original title">
+        <Field label={t('media.metadataDetailsTab.originalTitle')}>
           <Input {...text('OriginalTitle')} />
         </Field>
-        <Field label="Sort title" hint="Leave empty to sort by the title.">
+        <Field label={t('media.metadataDetailsTab.sortTitle')} hint={t('media.metadataDetailsTab.leaveEmptyToSortBy')}>
           <Input {...text('ForcedSortName')} />
         </Field>
-        <Field label="Tagline" className="sm:col-span-2">
+        <Field label={t('media.metadataDetailsTab.tagline')} className="sm:col-span-2">
           <Input {...text('Tagline')} />
         </Field>
-        <Field label="Overview" className="sm:col-span-2">
+        <Field label={t('media.metadataDetailsTab.overview')} className="sm:col-span-2">
           <TextArea value={form.Overview} onChange={(e) => set('Overview', e.target.value)} rows={5} />
         </Field>
-        <Field label="Year">
+        <Field label={t('common.year')}>
           <Input {...text('ProductionYear')} inputMode="numeric" />
         </Field>
-        <Field label="Release date">
+        <Field label={t('media.metadataDetailsTab.releaseDate')}>
           <Input type="date" {...text('PremiereDate')} />
         </Field>
         {item.Type === 'Series' && (
-          <Field label="End date">
+          <Field label={t('media.metadataDetailsTab.endDate')}>
             <Input type="date" {...text('EndDate')} />
           </Field>
         )}
         {hasParentIndex && (
-          <Field label={item.Type === 'Episode' ? 'Season number' : 'Disc number'}>
+          <Field label={item.Type === 'Episode' ? t('media.metadataDetailsTab.seasonNumber') : t('media.metadataDetailsTab.discNumber')}>
             <Input {...text('ParentIndexNumber')} inputMode="numeric" />
           </Field>
         )}
         {hasIndex && (
-          <Field label={item.Type === 'Episode' ? 'Episode number' : item.Type === 'Season' ? 'Season number' : 'Track number'}>
+          <Field
+            label={
+              item.Type === 'Episode'
+                ? t('media.metadataDetailsTab.episodeNumber')
+                : item.Type === 'Season'
+                  ? t('media.metadataDetailsTab.seasonNumber')
+                  : t('media.metadataDetailsTab.trackNumber')
+            }
+          >
             <Input {...text('IndexNumber')} inputMode="numeric" />
           </Field>
         )}
-        <Field label="Community rating" hint="0 to 10">
+        <Field label={t('media.metadataDetailsTab.communityRating')} hint={t('media.metadataDetailsTab.n0To10')}>
           <Input {...text('CommunityRating')} inputMode="decimal" />
         </Field>
-        <Field label="Critic rating" hint="0 to 100">
+        <Field label={t('media.metadataDetailsTab.criticRating')} hint={t('media.metadataDetailsTab.n0To100')}>
           <Input {...text('CriticRating')} inputMode="decimal" />
         </Field>
-        <Field label="Parental rating">
+        <Field label={t('media.metadataDetailsTab.parentalRating')}>
           <Select value={form.OfficialRating} onChange={(e) => set('OfficialRating', e.target.value)}>
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {ratings.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -201,24 +210,28 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
             ))}
           </Select>
         </Field>
-        <Field label="Studios" hint="Separate with commas.">
+        <Field label={t('media.metadataDetailsTab.studios')} hint={t('media.metadataDetailsTab.separateWithCommas')}>
           <Input {...text('Studios')} />
         </Field>
-        <Field label="Genres" hint="Separate with commas." className="sm:col-span-2">
+        <Field
+          label={t('media.metadataDetailsTab.genres')}
+          hint={t('media.metadataDetailsTab.separateWithCommas')}
+          className="sm:col-span-2"
+        >
           <Input {...text('Genres')} />
         </Field>
-        <Field label="Tags" hint="Separate with commas." className="sm:col-span-2">
+        <Field label={t('media.metadataDetailsTab.tags')} hint={t('media.metadataDetailsTab.separateWithCommas')} className="sm:col-span-2">
           <Input {...text('Tags')} />
         </Field>
         {isMusic && (
           <>
-            <Field label="Album">
+            <Field label={t('media.metadataDetailsTab.album')}>
               <Input {...text('Album')} />
             </Field>
-            <Field label="Album artists" hint="Separate with commas.">
+            <Field label={t('media.metadataDetailsTab.albumArtists')} hint={t('media.metadataDetailsTab.separateWithCommas')}>
               <Input {...text('AlbumArtists')} />
             </Field>
-            <Field label="Artists" hint="Separate with commas." className="sm:col-span-2">
+            <Field label={t('common.artists')} hint={t('media.metadataDetailsTab.separateWithCommas')} className="sm:col-span-2">
               <Input {...text('Artists')} />
             </Field>
           </>
@@ -227,7 +240,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
 
       {idFields.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-muted">External IDs</h3>
+          <h3 className="mb-2 text-sm font-semibold text-muted">{t('media.metadataDetailsTab.externalIds')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {idFields.map((i) => (
               <Field key={i.Key} label={`${i.Name}${i.Type && i.Type !== item.Type ? ` (${i.Type})` : ''}`}>
@@ -242,18 +255,18 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
       )}
 
       <Switch
-        label="Lock this item"
-        description="Prevents library scans and metadata refreshes from changing it."
+        label={t('media.metadataDetailsTab.lockThisItem')}
+        description={t('media.metadataDetailsTab.preventsLibraryScansAndMetadata')}
         checked={form.LockData}
         onChange={(v) => set('LockData', v)}
       />
 
       <div className="sticky -bottom-4 -mx-5 -mb-4 flex justify-end gap-2 border-t border-white/10 bg-base-800 px-5 py-3">
         <Button variant="ghost" onClick={onSaved}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" variant="primary" loading={save.isPending}>
-          Save
+          {t('common.save')}
         </Button>
       </div>
     </form>

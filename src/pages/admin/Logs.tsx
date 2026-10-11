@@ -10,6 +10,7 @@ import { PageSpinner, Spinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { formatBytes, formatDateTime } from '@/lib/format';
 import { AdminPage } from './shared';
+import { t } from '@/i18n';
 
 const MAX_LINES = 5000;
 
@@ -59,7 +60,7 @@ export default function LogsPage() {
   };
 
   return (
-    <AdminPage wide title="Logs" description="Server log files. The newest lines are at the bottom.">
+    <AdminPage wide title={t('admin.logs.logs')} description={t('admin.logs.serverLogFilesTheNewest')}>
       {files.isLoading ? (
         <PageSpinner />
       ) : files.error ? (
@@ -85,16 +86,21 @@ export default function LogsPage() {
                 </div>
               </button>
             ))}
-            {sorted.length === 0 && <p className="p-3 text-sm text-muted">No log files.</p>}
+            {sorted.length === 0 && <p className="p-3 text-sm text-muted">{t('admin.logs.noLogFiles')}</p>}
           </div>
           <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter lines…" className="max-w-xs" />
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={t('admin.logs.filterLines')}
+                className="max-w-xs"
+              />
               <Button size="sm" icon={<RefreshCw size={14} />} onClick={() => content.refetch()} disabled={!selected}>
-                Reload
+                {t('admin.logs.reload')}
               </Button>
               <Button size="sm" variant="ghost" icon={<Download size={14} />} onClick={download} disabled={!content.data}>
-                Download
+                {t('admin.logs.download')}
               </Button>
               {content.isFetching && <Spinner size={16} className="text-accent" />}
             </div>

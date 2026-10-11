@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, Img } from '@/components/ui/States';
 import { formatDate, plural } from '@/lib/format';
 import { FolderGrid } from '@/pages/library/FolderGrid';
 import { ActionBar, DetailFrame, ExpandableText, MetaLine } from './common';
+import { t } from '@/i18n';
 
 export function PersonDetails({ item }: { item: BaseItemDto }) {
   const base = { personIds: item.Id, recursive: true, sortBy: 'PremiereDate,ProductionYear,SortName', sortOrder: 'Descending', limit: 60 };
@@ -29,9 +30,17 @@ export function PersonDetails({ item }: { item: BaseItemDto }) {
       header={
         <>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[15px] text-muted">
-            {born && <span>Born {born}</span>}
-            {died && <span>Died {died}</span>}
-            {total > 0 && <span>{plural(total, 'title')} in your library</span>}
+            {born && (
+              <span>
+                {t('item.otherDetails.born')} {born}
+              </span>
+            )}
+            {died && (
+              <span>
+                {t('item.otherDetails.died')} {died}
+              </span>
+            )}
+            {total > 0 && <span>{t('item.otherDetails.titlesInLibrary', { count: total, n: total.toLocaleString() })}</span>}
           </div>
           <div className="pt-2">
             <ActionBar item={item} />
@@ -41,9 +50,9 @@ export function PersonDetails({ item }: { item: BaseItemDto }) {
       }
     >
       {loading && <PageSpinner />}
-      <Hub title="Movies" items={movies.data?.Items} shape="poster" />
-      <Hub title="TV Shows" items={shows.data?.Items} shape="poster" />
-      <Hub title="Other Appearances" items={other.data?.Items} shape="landscape" />
+      <Hub title={t('common.movies')} items={movies.data?.Items} shape="poster" />
+      <Hub title={t('common.tvShows')} items={shows.data?.Items} shape="poster" />
+      <Hub title={t('item.otherDetails.otherAppearances')} items={other.data?.Items} shape="landscape" />
     </DetailFrame>
   );
 }
@@ -74,7 +83,7 @@ export function CollectionDetails({ item }: { item: BaseItemDto }) {
         ) : children.error ? (
           <ErrorState error={children.error} onRetry={() => children.refetch()} />
         ) : count === 0 ? (
-          <EmptyState title="This collection is empty" />
+          <EmptyState title={t('item.otherDetails.thisCollectionIsEmpty')} />
         ) : (
           <CardGrid items={children.data!.Items} shape="poster" cardProps={{ collectionId: item.Id }} />
         )}
@@ -102,7 +111,7 @@ export function FolderDetails({ item }: { item: BaseItemDto }) {
             to={`/item/${firstPhoto.Id}?slideshow=1`}
             className="flex h-9 items-center gap-2 rounded-md bg-white/10 px-3 text-sm font-semibold transition-colors hover:bg-white/20"
           >
-            <Presentation size={16} /> Slideshow
+            <Presentation size={16} /> {t('item.otherDetails.slideshow')}
           </Link>
         )}
       </div>
@@ -134,7 +143,7 @@ export function TagDetails({ item }: { item: BaseItemDto }) {
     <div className="px-4 pt-8 pb-10 sm:px-8 lg:px-10">
       <div className="mb-6">
         <div className="text-sm font-medium tracking-wider text-faint uppercase">
-          {item.Type === 'Studio' ? 'Studio' : item.Type === 'Year' ? 'Year' : 'Genre'}
+          {item.Type === 'Studio' ? t('item.otherDetails.studio') : item.Type === 'Year' ? t('common.year') : t('item.otherDetails.genre')}
         </div>
         <h1 className="text-3xl font-bold">{item.Name}</h1>
         <div className="mt-1 text-sm text-muted">{result.isLoading ? '…' : plural(total, 'title')}</div>
@@ -213,14 +222,16 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black">
-      <Img src={src} className="max-h-full max-w-full object-contain" fallback={<span className="text-muted">Image unavailable</span>} />
+      <Img
+        src={src}
+        className="max-h-full max-w-full object-contain"
+        fallback={<span className="text-muted">{t('item.otherDetails.imageUnavailable')}</span>}
+      />
       <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.Name}</div>
           {list.length > 0 && index >= 0 && (
-            <div className="text-sm text-muted">
-              {index + 1} of {list.length}
-            </div>
+            <div className="text-sm text-muted">{t('item.otherDetails.positionOf', { position: index + 1, total: list.length })}</div>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -228,24 +239,32 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
             <button
               onClick={toggleSlideshow}
               className={`rounded-full p-2 hover:bg-white/10 ${playing ? 'text-accent' : ''}`}
-              aria-label={playing ? 'Pause slideshow' : 'Start slideshow'}
-              title={playing ? 'Pause slideshow (Space)' : 'Start slideshow (Space)'}
+              aria-label={playing ? t('item.otherDetails.pauseSlideshow') : t('item.otherDetails.startSlideshow')}
+              title={playing ? t('item.otherDetails.pauseSlideshowSpace') : t('item.otherDetails.startSlideshowSpace')}
             >
               {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}
             </button>
           )}
-          <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-white/10" aria-label="Close">
+          <button onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-white/10" aria-label={t('common.close')}>
             <X size={24} />
           </button>
         </div>
       </div>
       {prev && (
-        <button onClick={() => go(prev)} className="absolute left-4 rounded-full bg-black/50 p-3 hover:bg-black/80" aria-label="Previous">
+        <button
+          onClick={() => go(prev)}
+          className="absolute left-4 rounded-full bg-black/50 p-3 hover:bg-black/80"
+          aria-label={t('common.previous')}
+        >
           <ChevronLeft size={28} />
         </button>
       )}
       {next && (
-        <button onClick={() => go(next)} className="absolute right-4 rounded-full bg-black/50 p-3 hover:bg-black/80" aria-label="Next">
+        <button
+          onClick={() => go(next)}
+          className="absolute right-4 rounded-full bg-black/50 p-3 hover:bg-black/80"
+          aria-label={t('common.next')}
+        >
           <ChevronRight size={28} />
         </button>
       )}

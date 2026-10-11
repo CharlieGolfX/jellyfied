@@ -1,5 +1,6 @@
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { onPrefPulled, prefChanged } from '@/lib/prefsBus';
+import { t } from '@/i18n';
 
 /** How text subtitles are drawn in the player. Synced with the account (see prefsSync). */
 export interface SubtitleStyle {
@@ -12,32 +13,32 @@ export interface SubtitleStyle {
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = { size: 'medium', color: 'white', background: 'none', edge: 'outline' };
 
 export const SUBTITLE_SIZES: { value: SubtitleStyle['size']; label: string; short: string; scale: number }[] = [
-  { value: 'small', label: 'Small', short: 'S', scale: 0.75 },
-  { value: 'medium', label: 'Medium', short: 'M', scale: 1 },
-  { value: 'large', label: 'Large', short: 'L', scale: 1.35 },
-  { value: 'xlarge', label: 'Extra large', short: 'XL', scale: 1.75 },
+  { value: 'small', label: t('player.subtitleStyle.small'), short: 'S', scale: 0.75 },
+  { value: 'medium', label: t('player.subtitleStyle.medium'), short: 'M', scale: 1 },
+  { value: 'large', label: t('player.subtitleStyle.large'), short: 'L', scale: 1.35 },
+  { value: 'xlarge', label: t('player.subtitleStyle.extraLarge'), short: 'XL', scale: 1.75 },
 ];
 
 export const SUBTITLE_COLORS: { value: SubtitleStyle['color']; label: string; css: string }[] = [
-  { value: 'white', label: 'White', css: '#ffffff' },
-  { value: 'yellow', label: 'Yellow', css: '#ffe45c' },
-  { value: 'cyan', label: 'Cyan', css: '#7fe7ff' },
-  { value: 'green', label: 'Green', css: '#8dff8d' },
-  { value: 'grey', label: 'Grey', css: '#c4c4c4' },
+  { value: 'white', label: t('player.subtitleStyle.white'), css: '#ffffff' },
+  { value: 'yellow', label: t('player.subtitleStyle.yellow'), css: '#ffe45c' },
+  { value: 'cyan', label: t('player.subtitleStyle.cyan'), css: '#7fe7ff' },
+  { value: 'green', label: t('player.subtitleStyle.green'), css: '#8dff8d' },
+  { value: 'grey', label: t('player.subtitleStyle.grey'), css: '#c4c4c4' },
 ];
 
 export const SUBTITLE_BACKGROUNDS: { value: SubtitleStyle['background']; label: string; css: string }[] = [
-  { value: 'none', label: 'None', css: 'transparent' },
-  { value: 'translucent', label: 'Translucent', css: 'rgba(0, 0, 0, 0.6)' },
-  { value: 'solid', label: 'Solid black', css: '#000000' },
+  { value: 'none', label: t('common.none'), css: 'transparent' },
+  { value: 'translucent', label: t('player.subtitleStyle.translucent'), css: 'rgba(0, 0, 0, 0.6)' },
+  { value: 'solid', label: t('player.subtitleStyle.solidBlack'), css: '#000000' },
 ];
 
 export const SUBTITLE_EDGES: { value: SubtitleStyle['edge']; label: string; css: string }[] = [
-  { value: 'none', label: 'None', css: 'none' },
-  { value: 'shadow', label: 'Drop shadow', css: '0 0.08em 0.16em rgba(0, 0, 0, 0.95)' },
+  { value: 'none', label: t('common.none'), css: 'none' },
+  { value: 'shadow', label: t('player.subtitleStyle.dropShadow'), css: '0 0.08em 0.16em rgba(0, 0, 0, 0.95)' },
   {
     value: 'outline',
-    label: 'Outline',
+    label: t('player.subtitleStyle.outline'),
     css: '-0.06em -0.06em 0 #000, 0.06em -0.06em 0 #000, -0.06em 0.06em 0 #000, 0.06em 0.06em 0 #000, 0 0.08em 0.18em rgba(0, 0, 0, 0.9)',
   },
 ];

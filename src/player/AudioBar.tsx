@@ -9,6 +9,7 @@ import { formatClock, ticksToSeconds } from '@/lib/format';
 import type { BaseItemDto } from '@/api/types';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { SeekBar } from './SeekBar';
+import { t } from '@/i18n';
 
 function useArt(item: BaseItemDto | null, size: number): string | undefined {
   const api = useApi();
@@ -38,7 +39,7 @@ function QueueRow({ item, index, active }: { item: BaseItemDto; index: number; a
         <button
           onClick={() => player.removeAt(index)}
           className="rounded p-1 text-faint opacity-0 group-hover:opacity-100 hover:text-fg"
-          aria-label="Remove from queue"
+          aria-label={t('player.audioBar.removeFromQueue')}
         >
           <X size={14} />
         </button>
@@ -61,12 +62,14 @@ export function AudioBar() {
       {showQueue && (
         <div className="animate-pop-in absolute right-2 bottom-full mb-2 flex max-h-[60vh] w-96 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-base-750 shadow-2xl ring-1 ring-black/40">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <span className="font-semibold">Play queue · {player.queue.length}</span>
+            <span className="font-semibold">
+              {t('player.audioBar.playQueue')} {player.queue.length}
+            </span>
             <div className="flex gap-1">
               <button
                 onClick={player.shuffleQueue}
                 className="rounded p-1.5 text-muted hover:bg-white/10 hover:text-fg"
-                title="Shuffle upcoming"
+                title={t('player.audioBar.shuffleUpcoming')}
               >
                 <Shuffle size={16} />
               </button>
@@ -121,17 +124,17 @@ export function AudioBar() {
           <button
             onClick={player.cycleRepeat}
             className={clsx('hidden rounded-full p-2 sm:block', player.repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-fg')}
-            title={`Repeat: ${player.repeat}`}
+            title={t('player.audioBar.repeat', { repeat: player.repeat })}
           >
             {player.repeat === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
           </button>
-          <button onClick={player.previous} className="rounded-full p-2 text-fg hover:text-accent" aria-label="Previous">
+          <button onClick={player.previous} className="rounded-full p-2 text-fg hover:text-accent" aria-label={t('common.previous')}>
             <SkipBack size={20} fill="currentColor" />
           </button>
           <button
             onClick={player.toggle}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-fg text-base-900 transition hover:scale-105"
-            aria-label={player.isPlaying ? 'Pause' : 'Play'}
+            aria-label={player.isPlaying ? t('common.pause') : t('common.play')}
           >
             {player.isLoading && !player.isPlaying ? (
               <Spinner size={20} />
@@ -145,7 +148,7 @@ export function AudioBar() {
             onClick={player.next}
             disabled={player.index >= player.queue.length - 1 && player.repeat !== 'all'}
             className="rounded-full p-2 text-fg hover:text-accent disabled:opacity-30"
-            aria-label="Next"
+            aria-label={t('common.next')}
           >
             <SkipForward size={20} fill="currentColor" />
           </button>
@@ -155,7 +158,11 @@ export function AudioBar() {
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
-          <button onClick={player.toggleMute} className="hidden rounded-full p-2 text-muted hover:text-fg sm:block" aria-label="Mute">
+          <button
+            onClick={player.toggleMute}
+            className="hidden rounded-full p-2 text-muted hover:text-fg sm:block"
+            aria-label={t('player.audioBar.mute')}
+          >
             <VolumeIcon size={18} />
           </button>
           <input
@@ -166,16 +173,16 @@ export function AudioBar() {
             value={player.muted ? 0 : player.volume}
             onChange={(e) => player.setVolume(Number(e.target.value))}
             className="hidden w-24 lg:block"
-            aria-label="Volume"
+            aria-label={t('player.audioBar.volume')}
           />
           <button
             onClick={() => setShowQueue((s) => !s)}
             className={clsx('rounded-full p-2', showQueue ? 'text-accent' : 'text-muted hover:text-fg')}
-            aria-label="Queue"
+            aria-label={t('player.audioBar.queue')}
           >
             <ListMusic size={18} />
           </button>
-          <button onClick={player.stop} className="rounded-full p-2 text-muted hover:text-fg" aria-label="Close player">
+          <button onClick={player.stop} className="rounded-full p-2 text-muted hover:text-fg" aria-label={t('player.audioBar.closePlayer')}>
             <X size={18} />
           </button>
         </div>

@@ -9,6 +9,7 @@ import { CardGrid } from '@/components/media/CardGrid';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { plural } from '@/lib/format';
+import { t } from '@/i18n';
 
 export function ArtistsGrid({ library }: { library: BaseItemDto }) {
   const result = useInfiniteItems({ parentId: library.Id, sortBy: 'SortName', sortOrder: 'Ascending' }, true, '/Artists/AlbumArtists');
@@ -20,7 +21,7 @@ export function ArtistsGrid({ library }: { library: BaseItemDto }) {
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : !result.isLoading && items.length === 0 ? (
-        <EmptyState title="No artists" />
+        <EmptyState title={t('library.genreGrid.noArtists')} />
       ) : (
         <CardGrid
           items={items}
@@ -65,7 +66,7 @@ export function GenreGrid({ library }: { library: BaseItemDto }) {
 
   if (isLoading) return <PageSpinner />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
-  if (!data?.Items.length) return <EmptyState title="No categories" />;
+  if (!data?.Items.length) return <EmptyState title={t('library.genreGrid.noCategories')} />;
 
   return (
     <div className="grid gap-4 px-4 pt-6 sm:px-8 lg:px-10" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>

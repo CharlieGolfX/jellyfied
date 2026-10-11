@@ -11,15 +11,16 @@ import { EmptyState, ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatDateTime } from '@/lib/format';
 import { AdminPage, StatusPill } from './shared';
+import { t, tRich } from '@/i18n';
 
 /** What a backup holds besides the database, which is always part of it. */
 const PARTS: { key: keyof BackupOptionsDto; label: string; description: string }[] = [
-  { key: 'Metadata', label: 'Metadata', description: 'Images and metadata files the server has saved. Can be large.' },
-  { key: 'Subtitles', label: 'Subtitles', description: 'Subtitles the server has downloaded or extracted.' },
+  { key: 'Metadata', label: t('common.metadata'), description: t('admin.backups.imagesAndMetadataFilesThe') },
+  { key: 'Subtitles', label: t('common.subtitles'), description: t('admin.backups.subtitlesTheServerHasDownloaded') },
   {
     key: 'Trickplay',
-    label: 'Trickplay images',
-    description: 'Preview thumbnails for seeking. Usually the largest part; they can be made again.',
+    label: t('admin.backups.trickplayImages'),
+    description: t('admin.backups.previewThumbnailsForSeekingUsually'),
   },
 ];
 
@@ -38,7 +39,7 @@ export default function BackupsPage() {
   const create = useMutation({
     mutationFn: () => api.post<BackupManifestDto>('/Backup/Create', { ...options, Database: true }),
     onSuccess: () => {
-      toast.success('Backup created');
+      toast.success(t('admin.backups.backupCreated'));
       setCreating(false);
       void qc.invalidateQueries({ queryKey: ['admin', 'backups'] });
     },
@@ -47,7 +48,7 @@ export default function BackupsPage() {
   const restore = useMutation({
     mutationFn: (backup: BackupManifestDto) => api.post('/Backup/Restore', { ArchiveFileName: fileName(backup.Path) }),
     onSuccess: () => {
-      toast.success('The server is restarting to restore the backup.');
+      toast.success(t('admin.backups.theServerIsRestartingTo'));
       setRestoring(null);
     },
     onError: (e) => toast.error(e),
@@ -57,11 +58,11 @@ export default function BackupsPage() {
 
   return (
     <AdminPage
-      title="Backups"
-      description="Copies of the server's database, and optionally its metadata, subtitles and trickplay images, kept in the server's data folder. Media files are never part of a backup."
+      title={t('admin.backups.backups')}
+      description={t('admin.backups.copiesOfTheServerS')}
       actions={
         <Button variant="primary" icon={<DatabaseBackup size={16} />} onClick={() => setCreating(true)}>
-          Create backup
+          {t('admin.backups.createBackup')}
         </Button>
       }
     >
@@ -70,7 +71,7 @@ export default function BackupsPage() {
       ) : backups.error ? (
         <ErrorState error={backups.error} onRetry={() => backups.refetch()} />
       ) : list.length === 0 ? (
-        <EmptyState title="No backups yet">Create one before upgrading the server or changing libraries in bulk.</EmptyState>
+        <EmptyState title={t('admin.backups.noBackupsYet')}>{t('admin.backups.createOneBeforeUpgradingThe')}</EmptyState>
       ) : (
         <ul className="space-y-3">
           {list.map((b) => (
@@ -85,17 +86,21 @@ export default function BackupsPage() {
                   {b.Path}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <StatusPill tone="blue">Database</StatusPill>
+                  <StatusPill tone="blue">{t('admin.backups.database')}</StatusPill>
                   {PARTS.filter((p) => b.Options?.[p.key]).map((p) => (
                     <StatusPill key={p.key} tone="gray">
                       {p.label}
                     </StatusPill>
                   ))}
-                  {b.ServerVersion && <span className="text-xs text-faint">Jellyfin {b.ServerVersion}</span>}
+                  {b.ServerVersion && (
+                    <span className="text-xs text-faint">
+                      {t('admin.backups.jellyfin')} {b.ServerVersion}
+                    </span>
+                  )}
                 </div>
               </div>
               <Button variant="outline" size="sm" icon={<RotateCcw size={14} />} onClick={() => setRestoring(b)}>
-                Restore
+                {t('admin.backups.restore')}
               </Button>
             </li>
           ))}
@@ -105,22 +110,20 @@ export default function BackupsPage() {
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title="Create backup"
+        title={t('admin.backups.createBackup')}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setCreating(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" loading={create.isPending} onClick={() => create.mutate()}>
-              Create backup
+              {t('admin.backups.createBackup')}
             </Button>
           </>
         }
       >
-        <p className="mb-3 text-sm text-muted">
-          The database is always included. The server is busy while the backup is made, which can take a while with the extras below.
-        </p>
+        <p className="mb-3 text-sm text-muted">{t('admin.backups.theDatabaseIsAlwaysIncluded')}</p>
         {PARTS.map((p) => (
           <div key={p.key} className="py-1">
             <Checkbox label={p.label} checked={Boolean(options[p.key])} onChange={(v) => setOptions((o) => ({ ...o, [p.key]: v }))} />
@@ -131,16 +134,15 @@ export default function BackupsPage() {
 
       <ConfirmDialog
         open={restoring !== null}
-        title="Restore backup"
+        title={t('admin.backups.restoreBackup')}
         danger
-        confirmLabel="Restore and restart"
+        confirmLabel={t('admin.backups.restoreAndRestart')}
         loading={restore.isPending}
         message={
           <>
-            Restore the backup from{' '}
-            <strong className="text-fg">{restoring?.DateCreated ? formatDateTime(restoring.DateCreated) : ''}</strong>? The server restarts,
-            everyone is disconnected, and everything changed since then (users, watch history, library changes) is replaced by what the
-            backup holds.
+            {tRich('admin.backups.restoreConfirm', {
+              date: <strong className="text-fg">{restoring?.DateCreated ? formatDateTime(restoring.DateCreated) : ''}</strong>,
+            })}
           </>
         }
         onClose={() => setRestoring(null)}

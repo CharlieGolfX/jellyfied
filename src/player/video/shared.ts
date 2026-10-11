@@ -1,6 +1,7 @@
 import type { BaseItemDto, MediaSourceInfo, MediaStream, TrickplayInfo } from '@/api/types';
 import { MAX_BITRATE } from '../deviceProfile';
 import type { PlayMethod } from '../reporting';
+import { t } from '@/i18n';
 
 /** Which of the player's menus is open. */
 export type PlayerPanel = 'none' | 'settings' | 'subtitles' | 'chapters' | 'picture';
@@ -9,16 +10,16 @@ export const BITRATE_KEY = 'jellyplex.maxBitrate';
 export const VOLUME_KEY = 'jellyplex.volume';
 
 export const QUALITY_OPTIONS: { label: string; value: number }[] = [
-  { label: 'Original / Auto', value: MAX_BITRATE },
-  { label: '40 Mbps 4K', value: 40_000_000 },
-  { label: '20 Mbps 1080p', value: 20_000_000 },
-  { label: '12 Mbps 1080p', value: 12_000_000 },
-  { label: '8 Mbps 1080p', value: 8_000_000 },
-  { label: '4 Mbps 720p', value: 4_000_000 },
-  { label: '3 Mbps 720p', value: 3_000_000 },
-  { label: '2 Mbps 480p', value: 2_000_000 },
-  { label: '1 Mbps 480p', value: 1_000_000 },
-  { label: '720 kbps 360p', value: 720_000 },
+  { label: t('player.video.shared.originalAuto'), value: MAX_BITRATE },
+  { label: t('player.video.shared.n40Mbps4k'), value: 40_000_000 },
+  { label: t('player.video.shared.n20Mbps1080p'), value: 20_000_000 },
+  { label: t('player.video.shared.n12Mbps1080p'), value: 12_000_000 },
+  { label: t('player.video.shared.n8Mbps1080p'), value: 8_000_000 },
+  { label: t('player.video.shared.n4Mbps720p'), value: 4_000_000 },
+  { label: t('player.video.shared.n3Mbps720p'), value: 3_000_000 },
+  { label: t('player.video.shared.n2Mbps480p'), value: 2_000_000 },
+  { label: t('player.video.shared.n1Mbps480p'), value: 1_000_000 },
+  { label: t('player.video.shared.n720Kbps360p'), value: 720_000 },
 ];
 
 export interface ActiveStream {
@@ -84,15 +85,15 @@ export function pickTrickplay(item: BaseItemDto | undefined, sourceId: string | 
 }
 
 export const SEGMENT_LABELS: Record<string, string> = {
-  Intro: 'Skip Intro',
-  Recap: 'Skip Recap',
-  Preview: 'Skip Preview',
-  Outro: 'Skip Credits',
-  Commercial: 'Skip Ad',
+  Intro: t('player.video.shared.skipIntro'),
+  Recap: t('player.video.shared.skipRecap'),
+  Preview: t('player.video.shared.skipPreview'),
+  Outro: t('player.video.shared.skipCredits'),
+  Commercial: t('player.video.shared.skipAd'),
 };
 
 export function streamName(s: MediaStream): string {
-  return s.DisplayTitle || [s.Language, s.Codec?.toUpperCase()].filter(Boolean).join(' ') || `Track ${s.Index}`;
+  return s.DisplayTitle || [s.Language, s.Codec?.toUpperCase()].filter(Boolean).join(' ') || t('player.trackNumber', { number: s.Index });
 }
 
 export function readNumber(key: string, fallback: number): number {

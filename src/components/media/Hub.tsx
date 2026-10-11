@@ -6,6 +6,7 @@ import type { CardShape } from '@/api/images';
 import { defaultShape } from '@/api/images';
 import type { BaseItemDto } from '@/api/types';
 import { PosterCard, type PosterCardProps } from './PosterCard';
+import { t } from '@/i18n';
 
 /** Card width in hub rows: responsive base size scaled by the global poster-size setting. */
 export function hubCardStyle(shape: CardShape): CSSProperties {
@@ -69,7 +70,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
           <button
             onClick={() => page(-1)}
             disabled={!canLeft}
-            aria-label="Scroll left"
+            aria-label={t('media.hub.scrollLeft')}
             className="rounded-full p-1 text-muted transition hover:bg-white/10 hover:text-fg disabled:opacity-25"
           >
             <ChevronLeft size={22} />
@@ -77,7 +78,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
           <button
             onClick={() => page(1)}
             disabled={!canRight}
-            aria-label="Scroll right"
+            aria-label={t('media.hub.scrollRight')}
             className="rounded-full p-1 text-muted transition hover:bg-white/10 hover:text-fg disabled:opacity-25"
           >
             <ChevronRight size={22} />

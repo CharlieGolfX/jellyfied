@@ -10,15 +10,16 @@ import { useToast } from '@/components/ui/Toast';
 import { useDraft } from '@/lib/useDraft';
 import { Card } from '@/pages/Settings';
 import { AdminPage } from './shared';
+import { t } from '@/i18n';
 
 const RESOLUTIONS = ['MatchSource', 'P2160', 'P1440', 'P1080', 'P720', 'P480', 'P360', 'P240', 'P144'];
-const resolutionLabel = (r: string) => (r === 'MatchSource' ? 'Same as the video' : `${r.slice(1)}p`);
+const resolutionLabel = (r: string) => (r === 'MatchSource' ? t('admin.metadata.sameAsTheVideo') : `${r.slice(1)}p`);
 const PRIORITIES: [NonNullable<TrickplayOptions['ProcessPriority']>, string][] = [
-  ['High', 'High'],
-  ['AboveNormal', 'Above normal'],
-  ['Normal', 'Normal'],
-  ['BelowNormal', 'Below normal'],
-  ['Idle', 'Idle'],
+  ['High', t('admin.metadata.priority.high')],
+  ['AboveNormal', t('admin.metadata.aboveNormal')],
+  ['Normal', t('admin.metadata.priority.normal')],
+  ['BelowNormal', t('admin.metadata.belowNormal')],
+  ['Idle', t('admin.metadata.priority.idle')],
 ];
 const DATE_FORMATS = ['yyyy-MM-dd', 'dd.MM.yyyy', 'dd/MM/yyyy', 'MM/dd/yyyy'];
 
@@ -69,7 +70,7 @@ export default function MetadataPage() {
       await api.post('/System/Configuration/xbmcmetadata', nfoDraft);
     },
     onSuccess: () => {
-      toast.success('Metadata settings saved');
+      toast.success(t('admin.metadata.metadataSettingsSaved'));
       void qc.invalidateQueries({ queryKey: ['admin', 'config'] });
     },
     onError: (e) => toast.error(e),
@@ -86,31 +87,31 @@ export default function MetadataPage() {
 
   return (
     <AdminPage
-      title="Metadata"
-      description="How the server dates new items, writes NFO files and makes chapter and trickplay images. Language and country are under General; what each library fetches is under Libraries."
+      title={t('common.metadata')}
+      description={t('admin.metadata.howTheServerDatesNew')}
       actions={
         <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-          Save changes
+          {t('common.saveChanges')}
         </Button>
       }
     >
-      <Card title="Date added">
-        <Field label="For new items, use" className="max-w-md">
+      <Card title={t('admin.metadata.dateAdded')}>
+        <Field label={t('admin.metadata.forNewItemsUse')} className="max-w-md">
           <Select
             value={metadataDraft.UseFileCreationTimeForDateAdded ? 'file' : 'scan'}
             onChange={(e) => setMetadataDraft({ ...metadataDraft, UseFileCreationTimeForDateAdded: e.target.value === 'file' })}
           >
-            <option value="file">The date the file was created</option>
-            <option value="scan">The date it was scanned into the library</option>
+            <option value="file">{t('admin.metadata.theDateTheFileWas')}</option>
+            <option value="scan">{t('admin.metadata.theDateItWasScanned')}</option>
           </Select>
         </Field>
       </Card>
 
-      <Card title="NFO files" description="For libraries that save metadata as NFO files next to the media, as Kodi does.">
+      <Card title={t('admin.metadata.nfoFiles')} description={t('admin.metadata.forLibrariesThatSaveMetadata')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Save watch data to NFO files for" hint="Lets other applications read what this user has watched.">
+          <Field label={t('admin.metadata.saveWatchDataToNfo')} hint={t('admin.metadata.letsOtherApplicationsReadWhat')}>
             <Select value={nfoDraft.UserId ?? ''} onChange={(e) => setNfo({ UserId: e.target.value || null })}>
-              <option value="">Nobody</option>
+              <option value="">{t('admin.metadata.nobody')}</option>
               {(users.data ?? []).map((u) => (
                 <option key={u.Id} value={u.Id}>
                   {u.Name}
@@ -118,7 +119,7 @@ export default function MetadataPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Release date format">
+          <Field label={t('admin.metadata.releaseDateFormat')}>
             <Select value={nfoDraft.ReleaseDateFormat ?? DATE_FORMATS[0]} onChange={(e) => setNfo({ ReleaseDateFormat: e.target.value })}>
               {[...new Set([...DATE_FORMATS, nfoDraft.ReleaseDateFormat ?? DATE_FORMATS[0]])].map((f) => (
                 <option key={f} value={f}>
@@ -130,19 +131,19 @@ export default function MetadataPage() {
         </div>
         <div className="mt-3 divide-y divide-white/5">
           <Switch
-            label="Save image paths in NFO files"
-            description="For images whose file names don't follow Kodi's naming."
+            label={t('admin.metadata.saveImagePathsInNfo')}
+            description={t('admin.metadata.forImagesWhoseFileNames')}
             checked={Boolean(nfoDraft.SaveImagePathsInNfo)}
             onChange={(v) => setNfo({ SaveImagePathsInNfo: v })}
           />
           <Switch
-            label="Apply path substitution to image paths"
+            label={t('admin.metadata.applyPathSubstitutionToImage')}
             checked={Boolean(nfoDraft.EnablePathSubstitution)}
             onChange={(v) => setNfo({ EnablePathSubstitution: v })}
           />
           <Switch
-            label="Copy extra fan art to the extrathumbs folder"
-            description="For Kodi skins that look for it there."
+            label={t('admin.metadata.copyExtraFanArtTo')}
+            description={t('admin.metadata.forKodiSkinsThatLook')}
             checked={Boolean(nfoDraft.EnableExtraThumbsDuplication)}
             onChange={(v) => setNfo({ EnableExtraThumbsDuplication: v })}
           />
@@ -150,9 +151,9 @@ export default function MetadataPage() {
       </Card>
 
       {'DummyChapterDuration' in serverDraft && (
-        <Card title="Chapters">
+        <Card title={t('admin.metadata.chapters')}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Chapter length for videos without chapters (seconds)" hint="0 makes no chapters.">
+            <Field label={t('admin.metadata.chapterLengthForVideosWithout')} hint={t('admin.metadata.n0MakesNoChapters')}>
               <Input
                 type="number"
                 min={0}
@@ -160,7 +161,7 @@ export default function MetadataPage() {
                 onChange={(e) => setServer({ DummyChapterDuration: num(e.target.value, 0) })}
               />
             </Field>
-            <Field label="Chapter image resolution">
+            <Field label={t('admin.metadata.chapterImageResolution')}>
               <Select
                 value={String(serverDraft.ChapterImageResolution ?? 'MatchSource')}
                 onChange={(e) => setServer({ ChapterImageResolution: e.target.value })}
@@ -177,40 +178,37 @@ export default function MetadataPage() {
       )}
 
       {trickplay && (
-        <Card
-          title="Trickplay"
-          description="The preview thumbnails shown while seeking. They are made per library, when it is turned on under Libraries."
-        >
+        <Card title={t('admin.metadata.trickplay')} description={t('admin.metadata.thePreviewThumbnailsShownWhile')}>
           <div className="divide-y divide-white/5">
             <Switch
-              label="Hardware decoding"
+              label={t('admin.metadata.hardwareDecoding')}
               checked={Boolean(trickplay.EnableHwAcceleration)}
               onChange={(v) => setTrickplay({ EnableHwAcceleration: v })}
             />
             <Switch
-              label="Hardware-accelerated JPEG encoding"
-              description="Only with QSV, VA-API, VideoToolbox and RKMPP."
+              label={t('admin.metadata.hardwareAcceleratedJpegEncoding')}
+              description={t('admin.metadata.onlyWithQsvVaApi')}
               checked={Boolean(trickplay.EnableHwEncoding)}
               onChange={(v) => setTrickplay({ EnableHwEncoding: v })}
             />
             <Switch
-              label="Only use key frames"
-              description="Much faster, with less exact timing."
+              label={t('admin.metadata.onlyUseKeyFrames')}
+              description={t('admin.metadata.muchFasterWithLessExact')}
               checked={Boolean(trickplay.EnableKeyFrameOnlyExtraction)}
               onChange={(v) => setTrickplay({ EnableKeyFrameOnlyExtraction: v })}
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <Field label="During a library scan">
+            <Field label={t('admin.metadata.duringALibraryScan')}>
               <Select
                 value={trickplay.ScanBehavior ?? 'NonBlocking'}
                 onChange={(e) => setTrickplay({ ScanBehavior: e.target.value as TrickplayOptions['ScanBehavior'] })}
               >
-                <option value="NonBlocking">Make images afterwards</option>
-                <option value="Blocking">Wait for the images</option>
+                <option value="NonBlocking">{t('admin.metadata.makeImagesAfterwards')}</option>
+                <option value="Blocking">{t('admin.metadata.waitForTheImages')}</option>
               </Select>
             </Field>
-            <Field label="Process priority">
+            <Field label={t('admin.metadata.processPriority')}>
               <Select
                 value={trickplay.ProcessPriority ?? 'BelowNormal'}
                 onChange={(e) => setTrickplay({ ProcessPriority: e.target.value as TrickplayOptions['ProcessPriority'] })}
@@ -222,7 +220,7 @@ export default function MetadataPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Image every (milliseconds)">
+            <Field label={t('admin.metadata.imageEveryMilliseconds')}>
               <Input
                 type="number"
                 min={1000}
@@ -231,10 +229,10 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ Interval: num(e.target.value, 10000) })}
               />
             </Field>
-            <Field label="Widths (pixels)" hint="One set of images per width, separated by commas.">
+            <Field label={t('admin.metadata.widthsPixels')} hint={t('admin.metadata.oneSetOfImagesPer')}>
               <Input value={widths ?? ''} onChange={(e) => setWidths(e.target.value)} />
             </Field>
-            <Field label="Images per row of a tile">
+            <Field label={t('admin.metadata.imagesPerRowOfA')}>
               <Input
                 type="number"
                 min={1}
@@ -242,7 +240,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ TileWidth: num(e.target.value, 10) })}
               />
             </Field>
-            <Field label="Rows per tile">
+            <Field label={t('admin.metadata.rowsPerTile')}>
               <Input
                 type="number"
                 min={1}
@@ -250,7 +248,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ TileHeight: num(e.target.value, 10) })}
               />
             </Field>
-            <Field label="JPEG quality" hint="0 to 100">
+            <Field label={t('admin.metadata.jpegQuality')} hint={t('admin.metadata.n0To100')}>
               <Input
                 type="number"
                 min={0}
@@ -259,7 +257,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ JpegQuality: num(e.target.value, 90) })}
               />
             </Field>
-            <Field label="Quality scale" hint="2 (best) to 31">
+            <Field label={t('admin.metadata.qualityScale')} hint={t('admin.metadata.n2BestTo31')}>
               <Input
                 type="number"
                 min={2}
@@ -268,7 +266,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ Qscale: num(e.target.value, 4) })}
               />
             </Field>
-            <Field label="Threads" hint="0 lets ffmpeg decide.">
+            <Field label={t('admin.metadata.threads')} hint={t('admin.metadata.n0LetsFfmpegDecide')}>
               <Input
                 type="number"
                 min={0}

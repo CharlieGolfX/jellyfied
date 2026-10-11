@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { PosterCard, type PosterCardProps } from './PosterCard';
 import { SkeletonCard } from './Hub';
 import { useLatest } from '@/lib/useLatest';
+import { useRowWindow } from '@/lib/useRowWindow';
 
 interface CardGridProps {
   items: BaseItemDto[];
@@ -38,16 +39,21 @@ export function CardGrid({ items, shape, minWidth, loading, hasMore, loadingMore
   }, [hasMore, items.length, loadMoreRef]);
 
   const width = minWidth ?? (shape === 'landscape' ? 260 : shape === 'square' ? 160 : 150);
+  // Only the rows near the screen are in the page; padding keeps the grid as tall as all of them.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const rows = useRowWindow(gridRef, loading ? 0 : items.length);
   const style = {
     gridTemplateColumns: `repeat(auto-fill, minmax(min(calc(${width}px * var(--card-scale)), 42vw), 1fr))`,
+    paddingTop: loading ? 0 : rows.padTop,
+    paddingBottom: loading ? 0 : rows.padBottom,
   } as CSSProperties;
 
   return (
     <>
-      <div className="grid gap-x-5 gap-y-6" style={style}>
+      <div ref={gridRef} className="grid gap-x-5 gap-y-6" style={style} data-total={loading ? undefined : items.length}>
         {loading
           ? Array.from({ length: 24 }, (_, i) => <SkeletonCard key={i} shape={shape} className="w-full" />)
-          : items.map((item) => <PosterCard key={item.Id} item={item} shape={shape} {...cardProps} />)}
+          : items.slice(rows.from, rows.to).map((item) => <PosterCard key={item.Id} item={item} shape={shape} {...cardProps} />)}
       </div>
       {hasMore && (
         <div ref={sentinelRef} className="flex justify-center py-10 text-accent">

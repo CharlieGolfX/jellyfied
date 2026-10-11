@@ -108,3 +108,30 @@ export function defaultShape(item: BaseItemDto): CardShape {
       return 'poster';
   }
 }
+
+/** The widths a card's image is offered in, so the browser can take the one that fits. */
+const CARD_WIDTHS: Record<CardShape, number[]> = {
+  poster: [240, 360, 540, 720],
+  landscape: [400, 560, 840, 1120],
+  square: [240, 400, 600, 800],
+};
+/** Roughly how wide a card of each shape is on screen at the normal size, in CSS pixels. */
+const CARD_BASE: Record<CardShape, number> = { poster: 170, landscape: 290, square: 180 };
+
+/**
+ * `srcSet` and `sizes` for a card's image. The browser multiplies the size by the screen's pixel
+ * density and picks the smallest candidate that is large enough: phones stop downloading desktop
+ * posters, and dense screens get sharper ones.
+ */
+export function cardSrcSet(api: JellyfinApi, ref: ImageRef | null, shape: CardShape, scale = 1): { srcSet?: string; sizes?: string } {
+  if (!ref) return {};
+  return {
+    srcSet: CARD_WIDTHS[shape].map((w) => `${imageSrc(api, ref, w)} ${w}w`).join(', '),
+    sizes: `${Math.round(CARD_BASE[shape] * scale)}px`,
+  };
+}
+
+/** The blurred stand-in Jellyfin sent for an image, if it sent one. */
+export function blurHashOf(item: BaseItemDto, ref: ImageRef | null): string | undefined {
+  return ref?.tag ? item.ImageBlurHashes?.[ref.type]?.[ref.tag] : undefined;
+}

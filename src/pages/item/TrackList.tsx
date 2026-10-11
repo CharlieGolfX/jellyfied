@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatClock, ticksToSeconds } from '@/lib/format';
 import { useAudioPlayer } from '@/player/AudioPlayerProvider';
 import { useInstantMix, usePlay } from '@/player/usePlay';
+import { t } from '@/i18n';
 
 interface TrackListProps {
   tracks: BaseItemDto[];
@@ -25,7 +26,7 @@ interface TrackListProps {
 }
 
 /** Id of a row: playlists can hold the same item more than once, so they number their entries. */
-const entryId = (t: BaseItemDto) => t.PlaylistItemId ?? t.Id;
+const entryId = (entry: BaseItemDto) => entry.PlaylistItemId ?? entry.Id;
 
 export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, numbered = 'index', editablePlaylistId }: TrackListProps) {
   const api = useApi();
@@ -45,7 +46,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
   const [order, setOrder] = useState<string[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const dropped = useRef(false);
-  const tracks = order ? order.map((id) => listed.find((t) => entryId(t) === id)).filter((t) => t !== undefined) : listed;
+  const tracks = order ? order.map((id) => listed.find((entry) => entryId(entry) === id)).filter((entry) => entry !== undefined) : listed;
 
   const dragProps = (id: string) => ({
     draggable: true,
@@ -78,7 +79,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
     },
     onDragEnd: () => {
       const index = order?.indexOf(dragId ?? '') ?? -1;
-      const moved = dropped.current && dragId && index >= 0 && index !== listed.findIndex((t) => entryId(t) === dragId);
+      const moved = dropped.current && dragId && index >= 0 && index !== listed.findIndex((entry) => entryId(entry) === dragId);
       setDragId(null);
       if (!moved) {
         setOrder(null);
@@ -89,61 +90,69 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
     },
   });
 
-  const discs = new Set(tracks.map((t) => t.ParentIndexNumber ?? 1));
+  const discs = new Set(tracks.map((track) => track.ParentIndexNumber ?? 1));
   const multiDisc = discs.size > 1 && numbered === 'index';
 
-  const audioTracks = tracks.filter((t) => t.MediaType === 'Audio');
+  const audioTracks = tracks.filter((track) => track.MediaType === 'Audio');
 
   const playAt = (track: BaseItemDto) => {
     if (track.MediaType !== 'Audio') {
       void play(track);
       return;
     }
-    const idx = audioTracks.findIndex((t) => t.Id === track.Id);
+    const idx = audioTracks.findIndex((audioTrack) => audioTrack.Id === track.Id);
     if (player.current?.Id === track.Id) player.toggle();
     else player.play(audioTracks, Math.max(0, idx));
   };
 
   return (
     <div className="divide-y divide-white/5">
-      {tracks.map((t, i) => {
-        const disc = t.ParentIndexNumber ?? 1;
+      {tracks.map((track, i) => {
+        const disc = track.ParentIndexNumber ?? 1;
         const previousDisc = i > 0 ? (tracks[i - 1].ParentIndexNumber ?? 1) : undefined;
         const header =
-          multiDisc && disc !== previousDisc ? <div className="px-3 pt-5 pb-2 text-sm font-semibold text-muted">Disc {disc}</div> : null;
-        const isCurrent = player.current?.Id === t.Id;
-        const artists = t.ArtistItems?.length ? t.ArtistItems : [];
+          multiDisc && disc !== previousDisc ? (
+            <div className="px-3 pt-5 pb-2 text-sm font-semibold text-muted">
+              {t('item.trackList.disc')} {disc}
+            </div>
+          ) : null;
+        const isCurrent = player.current?.Id === track.Id;
+        const artists = track.ArtistItems?.length ? track.ArtistItems : [];
         const showArtists = artists.length > 0 && artists.map((a) => a.Name).join(', ') !== albumArtist;
         const art =
-          showArt && (t.ImageTags?.Primary || t.AlbumPrimaryImageTag)
-            ? t.ImageTags?.Primary
-              ? api.imageUrl(t.Id, 'Primary', { tag: t.ImageTags.Primary, maxWidth: 80 })
-              : api.imageUrl(t.AlbumId!, 'Primary', { tag: t.AlbumPrimaryImageTag, maxWidth: 80 })
+          showArt && (track.ImageTags?.Primary || track.AlbumPrimaryImageTag)
+            ? track.ImageTags?.Primary
+              ? api.imageUrl(track.Id, 'Primary', { tag: track.ImageTags.Primary, maxWidth: 80 })
+              : api.imageUrl(track.AlbumId!, 'Primary', { tag: track.AlbumPrimaryImageTag, maxWidth: 80 })
             : undefined;
 
         return (
-          <div key={t.PlaylistItemId ?? `${t.Id}-${i}`} className="border-0">
+          <div key={track.PlaylistItemId ?? `${track.Id}-${i}`} className="border-0">
             {header}
             <div
               className={clsx(
                 'group grid items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-white/5',
                 editable ? 'grid-cols-[1rem_2.5rem_1fr_auto]' : 'grid-cols-[2.5rem_1fr_auto]',
                 isCurrent && 'bg-white/5',
-                dragId === entryId(t) && 'opacity-40',
+                dragId === entryId(track) && 'opacity-40',
               )}
-              onDoubleClick={() => playAt(t)}
+              onDoubleClick={() => playAt(track)}
               data-testid="track-row"
-              {...(editable ? dragProps(entryId(t)) : undefined)}
+              {...(editable ? dragProps(entryId(track)) : undefined)}
             >
               {editable && (
-                <span className="cursor-grab text-faint opacity-0 group-hover:opacity-100" title="Drag to reorder" aria-hidden>
+                <span
+                  className="cursor-grab text-faint opacity-0 group-hover:opacity-100"
+                  title={t('item.trackList.dragToReorder')}
+                  aria-hidden
+                >
                   <GripVertical size={16} />
                 </span>
               )}
               <button
-                onClick={() => playAt(t)}
+                onClick={() => playAt(track)}
                 className="flex h-8 w-8 items-center justify-center text-sm text-muted tabular-nums"
-                aria-label={isCurrent && player.isPlaying ? 'Pause' : `Play ${t.Name}`}
+                aria-label={isCurrent && player.isPlaying ? t('common.pause') : t('item.trackList.play', { name: track.Name })}
               >
                 <span className={clsx('group-hover:hidden', isCurrent && 'text-accent')}>
                   {isCurrent && player.isPlaying ? (
@@ -153,7 +162,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
                       <span className="w-0.5 animate-pulse bg-accent [animation-delay:300ms]" style={{ height: '80%' }} />
                     </span>
                   ) : numbered === 'index' ? (
-                    (t.IndexNumber ?? i + 1)
+                    (track.IndexNumber ?? i + 1)
                   ) : (
                     i + 1
                   )}
@@ -169,7 +178,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className={clsx('truncate text-sm', isCurrent ? 'font-semibold text-accent' : 'text-fg')}>{t.Name}</div>
+                  <div className={clsx('truncate text-sm', isCurrent ? 'font-semibold text-accent' : 'text-fg')}>{track.Name}</div>
                   {(showArtists || showAlbum) && (
                     <div className="truncate text-xs text-muted">
                       {showArtists &&
@@ -181,10 +190,10 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
                             </Link>
                           </span>
                         ))}
-                      {showArtists && showAlbum && t.Album && ' — '}
-                      {showAlbum && t.AlbumId && (
-                        <Link to={`/item/${t.AlbumId}`} className="hover:underline">
-                          {t.Album}
+                      {showArtists && showAlbum && track.Album && ' — '}
+                      {showAlbum && track.AlbumId && (
+                        <Link to={`/item/${track.AlbumId}`} className="hover:underline">
+                          {track.Album}
                         </Link>
                       )}
                     </div>
@@ -193,59 +202,69 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setFavorite.mutate({ id: t.Id, favorite: !t.UserData?.IsFavorite }, { onError: (e) => toast.error(e) })}
+                  onClick={() =>
+                    setFavorite.mutate({ id: track.Id, favorite: !track.UserData?.IsFavorite }, { onError: (e) => toast.error(e) })
+                  }
                   className={clsx(
                     'rounded-full p-1.5 transition',
-                    t.UserData?.IsFavorite ? 'text-accent' : 'text-muted opacity-0 group-hover:opacity-100 hover:text-fg',
+                    track.UserData?.IsFavorite ? 'text-accent' : 'text-muted opacity-0 group-hover:opacity-100 hover:text-fg',
                   )}
-                  aria-label="Favorite"
+                  aria-label={t('item.trackList.favorite')}
                 >
-                  <Heart size={16} className={t.UserData?.IsFavorite ? 'fill-current' : undefined} />
+                  <Heart size={16} className={track.UserData?.IsFavorite ? 'fill-current' : undefined} />
                 </button>
                 <span className="w-12 text-right text-sm text-muted tabular-nums">
-                  {t.RunTimeTicks ? formatClock(ticksToSeconds(t.RunTimeTicks)) : ''}
+                  {track.RunTimeTicks ? formatClock(ticksToSeconds(track.RunTimeTicks)) : ''}
                 </span>
                 <Menu
                   items={[
-                    { label: 'Play', icon: <Play size={16} />, onSelect: () => playAt(t) },
-                    ...(t.MediaType === 'Audio'
+                    { label: t('common.play'), icon: <Play size={16} />, onSelect: () => playAt(track) },
+                    ...(track.MediaType === 'Audio'
                       ? [
                           {
-                            label: 'Play next',
+                            label: t('item.trackList.playNext'),
                             icon: <ListPlus size={16} />,
-                            onSelect: () => (player.current ? player.playNext([t]) : player.play([t])),
+                            onSelect: () => (player.current ? player.playNext([track]) : player.play([track])),
                           },
                           {
-                            label: 'Add to queue',
+                            label: t('item.trackList.addToQueue'),
                             icon: <ListEnd size={16} />,
-                            onSelect: () => (player.current ? player.enqueue([t]) : player.play([t])),
+                            onSelect: () => (player.current ? player.enqueue([track]) : player.play([track])),
                           },
-                          { label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(t) },
+                          { label: t('common.instantMix'), icon: <Radio size={16} />, onSelect: () => void instantMix(track) },
                         ]
                       : []),
-                    ...(supportsPlaylists(t)
-                      ? [{ label: 'Add to playlist', icon: <ListMusic size={16} />, onSelect: () => setAddingToPlaylist(t) }]
-                      : []),
-                    ...(editable && t.PlaylistItemId
+                    ...(supportsPlaylists(track)
                       ? [
                           {
-                            label: 'Remove from playlist',
+                            label: t('common.addToPlaylist'),
+                            icon: <ListMusic size={16} />,
+                            onSelect: () => setAddingToPlaylist(track),
+                          },
+                        ]
+                      : []),
+                    ...(editable && track.PlaylistItemId
+                      ? [
+                          {
+                            label: t('item.trackList.removeFromPlaylist'),
                             icon: <ListX size={16} />,
                             onSelect: () =>
-                              void removeFromPlaylist.mutateAsync(t.PlaylistItemId!).then(
-                                () => toast.success('Removed from playlist'),
+                              void removeFromPlaylist.mutateAsync(track.PlaylistItemId!).then(
+                                () => toast.success(t('item.trackList.removedFromPlaylist')),
                                 (e) => toast.error(e),
                               ),
                           },
                         ]
                       : []),
-                    ...(t.AlbumId && showAlbum ? [{ label: 'Go to album', onSelect: () => navigate(`/item/${t.AlbumId}`) }] : []),
+                    ...(track.AlbumId && showAlbum
+                      ? [{ label: t('item.trackList.goToAlbum'), onSelect: () => navigate(`/item/${track.AlbumId}`) }]
+                      : []),
                   ]}
                   trigger={({ toggle, open }) => (
                     <button
                       onClick={toggle}
                       aria-expanded={open}
-                      aria-label="More"
+                      aria-label={t('common.more')}
                       className="rounded-full p-1.5 text-muted opacity-0 group-hover:opacity-100 hover:text-fg aria-expanded:opacity-100"
                     >
                       <MoreHorizontal size={16} />

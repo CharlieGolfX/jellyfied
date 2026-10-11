@@ -3,10 +3,10 @@ import { Camera, Check, KeyRound, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CultureDto, QuickConnectResult, UserConfiguration } from '@/api/types';
-import { checkPin, clearPin, hasPin, setPin, validPin } from '@/auth/accountPin';
-import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import { checkPin, hasPin, validPin } from '@/auth/accountPin';
+import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { PinInput } from '@/auth/PinPrompt';
-import { browserLanguage, chosenLanguage, languageName, LANGUAGES, setLanguage, useLanguage, useT } from '@/i18n';
+import { browserLanguage, languageName, LANGUAGES, setLanguage, t, useLanguageChoice } from '@/i18n';
 import { Avatar } from '@/components/layout/UserMenu';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select, Switch } from '@/components/ui/Form';
@@ -56,11 +56,11 @@ export function Card({
 }
 
 const SUBTITLE_MODES: { value: UserConfiguration['SubtitleMode']; label: string }[] = [
-  { value: 'Default', label: 'Default — match language preference, forced subtitles' },
-  { value: 'Smart', label: 'Smart — show when audio is in a foreign language' },
-  { value: 'OnlyForced', label: 'Only forced subtitles' },
-  { value: 'Always', label: 'Always show subtitles' },
-  { value: 'None', label: 'Never show subtitles' },
+  { value: 'Default', label: t('settings.defaultMatchLanguagePreferenceForced') },
+  { value: 'Smart', label: t('settings.smartShowWhenAudioIs') },
+  { value: 'OnlyForced', label: t('settings.onlyForcedSubtitles') },
+  { value: 'Always', label: t('settings.alwaysShowSubtitles') },
+  { value: 'None', label: t('settings.neverShowSubtitles') },
 ];
 
 /** Reads a File as a base64 string (without the data URL prefix), as Jellyfin's image upload expects. */
@@ -77,7 +77,7 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 export default function SettingsPage() {
-  usePageTitle('Account settings');
+  usePageTitle(t('settings.accountSettings'));
   const api = useApi();
   const { userId } = useSession();
   const toast = useToast();
@@ -101,7 +101,7 @@ export default function SettingsPage() {
   const saveConfig = useMutation({
     mutationFn: (c: UserConfiguration) => api.post('/Users/Configuration', c, { userId }),
     onSuccess: () => {
-      toast.success('Preferences saved');
+      toast.success(t('settings.preferencesSaved'));
       void qc.invalidateQueries({ queryKey: ['me'] });
     },
     onError: (e) => toast.error(e),
@@ -114,7 +114,7 @@ export default function SettingsPage() {
       await api.request('POST', '/UserImage', { query: { userId }, rawBody: { data, contentType: file.type || 'image/jpeg' } });
     },
     onSuccess: () => {
-      toast.success('Profile picture updated');
+      toast.success(t('settings.profilePictureUpdated'));
       void qc.invalidateQueries({ queryKey: ['me'] });
     },
     onError: (e) => toast.error(e),
@@ -122,7 +122,7 @@ export default function SettingsPage() {
   const deleteImage = useMutation({
     mutationFn: () => api.delete('/UserImage', { userId }),
     onSuccess: () => {
-      toast.success('Profile picture removed');
+      toast.success(t('settings.profilePictureRemoved'));
       void qc.invalidateQueries({ queryKey: ['me'] });
     },
     onError: (e) => toast.error(e),
@@ -139,9 +139,9 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-bold">Account Settings</h1>
+      <h1 className="text-2xl font-bold">{t('settings.accountSettings2')}</h1>
 
-      <Card title="Profile">
+      <Card title={t('settings.profile')}>
         <div className="flex items-center gap-5">
           <Avatar userId={user.Id} tag={user.PrimaryImageTag} name={user.Name} size={80} />
           <div className="space-y-2">
@@ -159,7 +159,7 @@ export default function SettingsPage() {
                 }}
               />
               <Button size="sm" icon={<Camera size={14} />} loading={uploadImage.isPending} onClick={() => fileRef.current?.click()}>
-                Change picture
+                {t('settings.changePicture')}
               </Button>
               {user.PrimaryImageTag && (
                 <Button
@@ -169,7 +169,7 @@ export default function SettingsPage() {
                   loading={deleteImage.isPending}
                   onClick={() => deleteImage.mutate()}
                 >
-                  Remove
+                  {t('settings.remove')}
                 </Button>
               )}
             </div>
@@ -178,18 +178,18 @@ export default function SettingsPage() {
       </Card>
 
       <Card
-        title="Playback"
-        description="Stored on your Jellyfin account and used by all clients."
+        title={t('settings.playback')}
+        description={t('settings.storedOnYourJellyfinAccount')}
         actions={
           <Button variant="primary" size="sm" loading={saveConfig.isPending} onClick={() => saveConfig.mutate(config)}>
-            Save
+            {t('common.save')}
           </Button>
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Preferred audio language">
+          <Field label={t('settings.preferredAudioLanguage')}>
             <Select value={config.AudioLanguagePreference ?? ''} onChange={(e) => set('AudioLanguagePreference', e.target.value)}>
-              <option value="">Any language</option>
+              <option value="">{t('settings.anyLanguage')}</option>
               {languages.map((l) => (
                 <option key={`${l.ThreeLetterISOLanguageName}-${l.DisplayName}`} value={l.ThreeLetterISOLanguageName!}>
                   {l.DisplayName}
@@ -197,9 +197,9 @@ export default function SettingsPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Preferred subtitle language">
+          <Field label={t('settings.preferredSubtitleLanguage')}>
             <Select value={config.SubtitleLanguagePreference ?? ''} onChange={(e) => set('SubtitleLanguagePreference', e.target.value)}>
-              <option value="">Any language</option>
+              <option value="">{t('settings.anyLanguage')}</option>
               {languages.map((l) => (
                 <option key={`${l.ThreeLetterISOLanguageName}-${l.DisplayName}`} value={l.ThreeLetterISOLanguageName!}>
                   {l.DisplayName}
@@ -207,7 +207,7 @@ export default function SettingsPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Subtitle mode" className="sm:col-span-2">
+          <Field label={t('settings.subtitleMode')} className="sm:col-span-2">
             <Select value={config.SubtitleMode} onChange={(e) => set('SubtitleMode', e.target.value as UserConfiguration['SubtitleMode'])}>
               {SUBTITLE_MODES.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -219,51 +219,48 @@ export default function SettingsPage() {
         </div>
         <div className="mt-3 divide-y divide-white/5">
           <Switch
-            label="Play default audio track regardless of language"
+            label={t('settings.playDefaultAudioTrackRegardless')}
             checked={config.PlayDefaultAudioTrack}
             onChange={(v) => set('PlayDefaultAudioTrack', v)}
           />
           <Switch
-            label="Automatically play the next episode"
+            label={t('settings.automaticallyPlayTheNextEpisode')}
             checked={config.EnableNextEpisodeAutoPlay}
             onChange={(v) => set('EnableNextEpisodeAutoPlay', v)}
           />
           <Switch
-            label="Remember audio selections"
+            label={t('settings.rememberAudioSelections')}
             checked={config.RememberAudioSelections}
             onChange={(v) => set('RememberAudioSelections', v)}
           />
           <Switch
-            label="Remember subtitle selections"
+            label={t('settings.rememberSubtitleSelections')}
             checked={config.RememberSubtitleSelections}
             onChange={(v) => set('RememberSubtitleSelections', v)}
           />
           <Switch
-            label="Hide watched items in Recently Added"
+            label={t('settings.hideWatchedItemsInRecently')}
             checked={config.HidePlayedInLatest}
             onChange={(v) => set('HidePlayedInLatest', v)}
           />
           <Switch
-            label="Show missing episodes"
+            label={t('settings.showMissingEpisodes')}
             checked={config.DisplayMissingEpisodes}
             onChange={(v) => set('DisplayMissingEpisodes', v)}
           />
         </div>
       </Card>
 
-      <Card
-        title="This device"
-        description="Streaming quality is stored in this browser only. The other settings here, the colours and the subtitle appearance follow your account when syncing is on."
-      >
+      <Card title={t('common.thisDevice')} description={t('settings.streamingQualityIsStoredIn')}>
         <div className="mb-3 border-b border-white/5 pb-2">
           <Switch
-            label="Sync my preferences"
-            description="Keeps colours, subtitle appearance, skip lengths, time display, the home page layout and remembered tracks the same in every browser you sign in to."
+            label={t('settings.syncMyPreferences')}
+            description={t('settings.keepsColoursSubtitleAppearanceSkip')}
             checked={syncPrefs}
             onChange={setSyncPrefs}
           />
         </div>
-        <Field label="Default streaming quality" hint="Lower values make the server transcode to save bandwidth.">
+        <Field label={t('settings.defaultStreamingQuality')} hint={t('settings.lowerValuesMakeTheServer')}>
           <Select
             value={bitrate}
             onChange={(e) => {
@@ -274,50 +271,46 @@ export default function SettingsPage() {
               } catch {
                 /* ignore */
               }
-              toast.success('Streaming quality updated');
+              toast.success(t('settings.streamingQualityUpdated'));
             }}
           >
-            <option value={MAX_BITRATE}>Original / Auto</option>
-            <option value={40_000_000}>40 Mbps (4K)</option>
-            <option value={20_000_000}>20 Mbps (1080p)</option>
-            <option value={12_000_000}>12 Mbps (1080p)</option>
-            <option value={8_000_000}>8 Mbps (1080p)</option>
-            <option value={4_000_000}>4 Mbps (720p)</option>
-            <option value={2_000_000}>2 Mbps (480p)</option>
-            <option value={1_000_000}>1 Mbps (480p)</option>
+            <option value={MAX_BITRATE}>{t('settings.originalAuto')}</option>
+            <option value={40_000_000}>{t('settings.n40Mbps4k')}</option>
+            <option value={20_000_000}>{t('settings.n20Mbps1080p')}</option>
+            <option value={12_000_000}>{t('settings.n12Mbps1080p')}</option>
+            <option value={8_000_000}>{t('settings.n8Mbps1080p')}</option>
+            <option value={4_000_000}>{t('settings.n4Mbps720p')}</option>
+            <option value={2_000_000}>{t('settings.n2Mbps480p')}</option>
+            <option value={1_000_000}>{t('settings.n1Mbps480p')}</option>
           </Select>
         </Field>
-        <Field
-          className="mt-4"
-          label="Default time display"
-          hint="Used for clock times such as “Ends at” in the player and dates in the dashboard."
-        >
+        <Field className="mt-4" label={t('settings.defaultTimeDisplay')} hint={t('settings.usedForClockTimesSuch')}>
           <Select
             value={timeFormat}
             onChange={(e) => {
               setTimeFormat(e.target.value as TimeFormat);
-              toast.success('Time display updated');
+              toast.success(t('settings.timeDisplayUpdated'));
             }}
           >
-            <option value="24h">24-hour (21:45)</option>
-            <option value="12h">12-hour (9:45 PM)</option>
+            <option value="24h">{t('settings.n24Hour2145')}</option>
+            <option value="12h">{t('settings.n12Hour945Pm')}</option>
           </Select>
         </Field>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Skip back" hint="The player’s back button, the ← and J keys, and a double tap on the left.">
+          <Field label={t('settings.skipBack')} hint={t('settings.thePlayerSBackButton')}>
             <Select value={seekSteps.back} onChange={(e) => setSeekSteps({ back: Number(e.target.value) })}>
               {SEEK_STEP_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s} seconds
+                  {t('settings.seconds', { count: s })}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Skip forward" hint="The forward button, the → and L keys, and a double tap on the right.">
+          <Field label={t('settings.skipForward')} hint={t('settings.theForwardButtonTheAnd')}>
             <Select value={seekSteps.forward} onChange={(e) => setSeekSteps({ forward: Number(e.target.value) })}>
               {SEEK_STEP_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s} seconds
+                  {t('settings.seconds', { count: s })}
                 </option>
               ))}
             </Select>
@@ -342,18 +335,18 @@ function InterfaceColorsCard() {
   const changed = theme.accent !== DEFAULT_THEME.accent || theme.background !== DEFAULT_THEME.background;
   return (
     <Card
-      title="Interface colours"
-      description="The accent colour and background of Jellyplex on this device."
+      title={t('settings.interfaceColours')}
+      description={t('settings.theAccentColourAndBackground')}
       actions={
         changed ? (
           <Button size="sm" variant="ghost" onClick={() => setTheme(DEFAULT_THEME)}>
-            Reset
+            {t('common.reset')}
           </Button>
         ) : undefined
       }
     >
-      <div className="text-sm font-medium text-fg">Accent colour</div>
-      <div className="mt-2 flex flex-wrap items-center gap-2.5" role="radiogroup" aria-label="Accent colour">
+      <div className="text-sm font-medium text-fg">{t('settings.accentColour')}</div>
+      <div className="mt-2 flex flex-wrap items-center gap-2.5" role="radiogroup" aria-label={t('settings.accentColour')}>
         {ACCENT_PRESETS.map((p) => (
           <button
             key={p.value}
@@ -373,7 +366,7 @@ function InterfaceColorsCard() {
           </button>
         ))}
         <label
-          title="Custom colour"
+          title={t('settings.customColour')}
           className={clsx(
             'relative flex h-9 items-center gap-2 rounded-full bg-white/10 pr-3 pl-1.5 text-sm ring-offset-2 ring-offset-base-800 hover:bg-white/15',
             customAccent && 'ring-2 ring-white',
@@ -383,10 +376,10 @@ function InterfaceColorsCard() {
             className="h-6 w-6 rounded-full ring-1 ring-white/20"
             style={{ background: customAccent ? theme.accent : 'conic-gradient(#e5484d, #e5a00d, #3dbb6b, #00a4dc, #aa5cc3, #e5484d)' }}
           />
-          Custom
+          {t('settings.custom')}
           <input
             type="color"
-            aria-label="Custom accent colour"
+            aria-label={t('settings.customAccentColour')}
             value={theme.accent}
             onChange={(e) => setTheme({ accent: e.target.value.toLowerCase() })}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
@@ -394,8 +387,8 @@ function InterfaceColorsCard() {
         </label>
       </div>
 
-      <div className="mt-6 text-sm font-medium text-fg">Background</div>
-      <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label="Background">
+      <div className="mt-6 text-sm font-medium text-fg">{t('settings.background')}</div>
+      <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label={t('settings.background')}>
         {BACKGROUNDS.map((b) => (
           <button
             key={b.value}
@@ -420,13 +413,13 @@ function InterfaceColorsCard() {
         data-testid="theme-preview"
       >
         <Button variant="primary" size="sm" tabIndex={-1}>
-          Play
+          {t('common.play')}
         </Button>
-        <span className="text-sm font-semibold text-accent">Accent text</span>
+        <span className="text-sm font-semibold text-accent">{t('settings.accentText')}</span>
         <div className="h-1.5 w-32 overflow-hidden rounded-full bg-base-700">
           <div className="h-full w-2/3 bg-accent" />
         </div>
-        <span className="rounded bg-base-800 px-2 py-1 text-xs text-muted ring-1 ring-white/5">Panel</span>
+        <span className="rounded bg-base-800 px-2 py-1 text-xs text-muted ring-1 ring-white/5">{t('settings.panel')}</span>
       </div>
     </Card>
   );
@@ -446,10 +439,7 @@ function SubtitleAppearanceCard() {
     </Field>
   );
   return (
-    <Card
-      title="Subtitle appearance"
-      description="How text subtitles look in the video player on this device. Subtitles that are burned into the video by the server are not affected."
-    >
+    <Card title={t('settings.subtitleAppearance')} description={t('settings.howTextSubtitlesLookIn')}>
       <div
         className="mb-4 flex aspect-[32/9] items-end justify-center rounded-md bg-gradient-to-br from-sky-900 via-slate-700 to-amber-800 p-4"
         aria-hidden
@@ -459,14 +449,14 @@ function SubtitleAppearanceCard() {
           className="rounded-sm px-[0.35em] text-center font-semibold"
           style={{ ...subtitleLineCss(style), fontSize: `${20 * subtitleScale(style)}px`, lineHeight: 1.3 }}
         >
-          This is how subtitles will look.
+          {t('settings.thisIsHowSubtitlesWill')}
         </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {select('size', 'Text size', SUBTITLE_SIZES)}
-        {select('color', 'Text colour', SUBTITLE_COLORS)}
+        {select('size', t('settings.textSize'), SUBTITLE_SIZES)}
+        {select('color', t('settings.textColour'), SUBTITLE_COLORS)}
         {select('background', 'Background', SUBTITLE_BACKGROUNDS)}
-        {select('edge', 'Text edge', SUBTITLE_EDGES)}
+        {select('edge', t('settings.textEdge'), SUBTITLE_EDGES)}
       </div>
     </Card>
   );
@@ -482,7 +472,7 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   const mutation = useMutation({
     mutationFn: () => api.post('/Users/Password', { CurrentPw: current, NewPw: next }, { userId }),
     onSuccess: () => {
-      toast.success('Password changed');
+      toast.success(t('settings.passwordChanged'));
       setCurrent('');
       setNext('');
       setConfirm('');
@@ -498,22 +488,25 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   };
 
   return (
-    <Card title="Password">
+    <Card title={t('common.password')}>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3">
         {hasPassword && (
-          <Field label="Current password">
+          <Field label={t('settings.currentPassword')}>
             <Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
           </Field>
         )}
-        <Field label="New password">
+        <Field label={t('settings.newPassword')}>
           <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
         </Field>
-        <Field label="Confirm new password" hint={mismatch ? <span className="text-danger">Passwords don’t match</span> : undefined}>
+        <Field
+          label={t('settings.confirmNewPassword')}
+          hint={mismatch ? <span className="text-danger">{t('settings.passwordsDonTMatch')}</span> : undefined}
+        >
           <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
         <div className="sm:col-span-3">
           <Button type="submit" variant="primary" loading={mutation.isPending} disabled={mismatch || (!next && !hasPassword)}>
-            Update password
+            {t('settings.updatePassword')}
           </Button>
         </div>
       </form>
@@ -530,14 +523,14 @@ function QuickConnectCard() {
   const mutation = useMutation({
     mutationFn: () => api.post<boolean | QuickConnectResult>('/QuickConnect/Authorize', undefined, { code: code.trim(), userId }),
     onSuccess: () => {
-      toast.success('Device authorized');
+      toast.success(t('settings.deviceAuthorized'));
       setCode('');
     },
     onError: (e) => toast.error(e),
   });
   if (enabled.data !== true) return null;
   return (
-    <Card title="Quick Connect" description="Sign in on another device by entering the code it shows.">
+    <Card title={t('settings.quickConnect')} description={t('settings.signInOnAnotherDevice')}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -545,7 +538,7 @@ function QuickConnectCard() {
         }}
         className="flex flex-wrap items-end gap-3"
       >
-        <Field label="Code" className="w-48">
+        <Field label={t('settings.code')} className="w-48">
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -555,7 +548,7 @@ function QuickConnectCard() {
           />
         </Field>
         <Button type="submit" variant="primary" icon={<KeyRound size={16} />} loading={mutation.isPending} disabled={!code.trim()}>
-          Authorize
+          {t('settings.authorize')}
         </Button>
       </form>
     </Card>
@@ -565,6 +558,7 @@ function QuickConnectCard() {
 /** Sets, changes or removes the PIN that is asked for before switching to this account on this device. */
 function AccountPinCard() {
   const session = useSession();
+  const { protectAccount } = useAuth();
   const toast = useToast();
   const [protectedNow, setProtectedNow] = useState(() => hasPin(session));
   const [current, setCurrent] = useState('');
@@ -583,7 +577,7 @@ function AccountPinCard() {
     const result = checkPin(session, current);
     if (result.ok) return true;
     toast.error(
-      result.lockedFor ? `Too many wrong tries. Try again in ${Math.ceil(result.lockedFor / 1000)} seconds.` : 'The current PIN is wrong.',
+      result.lockedFor ? t('auth.pin.locked', { seconds: Math.ceil(result.lockedFor / 1000) }) : t('settings.theCurrentPinIsWrong'),
     );
     setCurrent('');
     return false;
@@ -591,41 +585,41 @@ function AccountPinCard() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (mismatch || !validPin(next) || !currentIsRight()) return;
-    setPin(session, next);
-    toast.success(protectedNow ? 'PIN changed' : 'PIN set');
+    protectAccount(next);
+    toast.success(protectedNow ? t('settings.pinChanged') : t('settings.pinSet'));
     reset();
   };
   const remove = () => {
     if (!currentIsRight()) return;
-    clearPin(session);
-    toast.success('PIN removed');
+    protectAccount(null);
+    toast.success(t('settings.pinRemoved'));
     reset();
   };
 
   return (
-    <Card
-      title="Account PIN"
-      description="Asked for before someone switches to this account on this device. It keeps others in the household out of your account; it does not replace your password, and it only applies to this browser."
-    >
+    <Card title={t('settings.accountPin')} description={t('settings.askedForBeforeSomeoneSwitches')}>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3" data-testid="account-pin">
         {protectedNow && (
-          <Field label="Current PIN">
+          <Field label={t('settings.currentPin')}>
             <PinInput value={current} onChange={setCurrent} />
           </Field>
         )}
-        <Field label={protectedNow ? 'New PIN' : 'PIN'} hint="4 to 12 digits">
+        <Field label={protectedNow ? t('settings.newPin') : t('settings.pin')} hint={t('settings.n4To12Digits')}>
           <PinInput value={next} onChange={setNext} />
         </Field>
-        <Field label="Repeat the PIN" hint={mismatch ? <span className="text-danger">The PINs don’t match</span> : undefined}>
+        <Field
+          label={t('settings.repeatThePin')}
+          hint={mismatch ? <span className="text-danger">{t('settings.thePinsDonTMatch')}</span> : undefined}
+        >
           <PinInput value={confirm} onChange={setConfirm} />
         </Field>
         <div className="flex flex-wrap gap-2 sm:col-span-3">
           <Button type="submit" variant="primary" disabled={mismatch || !validPin(next) || next !== confirm || (protectedNow && !current)}>
-            {protectedNow ? 'Change PIN' : 'Set PIN'}
+            {protectedNow ? t('settings.changePin') : t('settings.setPin')}
           </Button>
           {protectedNow && (
             <Button variant="outline" disabled={!current} onClick={remove}>
-              Remove PIN
+              {t('settings.removePin')}
             </Button>
           )}
         </div>
@@ -636,13 +630,11 @@ function AccountPinCard() {
 
 /** Picks the language of Jellyplex's own text, from the languages it has been translated to. */
 function LanguageCard() {
-  const t = useT();
-  // Read again whenever the language in use changes.
-  useLanguage();
+  const choice = useLanguageChoice();
   return (
     <Card title={t('settings.language.title')} description={t('settings.language.description')}>
       <Field label={t('settings.language.label')} hint={t('settings.language.count', { count: LANGUAGES.length })} className="max-w-sm">
-        <Select value={chosenLanguage() ?? ''} onChange={(e) => setLanguage(e.target.value || null)}>
+        <Select value={choice ?? ''} onChange={(e) => setLanguage(e.target.value || null)}>
           <option value="">{t('settings.language.auto', { language: languageName(browserLanguage()) })}</option>
           {LANGUAGES.map((code) => (
             <option key={code} value={code}>

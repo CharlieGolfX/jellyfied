@@ -11,6 +11,7 @@ import { castCommand, castSeek, castSetVolume, castToggleMute, disconnectChromec
 import { SeekBar } from './SeekBar';
 import { useClock } from '@/lib/useClock';
 import { nowPlayingLabel, useControllableSessions } from './CastButton';
+import { t } from '@/i18n';
 
 interface RemoteState {
   PositionTicks?: number | null;
@@ -212,11 +213,11 @@ function RemoteBarView({
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold" data-testid="remote-title">
-              {item ? nowPlayingLabel(item) : offline ? 'Device is offline' : 'Nothing playing'}
+              {item ? nowPlayingLabel(item) : offline ? t('player.remoteBar.deviceIsOffline') : t('player.remoteBar.nothingPlaying')}
             </div>
             <div className="truncate text-xs text-muted">
               <Cast size={12} className="mr-1 inline align-[-1px] text-accent" />
-              Playing on {deviceName}
+              {t('player.remoteBar.playingOn')} {deviceName}
               {client ? ` · ${client}` : ''}
             </div>
           </div>
@@ -227,7 +228,7 @@ function RemoteBarView({
             onClick={controls.previous}
             disabled={!item}
             className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block"
-            aria-label="Previous"
+            aria-label={t('common.previous')}
           >
             <SkipBack size={20} fill="currentColor" />
           </button>
@@ -235,7 +236,7 @@ function RemoteBarView({
             onClick={() => controls.playPause(paused)}
             disabled={!item}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-fg text-base-900 transition hover:scale-105 disabled:opacity-30"
-            aria-label={paused ? 'Play on device' : 'Pause on device'}
+            aria-label={paused ? t('player.remoteBar.playOnDevice') : t('player.remoteBar.pauseOnDevice')}
           >
             {paused ? <Play size={20} fill="currentColor" className="ml-0.5" /> : <Pause size={20} fill="currentColor" />}
           </button>
@@ -243,7 +244,7 @@ function RemoteBarView({
             onClick={controls.next}
             disabled={!item}
             className="hidden rounded-full p-2 text-fg hover:text-accent disabled:opacity-30 sm:block"
-            aria-label="Next"
+            aria-label={t('common.next')}
           >
             <SkipForward size={20} fill="currentColor" />
           </button>
@@ -251,7 +252,7 @@ function RemoteBarView({
             onClick={controls.stop}
             disabled={!item}
             className="rounded-full p-2 text-fg hover:text-accent disabled:opacity-30"
-            aria-label="Stop on device"
+            aria-label={t('player.remoteBar.stopOnDevice')}
           >
             <Square size={18} fill="currentColor" />
           </button>
@@ -267,7 +268,7 @@ function RemoteBarView({
             onClick={controls.toggleMute}
             disabled={!item}
             className="hidden rounded-full p-2 text-muted hover:text-fg disabled:opacity-30 sm:block"
-            aria-label="Mute device"
+            aria-label={t('player.remoteBar.muteDevice')}
           >
             {state?.IsMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -281,15 +282,15 @@ function RemoteBarView({
             disabled={!item}
             onChange={(e) => controls.setVolume(Number(e.target.value))}
             className="hidden w-24 disabled:opacity-30 lg:block"
-            aria-label="Device volume"
+            aria-label={t('player.remoteBar.deviceVolume')}
           />
           <button
             onClick={controls.disconnect}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted hover:bg-white/10 hover:text-fg"
-            aria-label="Stop playing on device"
-            title="Disconnect: play on this device again"
+            aria-label={t('player.remoteBar.stopPlayingOnDevice')}
+            title={t('player.remoteBar.disconnectPlayOnThisDevice')}
           >
-            <X size={16} /> <span className="hidden sm:inline">Disconnect</span>
+            <X size={16} /> <span className="hidden sm:inline">{t('player.remoteBar.disconnect')}</span>
           </button>
         </div>
       </div>

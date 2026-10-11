@@ -29,14 +29,22 @@ shown in the account menu and on the login screen.
 - Library filters for year, age rating, resolution, tag and studio, and a list view next to the
   poster grid. Genre, year, rating, tag and studio take several values at once.
 - An A–Z bar in libraries sorted by title. A letter moves the list there and keeps the rest of
-  the library above and below it; the bar stays in reach while scrolling.
+  the library above and below it. Sorting, filters and the bar stay at the top while scrolling,
+  and a filter chosen at a letter keeps the place in the alphabet.
+- Large libraries stay light: only the rows near the screen are kept in the page.
+- Posters are requested in the size the screen needs (smaller on phones, sharper on dense
+  screens) and show a blurred preview while they load.
+- Marking something watched or as a favourite shows at once, without waiting for the server.
+- An item's page is fetched while the pointer rests on its card, so it opens without a wait.
+- Going back returns to the same place in a list.
 - Selecting several items to mark them watched or unwatched, add them to a playlist or
   collection, or delete them. Shift-click selects everything in between.
 - The home page has a featured title at the top, and "Customise home" to reorder (by dragging or
   with buttons) or hide its rows.
 - Browser tabs and history entries are named after the page.
 - Several accounts can be signed in on one device and switched between without a password. An
-  account can be given a PIN that is asked for before switching to it on that device.
+  account can be given a PIN that is asked for before switching to it on that device; its
+  sign-in is stored encrypted with the PIN while another account is in use.
 - Server dashboard: Backups (create, list, restore), parental controls in the user editor
   (highest rating, unrated items, tags, access schedule), Branding, Metadata (date added, NFO
   files, chapter images, trickplay) and plugin repositories.
@@ -58,6 +66,11 @@ shown in the account menu and on the login screen.
 - Build assets are compressed once at build time instead of on every request.
 
 ### Fixed
+- Going from letter to letter in a library could leave the page on placeholders for a long time,
+  mostly in Firefox: posters of lists that had already been left kept loading and held up the
+  request for the new list. Images now stop loading when they leave the page, data is fetched
+  ahead of artwork, and the titles above a letter load when you scroll up to them (or press
+  "Earlier titles") instead of straight away.
 - "Display language (server UI)" in the dashboard's General settings listed every language the
   server knows of. It now lists the languages the server's text has actually been translated to.
 - Behind a reverse proxy or tunnel, Jellyfin was told the proxy's address instead of the
@@ -68,9 +81,11 @@ shown in the account menu and on the login screen.
 - Files without a date no longer show "Jan 1, 1970" in the library list.
 
 ### Development
-- A structure for translations: interface text in one file per language (`src/i18n/locales/`),
-  with typed keys, placeholders, plural forms and a language setting. The sign-in screen,
-  sidebar, top bar and account menu use it; the rest of the interface is still to be moved.
+- Translations: all interface text (about 1,200 texts) is in one file per language under
+  `src/i18n/locales/`, with typed keys, placeholders, plural forms and a language setting.
+  Only English exists so far.
+- The player's top bar and control bar are components of their own.
+- hls.js is built into a file of its own, so a new release does not make browsers fetch it again.
 - Lint is free of warnings, with every rule an error; Prettier formats the code.
 - Unit tests for the WebSocket client, SyncPlay, signing in and out, and what "Play" does; browser
   tests for search, settings, the dashboard and the metadata editor; all browser tests also run in

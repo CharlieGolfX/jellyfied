@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useId } from 'react';
+import { t } from '@/i18n';
 
 /*
  * Official Jellyfin artwork from https://github.com/jellyfin/jellyfin-ux (banner-dark.svg / icon-transparent.svg).
@@ -21,7 +22,7 @@ function Gradient({ id }: { id: string }) {
 export function JellyfinIcon({ className }: { className?: string }) {
   const id = useId();
   return (
-    <svg viewBox="0 0 512 512" className={className} role="img" aria-label="Jellyfin">
+    <svg viewBox="0 0 512 512" className={className} role="img" aria-label={t('layout.logo.jellyfin')}>
       <Gradient id={id} />
       <path d="M256,201.6c-20.4,0-86.2,119.3-76.2,139.4s142.5,19.9,152.4,0S276.5,201.6,256,201.6z" fill={`url(#${id})`} />
       <path
@@ -37,7 +38,7 @@ export function Logo({ className }: { className?: string }) {
   const id = useId();
   const fill = `url(#${id})`;
   return (
-    <svg viewBox="0 0 1536 512" className={clsx('w-auto text-fg', className ?? 'h-8')} role="img" aria-label="Jellyfin">
+    <svg viewBox="0 0 1536 512" className={clsx('w-auto text-fg', className ?? 'h-8')} role="img" aria-label={t('layout.logo.jellyfin')}>
       <Gradient id={id} />
       <path d="M261.42,201.62c-20.44,0-86.24,119.29-76.2,139.43s142.48,19.92,152.4,0S281.86,201.63,261.42,201.62Z" fill={fill} />
       <path

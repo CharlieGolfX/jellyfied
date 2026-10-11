@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Card } from '@/pages/Settings';
 import { ParentalControls } from './ParentalControls';
 import { AdminPage } from './shared';
+import { t, tRich } from '@/i18n';
 
 type Tab = 'profile' | 'access' | 'parental' | 'password';
 
@@ -59,7 +60,7 @@ export default function UserEditPage() {
       await api.post(`/Users/${userId}/Policy`, policy);
     },
     onSuccess: () => {
-      toast.success('User saved');
+      toast.success(t('admin.userEdit.userSaved'));
       invalidate();
     },
     onError: (e) => toast.error(e),
@@ -68,7 +69,7 @@ export default function UserEditPage() {
   const remove = useMutation({
     mutationFn: () => api.delete(`/Users/${userId}`),
     onSuccess: () => {
-      toast.success('User deleted');
+      toast.success(t('admin.userEdit.userDeleted'));
       void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       navigate('/admin/users');
     },
@@ -99,19 +100,19 @@ export default function UserEditPage() {
       title={user.data.Name}
       description={
         <Link to="/admin/users" className="inline-flex items-center gap-1 text-accent hover:underline">
-          <ArrowLeft size={14} /> All users
+          <ArrowLeft size={14} /> {t('admin.userEdit.allUsers')}
         </Link>
       }
       actions={
         <>
           {!isSelf && (
             <Button variant="outline" icon={<Trash2 size={16} />} onClick={() => setConfirmDelete(true)}>
-              Delete
+              {t('common.delete')}
             </Button>
           )}
           {tab !== 'password' && (
             <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-              Save changes
+              {t('common.saveChanges')}
             </Button>
           )}
         </>
@@ -120,16 +121,16 @@ export default function UserEditPage() {
       <div className="flex items-center gap-4">
         <Avatar userId={user.data.Id} tag={user.data.PrimaryImageTag} name={user.data.Name} size={56} />
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['profile', 'access', 'parental', 'password'] as Tab[]).map((t) => (
+          {(['profile', 'access', 'parental', 'password'] as Tab[]).map((entry) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={entry}
+              onClick={() => setTab(entry)}
               className={clsx(
                 'rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors',
-                tab === t ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
+                tab === entry ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
               )}
             >
-              {t}
+              {entry}
             </button>
           ))}
         </div>
@@ -137,56 +138,64 @@ export default function UserEditPage() {
 
       {tab === 'profile' && (
         <>
-          <Card title="Profile">
-            <Field label="Username" className="max-w-sm">
+          <Card title={t('admin.userEdit.profile')}>
+            <Field label={t('admin.userEdit.username')} className="max-w-sm">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <div className="mt-3 divide-y divide-white/5">
               <Switch
-                label="Administrator"
-                description="Full access to the server dashboard and all settings."
+                label={t('admin.userEdit.administrator')}
+                description={t('admin.userEdit.fullAccessToTheServer')}
                 checked={policy.IsAdministrator}
                 disabled={isSelf}
                 onChange={(v) => p('IsAdministrator', v)}
               />
               <Switch
-                label="Disable this user"
-                description="The user won’t be able to sign in."
+                label={t('admin.userEdit.disableThisUser')}
+                description={t('admin.userEdit.theUserWonTBe')}
                 checked={policy.IsDisabled}
                 disabled={isSelf}
                 onChange={(v) => p('IsDisabled', v)}
               />
-              <Switch label="Hide from login screen" checked={policy.IsHidden} onChange={(v) => p('IsHidden', v)} />
-              <Switch label="Allow remote connections" checked={policy.EnableRemoteAccess} onChange={(v) => p('EnableRemoteAccess', v)} />
+              <Switch label={t('admin.userEdit.hideFromLoginScreen')} checked={policy.IsHidden} onChange={(v) => p('IsHidden', v)} />
+              <Switch
+                label={t('admin.userEdit.allowRemoteConnections')}
+                checked={policy.EnableRemoteAccess}
+                onChange={(v) => p('EnableRemoteAccess', v)}
+              />
             </div>
           </Card>
 
-          <Card title="Playback">
+          <Card title={t('admin.userEdit.playback')}>
             <div className="divide-y divide-white/5">
-              <Switch label="Allow media playback" checked={policy.EnableMediaPlayback} onChange={(v) => p('EnableMediaPlayback', v)} />
               <Switch
-                label="Allow audio transcoding"
+                label={t('admin.userEdit.allowMediaPlayback')}
+                checked={policy.EnableMediaPlayback}
+                onChange={(v) => p('EnableMediaPlayback', v)}
+              />
+              <Switch
+                label={t('admin.userEdit.allowAudioTranscoding')}
                 checked={policy.EnableAudioPlaybackTranscoding}
                 onChange={(v) => p('EnableAudioPlaybackTranscoding', v)}
               />
               <Switch
-                label="Allow video transcoding"
+                label={t('admin.userEdit.allowVideoTranscoding')}
                 checked={policy.EnableVideoPlaybackTranscoding}
                 onChange={(v) => p('EnableVideoPlaybackTranscoding', v)}
               />
               <Switch
-                label="Allow remuxing (container changes without re-encoding)"
+                label={t('admin.userEdit.allowRemuxingContainerChangesWithout')}
                 checked={policy.EnablePlaybackRemuxing}
                 onChange={(v) => p('EnablePlaybackRemuxing', v)}
               />
               <Switch
-                label="Force transcoding of remote media sources"
+                label={t('admin.userEdit.forceTranscodingOfRemoteMedia')}
                 checked={policy.ForceRemoteSourceTranscoding}
                 onChange={(v) => p('ForceRemoteSourceTranscoding', v)}
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <Field label="Remote bitrate limit (Mbps)" hint="0 = no limit">
+              <Field label={t('admin.userEdit.remoteBitrateLimitMbps')} hint={t('admin.userEdit.n0NoLimit')}>
                 <Input
                   type="number"
                   min={0}
@@ -195,7 +204,7 @@ export default function UserEditPage() {
                   onChange={(e) => p('RemoteClientBitrateLimit', Math.round(Number(e.target.value || 0) * 1_000_000))}
                 />
               </Field>
-              <Field label="Max active sessions" hint="0 = unlimited">
+              <Field label={t('admin.userEdit.maxActiveSessions')} hint={t('admin.userEdit.n0Unlimited')}>
                 <Input
                   type="number"
                   min={0}
@@ -203,7 +212,7 @@ export default function UserEditPage() {
                   onChange={(e) => p('MaxActiveSessions', Number(e.target.value || 0))}
                 />
               </Field>
-              <Field label="Failed logins before lockout" hint="-1 = default, 0 = never">
+              <Field label={t('admin.userEdit.failedLoginsBeforeLockout')} hint={t('admin.userEdit.n1Default0Never')}>
                 <Input
                   type="number"
                   min={-1}
@@ -214,52 +223,56 @@ export default function UserEditPage() {
             </div>
           </Card>
 
-          <Card title="Permissions">
+          <Card title={t('admin.userEdit.permissions')}>
             <div className="divide-y divide-white/5">
               <Switch
-                label="Allow media downloads"
+                label={t('admin.userEdit.allowMediaDownloads')}
                 checked={policy.EnableContentDownloading}
                 onChange={(v) => p('EnableContentDownloading', v)}
               />
               <Switch
-                label="Allow media deletion from all libraries"
+                label={t('admin.userEdit.allowMediaDeletionFromAll')}
                 checked={policy.EnableContentDeletion}
                 onChange={(v) => p('EnableContentDeletion', v)}
               />
               {'EnableCollectionManagement' in policy && (
                 <Switch
-                  label="Allow managing collections"
+                  label={t('admin.userEdit.allowManagingCollections')}
                   checked={Boolean(policy.EnableCollectionManagement)}
                   onChange={(v) => p('EnableCollectionManagement', v)}
                 />
               )}
               {'EnableSubtitleManagement' in policy && (
                 <Switch
-                  label="Allow managing subtitles"
+                  label={t('admin.userEdit.allowManagingSubtitles')}
                   checked={Boolean(policy.EnableSubtitleManagement)}
                   onChange={(v) => p('EnableSubtitleManagement', v)}
                 />
               )}
               <Switch
-                label="Allow remote control of other users"
+                label={t('admin.userEdit.allowRemoteControlOfOther')}
                 checked={policy.EnableRemoteControlOfOtherUsers}
                 onChange={(v) => p('EnableRemoteControlOfOtherUsers', v)}
               />
               <Switch
-                label="Allow remote control of shared devices"
+                label={t('admin.userEdit.allowRemoteControlOfShared')}
                 checked={policy.EnableSharedDeviceControl}
                 onChange={(v) => p('EnableSharedDeviceControl', v)}
               />
-              <Switch label="Allow Live TV access" checked={policy.EnableLiveTvAccess} onChange={(v) => p('EnableLiveTvAccess', v)} />
               <Switch
-                label="Allow Live TV recording management"
+                label={t('admin.userEdit.allowLiveTvAccess')}
+                checked={policy.EnableLiveTvAccess}
+                onChange={(v) => p('EnableLiveTvAccess', v)}
+              />
+              <Switch
+                label={t('admin.userEdit.allowLiveTvRecordingManagement')}
                 checked={policy.EnableLiveTvManagement}
                 onChange={(v) => p('EnableLiveTvManagement', v)}
               />
             </div>
             {!policy.EnableContentDeletion && (folders.data?.Items.length ?? 0) > 0 && (
               <div className="mt-4">
-                <div className="mb-1 text-sm font-medium">Allow deletion from these libraries</div>
+                <div className="mb-1 text-sm font-medium">{t('admin.userEdit.allowDeletionFromTheseLibraries')}</div>
                 {folders.data!.Items.map((f) => (
                   <Checkbox
                     key={f.Id}
@@ -275,11 +288,15 @@ export default function UserEditPage() {
       )}
 
       {tab === 'access' && (
-        <Card title="Library access">
-          <Switch label="Access to all libraries" checked={policy.EnableAllFolders} onChange={(v) => p('EnableAllFolders', v)} />
+        <Card title={t('admin.userEdit.libraryAccess')}>
+          <Switch
+            label={t('admin.userEdit.accessToAllLibraries')}
+            checked={policy.EnableAllFolders}
+            onChange={(v) => p('EnableAllFolders', v)}
+          />
           {!policy.EnableAllFolders && (
             <div className="mt-2 rounded-md bg-black/20 p-3">
-              {folders.isLoading && <p className="text-sm text-muted">Loading libraries…</p>}
+              {folders.isLoading && <p className="text-sm text-muted">{t('admin.userEdit.loadingLibraries')}</p>}
               {folders.data?.Items.map((f) => (
                 <Checkbox
                   key={f.Id}
@@ -291,7 +308,11 @@ export default function UserEditPage() {
             </div>
           )}
           <div className="mt-3 border-t border-white/5 pt-1">
-            <Switch label="Access from all devices" checked={policy.EnableAllDevices} onChange={(v) => p('EnableAllDevices', v)} />
+            <Switch
+              label={t('admin.userEdit.accessFromAllDevices')}
+              checked={policy.EnableAllDevices}
+              onChange={(v) => p('EnableAllDevices', v)}
+            />
           </div>
         </Card>
       )}
@@ -302,15 +323,11 @@ export default function UserEditPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete user"
+        title={t('admin.userEdit.deleteUser')}
         danger
-        confirmLabel="Delete user"
+        confirmLabel={t('admin.userEdit.deleteUser')}
         loading={remove.isPending}
-        message={
-          <>
-            Delete <strong className="text-fg">{user.data.Name}</strong>? Their watch history and settings will be removed.
-          </>
-        }
+        message={<>{tRich('admin.userEdit.deleteConfirm', { name: <strong className="text-fg">{user.data.Name}</strong> })}</>}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate()}
       />
@@ -329,7 +346,7 @@ function PasswordForm({ user, isSelf, onDone }: { user: UserDto; isSelf: boolean
   const change = useMutation({
     mutationFn: () => api.post('/Users/Password', { CurrentPw: isSelf ? current : undefined, NewPw: next }, { userId: user.Id }),
     onSuccess: () => {
-      toast.success('Password updated');
+      toast.success(t('admin.userEdit.passwordUpdated'));
       setCurrent('');
       setNext('');
       setConfirm('');
@@ -340,14 +357,17 @@ function PasswordForm({ user, isSelf, onDone }: { user: UserDto; isSelf: boolean
   const reset = useMutation({
     mutationFn: () => api.post('/Users/Password', { ResetPassword: true }, { userId: user.Id }),
     onSuccess: () => {
-      toast.success('Password removed');
+      toast.success(t('admin.userEdit.passwordRemoved'));
       onDone();
     },
     onError: (e) => toast.error(e),
   });
 
   return (
-    <Card title="Password" description={user.HasPassword ? 'This user has a password.' : 'This user has no password.'}>
+    <Card
+      title={t('common.password')}
+      description={user.HasPassword ? t('admin.userEdit.thisUserHasAPassword') : t('admin.userEdit.thisUserHasNoPassword')}
+    >
       <form
         className="grid max-w-md gap-4"
         onSubmit={(e) => {
@@ -356,23 +376,26 @@ function PasswordForm({ user, isSelf, onDone }: { user: UserDto; isSelf: boolean
         }}
       >
         {isSelf && user.HasPassword && (
-          <Field label="Current password">
+          <Field label={t('admin.userEdit.currentPassword')}>
             <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
           </Field>
         )}
-        <Field label="New password">
+        <Field label={t('admin.userEdit.newPassword')}>
           <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" />
         </Field>
-        <Field label="Confirm password" hint={mismatch ? <span className="text-danger">Passwords don’t match</span> : undefined}>
+        <Field
+          label={t('admin.userEdit.confirmPassword')}
+          hint={mismatch ? <span className="text-danger">{t('admin.userEdit.passwordsDonTMatch')}</span> : undefined}
+        >
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" variant="primary" loading={change.isPending} disabled={!next || mismatch}>
-            Set password
+            {t('admin.userEdit.setPassword')}
           </Button>
           {user.HasPassword && !isSelf && (
             <Button variant="outline" loading={reset.isPending} onClick={() => reset.mutate()}>
-              Remove password
+              {t('admin.userEdit.removePassword')}
             </Button>
           )}
         </div>

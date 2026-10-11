@@ -1,5 +1,6 @@
 import type { BaseItemDto } from '@/api/types';
 import { hourCycleOption } from '@/lib/timeFormat';
+import { t } from '@/i18n';
 
 export const TICKS_PER_SECOND = 10_000_000;
 
@@ -73,9 +74,9 @@ export function formatDateTime(iso?: string | null): string {
 }
 
 export function formatRelative(iso?: string | null): string {
-  if (!iso) return 'Never';
+  if (!iso) return t('format.never');
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return 'Never';
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return t('format.never');
   const diff = (Date.now() - d.getTime()) / 1000;
   const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
   if (Math.abs(diff) < 60) return 'just now';
@@ -98,8 +99,8 @@ export function episodeLabel(item: BaseItemDto, long = false): string {
   const eEnd = item.IndexNumberEnd;
   if (long) {
     const parts: string[] = [];
-    if (s !== undefined && s !== null) parts.push(s === 0 ? 'Special' : `Season ${s}`);
-    if (e !== undefined && e !== null) parts.push(`Episode ${e}${eEnd ? `–${eEnd}` : ''}`);
+    if (s !== undefined && s !== null) parts.push(s === 0 ? t('format.special') : t('format.season', { number: s }));
+    if (e !== undefined && e !== null) parts.push(t('format.episode', { number: eEnd ? `${e}–${eEnd}` : e }));
     return parts.join(' · ');
   }
   const parts: string[] = [];
@@ -112,14 +113,19 @@ export function yearRange(item: BaseItemDto): string {
   if (!item.ProductionYear) return '';
   if (item.Type === 'Series') {
     const end = item.EndDate ? new Date(item.EndDate).getFullYear() : null;
-    if (item.Status === 'Continuing') return `${item.ProductionYear} – Present`;
+    if (item.Status === 'Continuing') return t('format.yearToPresent', { year: item.ProductionYear });
     if (end && end !== item.ProductionYear) return `${item.ProductionYear} – ${end}`;
   }
   return String(item.ProductionYear);
 }
 
-export function plural(n: number, word: string, pluralWord = `${word}s`): string {
-  return `${n.toLocaleString()} ${n === 1 ? word : pluralWord}`;
+/** The things that are counted somewhere in the interface; each has its wording under "count" in the language files. */
+export type CountKind =
+  'item' | 'artist' | 'track' | 'title' | 'album' | 'show' | 'collection' | 'episode' | 'episodeTitle' | 'seasonTitle';
+
+/** "1 item", "2,340 items": a number with the word for what it counts, in the right form for the number. */
+export function plural(n: number, kind: CountKind): string {
+  return t(`count.${kind}`, { count: n, n: n.toLocaleString() });
 }
 
 export function playedPercent(item: BaseItemDto): number {

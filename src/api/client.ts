@@ -1,6 +1,7 @@
 import { APP_NAME, APP_VERSION } from '@/config';
 import { getDeviceId, getDeviceName } from './device';
 import type { ImageType } from './types';
+import { t } from '@/i18n';
 
 export type QueryValue = string | number | boolean | null | undefined | (string | number)[];
 export type Query = Record<string, QueryValue>;
@@ -125,15 +126,17 @@ export class JellyfinApi {
         body,
         signal: opts.signal,
         keepalive: opts.keepalive,
+        // Ahead of the artwork that is loading at the same time.
+        priority: 'high',
       });
     } catch (err) {
       if ((err as Error).name === 'AbortError') throw err;
-      throw new ApiError(0, 'Unable to reach the Jellyfin server. Check the address and your connection.');
+      throw new ApiError(0, t('api.client.unableToReachTheJellyfin'));
     }
 
     if (!response.ok) {
       if (response.status === 401 && this.accessToken) this.onUnauthorized?.();
-      let message = response.statusText || `Request failed (${response.status})`;
+      let message = response.statusText || t('api.client.requestFailed', { status: response.status });
       try {
         const text = await response.text();
         if (text) {
@@ -147,8 +150,8 @@ export class JellyfinApi {
       } catch {
         /* ignore */
       }
-      if (response.status === 401) message = 'Your session has expired or the credentials are invalid.';
-      if (response.status === 403) message = 'You do not have permission to do that.';
+      if (response.status === 401) message = t('api.client.yourSessionHasExpiredOr');
+      if (response.status === 403) message = t('api.client.youDoNotHavePermission');
       throw new ApiError(response.status, message);
     }
 

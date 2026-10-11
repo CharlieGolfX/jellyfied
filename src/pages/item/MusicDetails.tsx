@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/ui/States';
 import { formatRuntime, plural } from '@/lib/format';
 import { ActionBar, DetailFrame, ExpandableText, MetaLine } from './common';
 import { TrackList } from './TrackList';
+import { t } from '@/i18n';
 
 const TRACK_FIELDS = [...CARD_FIELDS, 'MediaSources'];
 
@@ -42,7 +43,7 @@ export function AlbumDetails({ item }: { item: BaseItemDto }) {
   );
 
   const list = tracks.data?.Items ?? [];
-  const totalTicks = list.reduce((sum, t) => sum + (t.RunTimeTicks ?? 0), 0);
+  const totalTicks = list.reduce((sum, entry) => sum + (entry.RunTimeTicks ?? 0), 0);
 
   return (
     <DetailFrame
@@ -94,7 +95,7 @@ export function AlbumDetails({ item }: { item: BaseItemDto }) {
         )}
       </section>
       <Hub
-        title={`More by ${item.AlbumArtist ?? 'this artist'}`}
+        title={t('item.musicDetails.moreBy', { artist: item.AlbumArtist ?? t('item.musicDetails.thisArtist') })}
         items={moreByArtist.data?.Items}
         shape="square"
         to={artistId ? `/item/${artistId}` : undefined}
@@ -164,22 +165,22 @@ export function ArtistDetails({ item }: { item: BaseItemDto }) {
     >
       {(popular.data?.Items.length ?? 0) > 0 && (
         <section className="px-4 sm:px-8 lg:px-10">
-          <h2 className="mb-3 text-lg font-semibold">Popular Tracks</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t('item.musicDetails.popularTracks')}</h2>
           <TrackList tracks={popular.data!.Items} albumArtist={item.Name} showAlbum showArt numbered="position" />
         </section>
       )}
       <section className="px-4 sm:px-8 lg:px-10">
-        <h2 className="mb-4 text-lg font-semibold">Albums</h2>
+        <h2 className="mb-4 text-lg font-semibold">{t('common.albums')}</h2>
         {albums.isLoading ? (
           <PageSpinner />
         ) : (albums.data?.Items.length ?? 0) === 0 ? (
-          <p className="text-sm text-muted">No albums.</p>
+          <p className="text-sm text-muted">{t('item.musicDetails.noAlbums')}</p>
         ) : (
           <CardGrid items={albums.data!.Items} shape="square" />
         )}
       </section>
-      <Hub title="Appears On" items={appears} shape="square" />
-      <Hub title="Similar Artists" items={similar.data?.Items} shape="square" />
+      <Hub title={t('item.musicDetails.appearsOn')} items={appears} shape="square" />
+      <Hub title={t('item.musicDetails.similarArtists')} items={similar.data?.Items} shape="square" />
     </DetailFrame>
   );
 }
@@ -199,7 +200,7 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
       }),
   });
   const list = entries.data?.Items ?? [];
-  const totalTicks = list.reduce((sum, t) => sum + (t.RunTimeTicks ?? 0), 0);
+  const totalTicks = list.reduce((sum, entry) => sum + (entry.RunTimeTicks ?? 0), 0);
   const canEdit = useCanEditPlaylist(item.Id);
   const [editing, setEditing] = useState(false);
 
@@ -223,7 +224,11 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
             <ActionBar
               item={item}
               showShuffle
-              extraMenu={canEdit ? [{ label: 'Edit playlist', icon: <Pencil size={16} />, onSelect: () => setEditing(true) }] : []}
+              extraMenu={
+                canEdit
+                  ? [{ label: t('item.musicDetails.editPlaylist'), icon: <Pencil size={16} />, onSelect: () => setEditing(true) }]
+                  : []
+              }
             />
           </div>
           <ExpandableText text={item.Overview} className="max-w-4xl pt-1" />
@@ -237,9 +242,7 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
         ) : entries.error ? (
           <ErrorState error={entries.error} onRetry={() => entries.refetch()} />
         ) : list.length === 0 ? (
-          <p className="text-sm text-muted">
-            This playlist is empty. Use “Add to playlist” in the menu of a song, album, movie or episode to fill it.
-          </p>
+          <p className="text-sm text-muted">{t('item.musicDetails.thisPlaylistIsEmptyUse')}</p>
         ) : (
           <TrackList tracks={list} showAlbum showArt numbered="position" editablePlaylistId={canEdit ? item.Id : undefined} />
         )}

@@ -10,6 +10,7 @@ import { DetailsTab } from './MetadataDetailsTab';
 import { IDENTIFY_TYPES, type Tab } from './metadataEditorTypes';
 import { IdentifyTab } from './MetadataIdentifyTab';
 import { ImagesTab } from './MetadataImagesTab';
+import { t } from '@/i18n';
 
 /** Item types the server can look up with its metadata providers ("Identify"). */
 
@@ -32,13 +33,18 @@ export default function MetadataEditor({ itemId, onClose }: { itemId: string; on
   });
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'details', label: 'Details' },
-    { id: 'images', label: 'Images' },
+    { id: 'details', label: t('media.metadataEditor.details') },
+    { id: 'images', label: t('media.metadataEditor.images') },
   ];
-  if (item.data && IDENTIFY_TYPES.has(item.data.Type)) tabs.push({ id: 'identify', label: 'Identify' });
+  if (item.data && IDENTIFY_TYPES.has(item.data.Type)) tabs.push({ id: 'identify', label: t('media.metadataEditor.identify') });
 
   return (
-    <Modal open onClose={onClose} size="xl" title={item.data ? `Edit metadata: ${item.data.Name ?? ''}` : 'Edit metadata'}>
+    <Modal
+      open
+      onClose={onClose}
+      size="xl"
+      title={item.data ? t('media.metadataEditor.editMetadata', { name: item.data.Name ?? '' }) : t('common.editMetadata')}
+    >
       {item.isLoading ? (
         <div className="flex justify-center py-16 text-accent">
           <Spinner size={32} />
@@ -48,18 +54,18 @@ export default function MetadataEditor({ itemId, onClose }: { itemId: string; on
       ) : (
         <>
           <div className="mb-5 flex gap-1 border-b border-white/10" role="tablist">
-            {tabs.map((t) => (
+            {tabs.map((entry) => (
               <button
-                key={t.id}
+                key={entry.id}
                 role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
+                aria-selected={tab === entry.id}
+                onClick={() => setTab(entry.id)}
                 className={clsx(
                   '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-                  tab === t.id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg',
+                  tab === entry.id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg',
                 )}
               >
-                {t.label}
+                {entry.label}
               </button>
             ))}
           </div>

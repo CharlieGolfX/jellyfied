@@ -6,7 +6,7 @@ import { useGuardedSwitch } from '@/auth/PinPrompt';
 import { Menu } from '@/components/ui/Menu';
 import { Img } from '@/components/ui/States';
 import { APP_NAME, APP_VERSION } from '@/config';
-import { useT } from '@/i18n';
+import { t } from '@/i18n';
 
 export function Avatar({ userId, tag, name, size = 32 }: { userId: string; tag?: string | null; name?: string; size?: number }) {
   const api = useApi();
@@ -32,7 +32,6 @@ export function UserMenu() {
   const { data: user } = useCurrentUser();
   const navigate = useNavigate();
   const isAdmin = Boolean(user?.Policy?.IsAdministrator);
-  const t = useT();
 
   return (
     <>

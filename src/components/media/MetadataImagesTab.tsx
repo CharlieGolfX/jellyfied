@@ -10,24 +10,25 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import type { ImageInfo, RemoteImage } from './metadataEditorTypes';
+import { t } from '@/i18n';
 
 // ---------------------------------------------------------------------------
 // Images
 // ---------------------------------------------------------------------------
 
 const IMAGE_TYPES: { type: ImageType; label: string; landscape: boolean }[] = [
-  { type: 'Primary', label: 'Poster', landscape: false },
-  { type: 'Backdrop', label: 'Backdrop', landscape: true },
-  { type: 'Logo', label: 'Logo', landscape: true },
-  { type: 'Thumb', label: 'Thumbnail', landscape: true },
-  { type: 'Banner', label: 'Banner', landscape: true },
+  { type: 'Primary', label: t('media.metadataImagesTab.poster'), landscape: false },
+  { type: 'Backdrop', label: t('media.metadataImagesTab.backdrop'), landscape: true },
+  { type: 'Logo', label: t('media.metadataImagesTab.logo'), landscape: true },
+  { type: 'Thumb', label: t('media.metadataImagesTab.thumbnail'), landscape: true },
+  { type: 'Banner', label: t('media.metadataImagesTab.banner'), landscape: true },
 ];
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the file.'));
+    reader.onerror = () => reject(reader.error ?? new Error(t('media.metadataImagesTab.couldNotReadTheFile')));
     reader.readAsDataURL(file);
   });
 }
@@ -57,7 +58,7 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
         rawBody: { data: await fileToBase64(file), contentType: file.type || 'image/jpeg' },
       }),
     onSuccess: () => {
-      toast.success('Image uploaded');
+      toast.success(t('media.metadataImagesTab.imageUploaded'));
       changed();
     },
     onError: (e) => toast.error(e),
@@ -71,7 +72,7 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
           : `/Items/${item.Id}/Images/${img.ImageType}`,
       ),
     onSuccess: () => {
-      toast.success('Image removed');
+      toast.success(t('media.metadataImagesTab.imageRemoved'));
       changed();
     },
     onError: (e) => toast.error(e),
@@ -82,7 +83,7 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
       <RemoteImagePicker
         item={item}
         type={searching}
-        label={IMAGE_TYPES.find((t) => t.type === searching)?.label ?? searching}
+        label={IMAGE_TYPES.find((entry) => entry.type === searching)?.label ?? searching}
         onBack={() => setSearching(null)}
         onPicked={() => {
           setSearching(null);
@@ -122,7 +123,7 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <h3 className="mr-auto text-sm font-semibold">{label}</h3>
               <Button size="sm" variant="ghost" icon={<Search size={14} />} onClick={() => setSearching(type)}>
-                Find online
+                {t('media.metadataImagesTab.findOnline')}
               </Button>
               <Button
                 size="sm"
@@ -134,12 +135,12 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
                   fileInput.current?.click();
                 }}
               >
-                Upload
+                {t('media.metadataImagesTab.upload')}
               </Button>
             </div>
             {current.length === 0 ? (
               <div className="flex items-center gap-2 rounded-md bg-base-950/40 px-3 py-4 text-sm text-faint">
-                <ImageOff size={16} /> No {label.toLowerCase()} image
+                <ImageOff size={16} /> {t('media.metadataImagesTab.noImage', { kind: label.toLowerCase() })}
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
@@ -159,8 +160,8 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
                     <button
                       onClick={() => remove.mutate(img)}
                       disabled={remove.isPending}
-                      aria-label={`Delete ${label.toLowerCase()} image`}
-                      title="Delete image"
+                      aria-label={t('media.metadataImagesTab.deleteImage', { kind: label.toLowerCase() })}
+                      title={t('media.metadataImagesTab.deleteImage2')}
                       className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1.5 text-white opacity-0 transition-opacity group-hover/img:opacity-100 hover:bg-danger focus:opacity-100"
                     >
                       <Trash2 size={14} />
@@ -202,7 +203,7 @@ function RemoteImagePicker({
   const download = useMutation({
     mutationFn: (img: RemoteImage) => api.post(`/Items/${item.Id}/RemoteImages/Download`, undefined, { type, imageUrl: img.Url }),
     onSuccess: () => {
-      toast.success('Image saved');
+      toast.success(t('media.metadataImagesTab.imageSaved'));
       onPicked();
     },
     onError: (e) => toast.error(e),
@@ -213,9 +214,9 @@ function RemoteImagePicker({
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button size="sm" variant="secondary" onClick={onBack}>
-          Back
+          {t('media.metadataImagesTab.back')}
         </Button>
-        <h3 className="mr-auto text-sm font-semibold">Find a {label.toLowerCase()} image online</h3>
+        <h3 className="mr-auto text-sm font-semibold">{t('media.metadataImagesTab.findAImageOnline', { kind: label.toLowerCase() })}</h3>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
@@ -223,7 +224,7 @@ function RemoteImagePicker({
             checked={allLanguages}
             onChange={(e) => setAllLanguages(e.target.checked)}
           />
-          All languages
+          {t('media.metadataImagesTab.allLanguages')}
         </label>
       </div>
       {remote.isLoading ? (
@@ -234,7 +235,7 @@ function RemoteImagePicker({
         <ErrorState error={remote.error} onRetry={() => remote.refetch()} />
       ) : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-faint">
-          The server&apos;s metadata providers have no {label.toLowerCase()} images for this item.
+          {t('media.metadataImagesTab.theServerSMetadataProviders', { kind: label.toLowerCase() })}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -257,7 +258,7 @@ function RemoteImagePicker({
           ))}
         </div>
       )}
-      {download.isPending && <p className="mt-3 text-sm text-muted">Downloading image…</p>}
+      {download.isPending && <p className="mt-3 text-sm text-muted">{t('media.metadataImagesTab.downloadingImage')}</p>}
     </div>
   );
 }

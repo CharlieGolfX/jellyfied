@@ -20,6 +20,7 @@ import {
   type ActiveStream,
 } from './shared';
 import type { SubtitleKind } from './subtitleRenderers';
+import { t } from '@/i18n';
 
 /** The control-bar buttons that open a menu, each with its menu. */
 interface MenuProps {
@@ -46,12 +47,12 @@ export function ChaptersMenu({
   const api = useApi();
   return (
     <div className="relative">
-      <ControlButton label="Chapters" onClick={onToggle} active={open}>
+      <ControlButton label={t('player.video.menus.chapters')} onClick={onToggle} active={open}>
         <ListVideo size={24} />
       </ControlButton>
       {open && (
         <Panel wide>
-          <PanelSection title="Chapters">
+          <PanelSection title={t('player.video.menus.chapters')}>
             {chapters.map((c) => (
               <button
                 key={c.index}
@@ -103,25 +104,25 @@ export function SubtitlesMenu({
   const textSubtitles = kind === 'text';
   return (
     <div className="relative">
-      <ControlButton label="Subtitles" onClick={onToggle} active={open || subIndex >= 0}>
+      <ControlButton label={t('common.subtitles')} onClick={onToggle} active={open || subIndex >= 0}>
         <Subtitles size={24} />
       </ControlButton>
       {open && (
         <Panel>
-          <PanelSection title="Subtitles">
+          <PanelSection title={t('common.subtitles')}>
             <PanelOption selected={subIndex === -1} onClick={() => onSelect(-1)}>
-              None
+              {t('common.none')}
             </PanelOption>
             {subtitleStreams.map((s) => (
               <PanelOption key={s.Index} selected={stream?.subIndex === s.Index} onClick={() => onSelect(s.Index)}>
                 {streamName(s)}
-                {s.DeliveryMethod === 'Encode' && <span className="ml-2 text-xs text-white/40">burn-in</span>}
+                {s.DeliveryMethod === 'Encode' && <span className="ml-2 text-xs text-white/40">{t('player.video.menus.burnIn')}</span>}
               </PanelOption>
             ))}
           </PanelSection>
           {subIndex >= 0 && (
             <>
-              <PanelSection title="Subtitle delay">
+              <PanelSection title={t('player.video.menus.subtitleDelay')}>
                 {kind !== 'none' ? (
                   <DelayControl
                     value={delay}
@@ -132,24 +133,24 @@ export function SubtitlesMenu({
                     sliderMax={SUBTITLE_DELAY_SLIDER}
                     step={0.1}
                     format={formatSubtitleDelay}
-                    lessLabel="Show subtitles earlier"
-                    moreLabel="Show subtitles later"
-                    sliderLabel="Subtitle delay"
+                    lessLabel={t('player.video.menus.showSubtitlesEarlier')}
+                    moreLabel={t('player.video.menus.showSubtitlesLater')}
+                    sliderLabel={t('player.video.menus.subtitleDelay')}
                     testId="subtitle-delay"
                   />
                 ) : (
-                  <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available for subtitles that are burned into the video.</div>
+                  <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.notAvailableForSubtitlesThat')}</div>
                 )}
               </PanelSection>
               {(kind === 'ass' || kind === 'pgs') && (
                 <div className="px-4 pb-2 text-xs text-white/40">
                   {kind === 'ass'
-                    ? 'These subtitles bring their own fonts, colours and positions.'
-                    : 'These subtitles are pictures, so their size and colour are fixed.'}
+                    ? t('player.video.menus.theseSubtitlesBringTheirOwn')
+                    : t('player.video.menus.theseSubtitlesArePicturesSo')}
                 </div>
               )}
               {textSubtitles && (
-                <PanelSection title="Text size">
+                <PanelSection title={t('player.video.menus.textSize')}>
                   <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
                     {SUBTITLE_SIZES.map((sz) => (
                       <PanelChip
@@ -162,7 +163,7 @@ export function SubtitlesMenu({
                       </PanelChip>
                     ))}
                   </div>
-                  <div className="px-4 pb-2 text-xs text-white/40">More subtitle options are under Account settings.</div>
+                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.moreSubtitleOptionsAreUnder')}</div>
                 </PanelSection>
               )}
             </>
@@ -195,12 +196,12 @@ export function PictureMenu({
 }) {
   return (
     <div className="relative">
-      <ControlButton label="Picture" onClick={onToggle} active={open || changed}>
+      <ControlButton label={t('player.video.menus.picture')} onClick={onToggle} active={open || changed}>
         <Scaling size={24} />
       </ControlButton>
       {open && (
         <Panel>
-          <PanelSection title="Zoom mode">
+          <PanelSection title={t('player.video.menus.zoomMode')}>
             <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
               {PICTURE_FITS.map((f) => (
                 <PanelChip key={f.value} selected={fit === f.value} onClick={() => onFitChange(f.value)} title={f.title}>
@@ -209,7 +210,7 @@ export function PictureMenu({
               ))}
             </div>
           </PanelSection>
-          <PanelSection title="Aspect ratio">
+          <PanelSection title={t('player.video.menus.aspectRatio')}>
             <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
               {PICTURE_ASPECTS.map((a) => (
                 <PanelChip
@@ -226,7 +227,7 @@ export function PictureMenu({
               ))}
             </div>
           </PanelSection>
-          <PanelSection title="Zoom">
+          <PanelSection title={t('player.video.menus.zoom')}>
             <div className="flex items-center gap-3 px-4 pt-1 pb-2">
               <input
                 type="range"
@@ -235,7 +236,7 @@ export function PictureMenu({
                 step={0.05}
                 value={zoom}
                 onChange={(e) => onZoomChange(Number(e.target.value))}
-                aria-label="Zoom"
+                aria-label={t('player.video.menus.zoom')}
                 className="min-w-0 flex-1"
               />
               <span className="w-12 text-right text-sm tabular-nums" data-testid="picture-zoom">
@@ -253,7 +254,7 @@ export function PictureMenu({
                   onZoomChange(1);
                 }}
               >
-                Reset picture
+                {t('player.video.menus.resetPicture')}
               </PanelOption>
             </div>
           )}
@@ -300,13 +301,13 @@ export function SettingsMenu({
   const sleep = useSleepTimer();
   return (
     <div className="relative">
-      <ControlButton label="Settings" onClick={onToggle} active={open}>
+      <ControlButton label={t('player.video.menus.settings')} onClick={onToggle} active={open}>
         <Settings2 size={24} />
       </ControlButton>
       {open && (
         <Panel>
           {audioStreams.length > 0 && (
-            <PanelSection title="Audio">
+            <PanelSection title={t('player.video.menus.audio')}>
               {audioStreams.map((s) => (
                 <PanelOption key={s.Index} selected={stream?.audioIndex === s.Index} onClick={() => onAudioSelect(s.Index)}>
                   {streamName(s)}
@@ -315,7 +316,7 @@ export function SettingsMenu({
             </PanelSection>
           )}
           {audioStreams.length > 0 && (
-            <PanelSection title="Audio delay">
+            <PanelSection title={t('player.video.menus.audioDelay')}>
               {audioDelayAvailable ? (
                 <>
                   <DelayControl
@@ -327,47 +328,45 @@ export function SettingsMenu({
                     sliderMax={MAX_AUDIO_DELAY}
                     step={AUDIO_DELAY_STEP}
                     format={formatAudioDelay}
-                    lessLabel="Less audio delay"
-                    moreLabel="More audio delay"
-                    sliderLabel="Audio delay"
+                    lessLabel={t('player.video.menus.lessAudioDelay')}
+                    moreLabel={t('player.video.menus.moreAudioDelay')}
+                    sliderLabel={t('player.video.menus.audioDelay')}
                     testId="audio-delay"
                   />
-                  <div className="px-4 pb-2 text-xs text-white/40">
-                    Holds the sound back when it is ahead of the picture. A browser can’t play sound earlier than the picture.
-                  </div>
+                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.holdsTheSoundBackWhen')}</div>
                 </>
               ) : (
-                <div className="px-4 pt-1 pb-2 text-xs text-white/50">Not available in this browser.</div>
+                <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.notAvailableInThisBrowser')}</div>
               )}
             </PanelSection>
           )}
           {!inSync && (
-            <PanelSection title="Speed">
+            <PanelSection title={t('player.video.menus.speed')}>
               <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
                 {SPEED_OPTIONS.map((r) => (
                   <PanelChip key={r} selected={speed === r} onClick={() => onSpeedChange(r)}>
-                    {r === 1 ? 'Normal' : `${r}×`}
+                    {r === 1 ? t('player.video.menus.normal') : `${r}×`}
                   </PanelChip>
                 ))}
               </div>
             </PanelSection>
           )}
-          <PanelSection title="Sleep timer">
+          <PanelSection title={t('player.video.menus.sleepTimer')}>
             <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
               <PanelChip selected={!sleep.endsAt && !sleep.endOfVideo} onClick={clearSleepTimer}>
-                Off
+                {t('player.video.menus.off')}
               </PanelChip>
               {SLEEP_TIMER_MINUTES.map((m) => (
                 <PanelChip key={m} selected={false} onClick={() => startSleepTimer(m)}>
-                  {m} min
+                  {t('player.video.menus.minutes', { count: m })}
                 </PanelChip>
               ))}
               <PanelChip selected={sleep.endOfVideo} onClick={sleepAtEndOfVideo}>
-                End of video
+                {t('player.video.menus.endOfVideo')}
               </PanelChip>
             </div>
           </PanelSection>
-          <PanelSection title="Quality">
+          <PanelSection title={t('player.video.menus.quality')}>
             {QUALITY_OPTIONS.map((q) => (
               <PanelOption key={q.value} selected={maxBitrate === q.value} onClick={() => onQualityChange(q.value)}>
                 {q.label}
@@ -376,19 +375,27 @@ export function SettingsMenu({
           </PanelSection>
           <div className="border-t border-white/10 py-1">
             <PanelOption selected={showInfo} onClick={onToggleInfo}>
-              Playback info
+              {t('player.video.menus.playbackInfo')}
             </PanelOption>
             <PanelOption selected={false} onClick={onShowShortcuts}>
-              Keyboard shortcuts
+              {t('player.video.menus.keyboardShortcuts')}
             </PanelOption>
           </div>
           {stream && (
             <div className="border-t border-white/10 px-4 py-3 text-xs leading-relaxed text-white/50">
               <div>
-                {stream.method === 'Transcode' ? 'Transcoding' : stream.method === 'DirectPlay' ? 'Direct playing' : 'Direct streaming'}{' '}
+                {stream.method === 'Transcode'
+                  ? t('common.transcoding')
+                  : stream.method === 'DirectPlay'
+                    ? t('player.video.menus.directPlaying')
+                    : t('player.video.menus.directStreaming')}{' '}
                 {stream.source.Container?.toUpperCase()}
               </div>
-              {stream.transcodeReasons.length > 0 && <div>Reason: {stream.transcodeReasons.join(', ')}</div>}
+              {stream.transcodeReasons.length > 0 && (
+                <div>
+                  {t('player.video.menus.reason')} {stream.transcodeReasons.join(', ')}
+                </div>
+              )}
             </div>
           )}
         </Panel>

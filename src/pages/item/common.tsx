@@ -36,6 +36,7 @@ import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, formatRemaining, formatRuntime, playedPercent, ticksToSeconds, yearRange } from '@/lib/format';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay, type PlayOptions } from '@/player/usePlay';
+import { t, tRich } from '@/i18n';
 
 const MetadataEditor = lazy(() => import('@/components/media/MetadataEditor'));
 
@@ -91,7 +92,7 @@ export function RatingBadges({ item }: { item: BaseItemDto }) {
         <span className="rounded border border-white/40 px-1.5 py-px text-xs font-semibold text-fg/90">{item.OfficialRating}</span>
       )}
       {item.CommunityRating ? (
-        <span className="inline-flex items-center gap-1 text-fg/90" title="Community rating">
+        <span className="inline-flex items-center gap-1 text-fg/90" title={t('item.common.communityRating')}>
           <Star size={14} className="fill-star text-star" />
           {item.CommunityRating.toFixed(1)}
         </span>
@@ -99,7 +100,7 @@ export function RatingBadges({ item }: { item: BaseItemDto }) {
       {item.CriticRating ? (
         <span
           className={clsx('inline-flex items-center gap-1 font-medium', item.CriticRating >= 60 ? 'text-[#fa320a]' : 'text-success')}
-          title="Critic rating"
+          title={t('item.common.criticRating')}
         >
           <span className="inline-block h-3 w-3 rounded-full bg-current" />
           {item.CriticRating}%
@@ -146,7 +147,7 @@ export function ExpandableText({ text, lines = 4, className }: { text?: string |
       </p>
       {long && (
         <button onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm font-semibold text-accent hover:underline">
-          {expanded ? 'Less' : 'More'}
+          {expanded ? t('item.common.less') : t('common.more')}
         </button>
       )}
     </div>
@@ -234,52 +235,55 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const played = Boolean(item.UserData?.Played);
   const favorite = Boolean(item.UserData?.IsFavorite);
   // Trailer links come from metadata, so only ever open plain web addresses.
-  const remoteTrailer = item.RemoteTrailers?.find((t) => t.Url && /^https?:\/\//i.test(t.Url))?.Url;
+  const remoteTrailer = item.RemoteTrailers?.find((entry) => entry.Url && /^https?:\/\//i.test(entry.Url))?.Url;
   const localTrailer = trailers.data?.[0];
 
   const menu: MenuItem[] = [...extraMenu];
   if (resumable && item.MediaType === 'Video') {
     menu.push({
-      label: 'Remove from Continue Watching',
+      label: t('item.common.removeFromContinueWatching'),
       icon: <History size={16} />,
       onSelect: () =>
         clearProgress.mutate(item.Id, {
-          onSuccess: () => toast.success('Removed from Continue Watching'),
+          onSuccess: () => toast.success(t('item.common.removedFromContinueWatching')),
           onError: (e) => toast.error(e),
         }),
     });
   }
   if (supportsPlaylists(item)) {
-    menu.push({ label: 'Add to playlist', icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
+    menu.push({ label: t('common.addToPlaylist'), icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
   }
   if (canManageCollections && supportsCollections(item)) {
-    menu.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
+    menu.push({ label: t('common.addToCollection'), icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
   }
   if (item.CanDownload && !item.IsFolder) {
     menu.push({
-      label: 'Download',
+      label: t('item.common.download'),
       icon: <Download size={16} />,
       onSelect: () => window.open(api.url(`/Items/${item.Id}/Download`, {}, true), '_blank', 'noopener'),
     });
   }
   if (isAdmin) {
     if (supportsMetadataEditing(item)) {
-      menu.push({ label: 'Edit metadata', icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
+      menu.push({ label: t('common.editMetadata'), icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
     }
     menu.push(
       {
-        label: 'Refresh metadata',
+        label: t('item.common.refreshMetadata'),
         icon: <RefreshCw size={16} />,
         onSelect: () =>
-          refresh.mutate({ id: item.Id }, { onSuccess: () => toast.success('Metadata refresh queued'), onError: (e) => toast.error(e) }),
+          refresh.mutate(
+            { id: item.Id },
+            { onSuccess: () => toast.success(t('item.common.metadataRefreshQueued')), onError: (e) => toast.error(e) },
+          ),
       },
       {
-        label: 'Replace all metadata',
+        label: t('item.common.replaceAllMetadata'),
         icon: <RefreshCw size={16} />,
         onSelect: () =>
           refresh.mutate(
             { id: item.Id, full: true },
-            { onSuccess: () => toast.success('Full metadata refresh queued'), onError: (e) => toast.error(e) },
+            { onSuccess: () => toast.success(t('item.common.fullMetadataRefreshQueued')), onError: (e) => toast.error(e) },
           ),
       },
     );
@@ -287,7 +291,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   if (item.CanDelete) {
     menu.push(
       { divider: true, label: '' },
-      { label: 'Delete', danger: true, icon: <Trash2 size={16} />, onSelect: () => setConfirmDelete(true) },
+      { label: t('common.delete'), danger: true, icon: <Trash2 size={16} />, onSelect: () => setConfirmDelete(true) },
     );
   }
 
@@ -301,27 +305,27 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
           onClick={() => play(item, playOptions)}
           className="pr-6"
         >
-          {resumable ? `Resume from ${formatClock(ticksToSeconds(position))}` : 'Play'}
+          {resumable ? t('item.common.resumeFrom', { clock: formatClock(ticksToSeconds(position)) }) : t('common.play')}
         </Button>
       )}
       {playable && resumable && (
-        <IconAction label="Play from beginning" onClick={() => play(item, { ...playOptions, fromStart: true })}>
+        <IconAction label={t('common.playFromBeginning')} onClick={() => play(item, { ...playOptions, fromStart: true })}>
           <RotateCcw size={20} />
         </IconAction>
       )}
       {showShuffle && playable && (
-        <IconAction label="Shuffle" onClick={() => play(item, { shuffle: true })}>
+        <IconAction label={t('common.shuffle')} onClick={() => play(item, { shuffle: true })}>
           <Shuffle size={20} />
         </IconAction>
       )}
       {supportsInstantMix(item) && (
-        <IconAction label="Instant Mix" onClick={() => void instantMix(item)}>
+        <IconAction label={t('common.instantMix')} onClick={() => void instantMix(item)}>
           <Radio size={20} />
         </IconAction>
       )}
       {(localTrailer || remoteTrailer) && (
         <IconAction
-          label="Play trailer"
+          label={t('item.common.playTrailer')}
           onClick={() => {
             if (localTrailer) play(localTrailer);
             else if (remoteTrailer) window.open(remoteTrailer, '_blank', 'noopener');
@@ -332,7 +336,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
       )}
       {supportsWatchedState(item) && (
         <IconAction
-          label={played ? 'Mark as unwatched' : 'Mark as watched'}
+          label={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
           active={played}
           onClick={() => setPlayed.mutate({ id: item.Id, played: !played }, { onError: (e) => toast.error(e) })}
         >
@@ -340,7 +344,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
         </IconAction>
       )}
       <IconAction
-        label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+        label={favorite ? t('item.common.removeFromFavorites') : t('item.common.addToFavorites')}
         active={favorite}
         onClick={() => setFavorite.mutate({ id: item.Id, favorite: !favorite }, { onError: (e) => toast.error(e) })}
       >
@@ -351,7 +355,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
           align="left"
           items={menu}
           trigger={({ toggle, open }) => (
-            <IconAction label="More" onClick={toggle} expanded={open}>
+            <IconAction label={t('common.more')} onClick={toggle} expanded={open}>
               <MoreHorizontal size={20} />
             </IconAction>
           )}
@@ -368,21 +372,17 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete item"
+        title={t('item.common.deleteItem')}
         danger
-        confirmLabel="Delete"
+        confirmLabel={t('common.delete')}
         loading={del.isPending}
-        message={
-          <>
-            Permanently delete <strong className="text-fg">{item.Name}</strong> from the server and disk? This cannot be undone.
-          </>
-        }
+        message={<>{tRich('item.common.deleteConfirm', { name: <strong className="text-fg">{item.Name}</strong> })}</>}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() =>
           del.mutate(item.Id, {
             onSuccess: () => {
               setConfirmDelete(false);
-              toast.success('Item deleted');
+              toast.success(t('item.common.itemDeleted'));
               navigate(-1);
             },
             onError: (e) => toast.error(e),

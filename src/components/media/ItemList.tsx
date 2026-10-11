@@ -13,6 +13,8 @@ import { defaultTitles, fallbackIcon, itemLink } from './PosterCard';
 import { useIsSelected, useSelection, useSelectionCount } from './selection';
 import { useItemActions } from './useItemActions';
 import { useLatest } from '@/lib/useLatest';
+import { useRowWindow } from '@/lib/useRowWindow';
+import { t } from '@/i18n';
 
 const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDto; collectionId?: string }) {
   const api = useApi();
@@ -39,7 +41,7 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           onMouseDown={(e) => e.shiftKey && e.preventDefault()}
           role="checkbox"
           aria-checked={selected}
-          aria-label={`Select ${title}`}
+          aria-label={t('media.itemList.select', { title })}
           className={clsx(
             'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-opacity',
             selected ? 'border-accent bg-accent text-accent-ink' : 'border-white/40 text-transparent hover:border-white/80',
@@ -93,8 +95,8 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           <button
             onClick={togglePlayed}
             className={clsx('rounded-full p-1 hover:bg-white/10', played ? 'text-accent' : 'text-white/25 hover:text-white')}
-            aria-label={played ? 'Mark as unwatched' : 'Mark as watched'}
-            title={played ? 'Mark as unwatched' : 'Mark as watched'}
+            aria-label={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
+            title={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
           >
             {unplayedCount > 0 && !played ? (
               <span className="block min-w-5 rounded bg-accent px-1 text-center text-[11px] font-bold text-accent-ink">
@@ -111,7 +113,7 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           <button
             onClick={() => play(item)}
             className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-accent"
-            aria-label={`Play ${title}`}
+            aria-label={t('media.itemList.play', { title })}
           >
             <Play size={16} fill="currentColor" />
           </button>
@@ -123,7 +125,7 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
               <button
                 onClick={toggle}
                 aria-expanded={open}
-                aria-label="More actions"
+                aria-label={t('media.itemList.moreActions')}
                 className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <MoreHorizontal size={16} />
@@ -171,6 +173,9 @@ export function ItemList({
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [hasMore, items.length, loadMoreRef]);
 
+  const listRef = useRef<HTMLUListElement>(null);
+  const rows = useRowWindow(listRef, loading ? 0 : items.length);
+
   if (loading) {
     return (
       <div className="space-y-1">
@@ -183,8 +188,8 @@ export function ItemList({
 
   return (
     <>
-      <ul data-testid="item-list">
-        {items.map((item) => (
+      <ul ref={listRef} data-testid="item-list" style={{ paddingTop: rows.padTop, paddingBottom: rows.padBottom }}>
+        {items.slice(rows.from, rows.to).map((item) => (
           <ItemRow key={item.Id} item={item} collectionId={collectionId} />
         ))}
       </ul>

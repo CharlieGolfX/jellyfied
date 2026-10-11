@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Img } from '@/components/ui/States';
 import { formatRuntime } from '@/lib/format';
 import { usePlay } from '@/player/usePlay';
+import { t } from '@/i18n';
 
 const ROTATE_MS = 12_000;
 
@@ -56,7 +57,7 @@ export function FeaturedBanner() {
 
   return (
     <section
-      aria-label="Featured"
+      aria-label={t('media.featuredBanner.featured')}
       data-testid="featured-banner"
       className="relative -mt-6 mb-2 h-[min(56vh,520px)] min-h-72 overflow-hidden sm:-mt-8"
       onMouseEnter={() => setPaused(true)}
@@ -82,21 +83,21 @@ export function FeaturedBanner() {
         {item.Overview && <p className="line-clamp-3 text-sm text-fg/85">{item.Overview}</p>}
         <div className="flex flex-wrap items-center gap-2.5 pt-1">
           <Button variant="primary" icon={<Play size={18} fill="currentColor" />} onClick={() => play(item)}>
-            Play
+            {t('common.play')}
           </Button>
           <Link
             to={`/item/${item.Id}`}
             className="flex h-10 items-center gap-2 rounded-md bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/20"
           >
-            <Info size={18} /> Details
+            <Info size={18} /> {t('media.featuredBanner.details')}
           </Link>
           {count > 1 && (
-            <div className="ml-2 flex gap-1.5" role="group" aria-label="Featured titles">
+            <div className="ml-2 flex gap-1.5" role="group" aria-label={t('media.featuredBanner.featuredTitles')}>
               {items.map((it, i) => (
                 <button
                   key={it.Id}
                   onClick={() => setIndex(i)}
-                  aria-label={it.Name ?? `Title ${i + 1}`}
+                  aria-label={it.Name ?? t('media.featuredBanner.titleNumber', { number: i + 1 })}
                   aria-pressed={i === index}
                   className={clsx('h-2 rounded-full transition-all', i === index ? 'w-6 bg-accent' : 'w-2 bg-white/35 hover:bg-white/60')}
                 />

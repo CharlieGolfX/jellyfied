@@ -12,6 +12,7 @@ import { getActiveVideo } from './activePlayer';
 import { SyncPlayManager, type SyncPlaySnapshot } from './syncplay';
 import type { VideoPlayerState } from './usePlay';
 import { isPlayPath } from './VideoSession';
+import { t } from '@/i18n';
 
 const SyncPlayContext = createContext<SyncPlayManager | null>(null);
 
@@ -51,11 +52,11 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
     };
     m.onStop = () => getActiveVideo()?.stop();
     m.onNotice = (n) => {
-      const t = ctx.current.toast;
-      if (n.type === 'joined') t.info(`${n.user} joined the SyncPlay group`);
-      else if (n.type === 'left') t.info(`${n.user} left the SyncPlay group`);
-      else if (n.type === 'error') t.error(n.message);
-      else if (n.type === 'info') t.info(n.message);
+      const entry = ctx.current.toast;
+      if (n.type === 'joined') entry.info(t('player.syncPlay.joined', { user: n.user }));
+      else if (n.type === 'left') entry.info(t('player.syncPlay.left', { user: n.user }));
+      else if (n.type === 'error') entry.error(n.message);
+      else if (n.type === 'info') entry.info(n.message);
     };
     setManager(m);
     return () => m.dispose();
@@ -75,10 +76,10 @@ export function useSyncPlay(): SyncPlaySnapshot {
 }
 
 const STATE_LABEL: Record<string, string> = {
-  Idle: 'Nothing playing',
-  Waiting: 'Waiting for everyone',
-  Paused: 'Paused',
-  Playing: 'Playing',
+  Idle: t('player.syncPlayProvider.nothingPlaying'),
+  Waiting: t('player.syncPlayProvider.waitingForEveryone'),
+  Paused: t('player.syncPlayProvider.paused'),
+  Playing: t('player.syncPlayProvider.playing'),
 };
 
 /** Top-bar button to create, join or leave a SyncPlay group. */
@@ -136,8 +137,12 @@ export function SyncPlayButton() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label="SyncPlay"
-        title={sync.group ? `SyncPlay: ${sync.group.GroupName}` : 'SyncPlay: watch together'}
+        aria-label={t('player.syncPlayProvider.syncplay')}
+        title={
+          sync.group
+            ? t('player.syncPlayProvider.syncplay2', { groupName: sync.group.GroupName })
+            : t('player.syncPlayProvider.syncplayWatchTogether')
+        }
         className={clsx('rounded-full p-2 hover:bg-white/10', open || sync.group ? 'text-accent' : 'text-muted hover:text-fg')}
       >
         <Users size={20} />
@@ -147,7 +152,9 @@ export function SyncPlayButton() {
           className="animate-pop-in absolute top-12 right-0 z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg bg-base-750 py-2 shadow-2xl ring-1 ring-black/40"
           data-testid="syncplay-menu"
         >
-          <div className="px-4 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-faint uppercase">SyncPlay</div>
+          <div className="px-4 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-faint uppercase">
+            {t('player.syncPlayProvider.syncplay')}
+          </div>
           {sync.group ? (
             <>
               <div className="px-4 pb-2">
@@ -165,9 +172,7 @@ export function SyncPlayButton() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-faint">
-                  {sync.hasQueue
-                    ? 'Play, pause and seek apply to everyone in the group.'
-                    : 'Play a movie or episode to start watching together.'}
+                  {sync.hasQueue ? t('player.syncPlayProvider.playPauseAndSeekApply') : t('player.syncPlayProvider.playAMovieOrEpisode')}
                 </p>
               </div>
               {sync.hasQueue && !sync.following && (
@@ -178,7 +183,7 @@ export function SyncPlayButton() {
                     setOpen(false);
                   }}
                 >
-                  <Play size={16} className="shrink-0 text-accent" /> Join playback
+                  <Play size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.joinPlayback')}
                 </button>
               )}
               <button
@@ -191,7 +196,7 @@ export function SyncPlayButton() {
                   })
                 }
               >
-                <LogOut size={16} className="shrink-0 text-muted" /> Leave group
+                <LogOut size={16} className="shrink-0 text-muted" /> {t('player.syncPlayProvider.leaveGroup')}
               </button>
             </>
           ) : (
@@ -202,7 +207,7 @@ export function SyncPlayButton() {
                   disabled={busy}
                   onClick={() => void run(() => manager.createGroup(`${user?.Name ?? session.userName}'s group`))}
                 >
-                  <Plus size={16} className="shrink-0 text-accent" /> Create a group
+                  <Plus size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.createAGroup')}
                 </button>
               )}
               {groups.isLoading ? (
@@ -210,9 +215,7 @@ export function SyncPlayButton() {
                   <Spinner size={20} />
                 </div>
               ) : (groups.data ?? []).length === 0 ? (
-                <p className="px-4 py-3 text-xs text-faint">
-                  No groups to join yet. Create one, then others on this server can join it from this menu.
-                </p>
+                <p className="px-4 py-3 text-xs text-faint">{t('player.syncPlayProvider.noGroupsToJoinYet')}</p>
               ) : (
                 groups.data!.map((g) => (
                   <button

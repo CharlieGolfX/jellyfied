@@ -16,6 +16,7 @@ import NotFoundPage from '@/pages/NotFound';
 import { RemoteControlReceiver } from '@/player/RemoteControl';
 import { PlayRoute, useVideoSession } from '@/player/VideoSession';
 import { LiveUpdates } from '@/realtime/LiveUpdates';
+import { t } from '@/i18n';
 
 const GlobalVideoPlayer = lazy(() => import('@/player/VideoPlayer'));
 const SettingsPage = lazy(() => import('@/pages/Settings'));
@@ -47,9 +48,9 @@ function PlayerCrash() {
           : 'fixed right-4 bottom-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] flex-col items-center gap-3 rounded-lg bg-base-850 p-4 text-center shadow-2xl ring-1 ring-white/15'
       }
     >
-      <p className="text-sm text-muted">The player ran into an error and was stopped.</p>
+      <p className="text-sm text-muted">{t('app.thePlayerRanIntoAn')}</p>
       <button onClick={dismiss} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
-        {mode === 'full' ? 'Go back' : 'Close'}
+        {mode === 'full' ? t('app.goBack') : t('common.close')}
       </button>
     </div>
   );

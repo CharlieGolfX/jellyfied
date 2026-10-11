@@ -6,9 +6,10 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { Card } from '@/pages/Settings';
 import { AdminPage, parseList, useConfigEditor } from './shared';
+import { t } from '@/i18n';
 
 export default function NetworkPage() {
-  const { query, save } = useConfigEditor<NetworkConfiguration>('/System/Configuration/network', 'Network settings');
+  const { query, save } = useConfigEditor<NetworkConfiguration>('/System/Configuration/network', t('admin.network.networkSettings'));
   const [draft, setDraft] = useState<NetworkConfiguration | null>(null);
   const [lists, setLists] = useState({ subnets: '', addresses: '', proxies: '', filter: '' });
 
@@ -45,42 +46,42 @@ export default function NetworkPage() {
 
   return (
     <AdminPage
-      title="Networking"
-      description="Changes to ports, base URL or HTTPS take effect after a server restart. Be careful: wrong values can make the server unreachable."
+      title={t('admin.network.networking')}
+      description={t('admin.network.changesToPortsBaseUrl')}
       actions={
         <Button variant="primary" loading={save.isPending} onClick={submit}>
-          Save changes
+          {t('common.saveChanges')}
         </Button>
       }
     >
-      <Card title="Server address">
+      <Card title={t('admin.network.serverAddress')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Base URL" hint="e.g. /jellyfin when serving from a sub-path.">
+          <Field label={t('admin.network.baseUrl')} hint={t('admin.network.eGJellyfinWhenServing')}>
             <Input className="font-mono" value={draft.BaseUrl ?? ''} onChange={(e) => set('BaseUrl', e.target.value)} />
           </Field>
           <div />
-          <Field label="Local HTTP port">
+          <Field label={t('admin.network.localHttpPort')}>
             <Input
               type="number"
               value={draft.InternalHttpPort}
               onChange={(e) => set('InternalHttpPort', port(e.target.value, draft.InternalHttpPort))}
             />
           </Field>
-          <Field label="Local HTTPS port">
+          <Field label={t('admin.network.localHttpsPort')}>
             <Input
               type="number"
               value={draft.InternalHttpsPort}
               onChange={(e) => set('InternalHttpsPort', port(e.target.value, draft.InternalHttpsPort))}
             />
           </Field>
-          <Field label="Public HTTP port">
+          <Field label={t('admin.network.publicHttpPort')}>
             <Input
               type="number"
               value={draft.PublicHttpPort}
               onChange={(e) => set('PublicHttpPort', port(e.target.value, draft.PublicHttpPort))}
             />
           </Field>
-          <Field label="Public HTTPS port">
+          <Field label={t('admin.network.publicHttpsPort')}>
             <Input
               type="number"
               value={draft.PublicHttpsPort}
@@ -89,43 +90,51 @@ export default function NetworkPage() {
           </Field>
         </div>
         <div className="mt-3 divide-y divide-white/5">
-          <Switch label="Enable HTTPS" checked={draft.EnableHttps} onChange={(v) => set('EnableHttps', v)} />
-          <Switch label="Require HTTPS" checked={draft.RequireHttps} onChange={(v) => set('RequireHttps', v)} />
+          <Switch label={t('admin.network.enableHttps')} checked={draft.EnableHttps} onChange={(v) => set('EnableHttps', v)} />
+          <Switch label={t('admin.network.requireHttps')} checked={draft.RequireHttps} onChange={(v) => set('RequireHttps', v)} />
         </div>
       </Card>
 
-      <Card title="Access">
+      <Card title={t('admin.network.access')}>
         <div className="divide-y divide-white/5">
-          <Switch label="Allow remote connections" checked={draft.EnableRemoteAccess} onChange={(v) => set('EnableRemoteAccess', v)} />
-          <Switch label="Enable auto-discovery" checked={draft.AutoDiscovery} onChange={(v) => set('AutoDiscovery', v)} />
-          <Switch label="Enable IPv4" checked={draft.EnableIPv4} onChange={(v) => set('EnableIPv4', v)} />
-          <Switch label="Enable IPv6" checked={draft.EnableIPv6} onChange={(v) => set('EnableIPv6', v)} />
+          <Switch
+            label={t('admin.network.allowRemoteConnections')}
+            checked={draft.EnableRemoteAccess}
+            onChange={(v) => set('EnableRemoteAccess', v)}
+          />
+          <Switch label={t('admin.network.enableAutoDiscovery')} checked={draft.AutoDiscovery} onChange={(v) => set('AutoDiscovery', v)} />
+          <Switch label={t('admin.network.enableIpv4')} checked={draft.EnableIPv4} onChange={(v) => set('EnableIPv4', v)} />
+          <Switch label={t('admin.network.enableIpv6')} checked={draft.EnableIPv6} onChange={(v) => set('EnableIPv6', v)} />
           {'EnableUPnP' in draft && (
-            <Switch label="Enable automatic port mapping (UPnP)" checked={draft.EnableUPnP} onChange={(v) => set('EnableUPnP', v)} />
+            <Switch
+              label={t('admin.network.enableAutomaticPortMappingUpnp')}
+              checked={draft.EnableUPnP}
+              onChange={(v) => set('EnableUPnP', v)}
+            />
           )}
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="LAN networks" hint="One CIDR per line, e.g. 192.168.1.0/24">
+          <Field label={t('admin.network.lanNetworks')} hint={t('admin.network.oneCidrPerLineE')}>
             <TextArea className="font-mono" value={lists.subnets} onChange={(e) => setLists((l) => ({ ...l, subnets: e.target.value }))} />
           </Field>
-          <Field label="Bind to local addresses" hint="One per line. Empty = all interfaces.">
+          <Field label={t('admin.network.bindToLocalAddresses')} hint={t('admin.network.onePerLineEmptyAll')}>
             <TextArea
               className="font-mono"
               value={lists.addresses}
               onChange={(e) => setLists((l) => ({ ...l, addresses: e.target.value }))}
             />
           </Field>
-          <Field label="Known proxies" hint="Reverse proxies whose X-Forwarded-For header is trusted.">
+          <Field label={t('admin.network.knownProxies')} hint={t('admin.network.reverseProxiesWhoseXForwarded')}>
             <TextArea className="font-mono" value={lists.proxies} onChange={(e) => setLists((l) => ({ ...l, proxies: e.target.value }))} />
           </Field>
-          <Field label="Remote IP filter" hint="One per line.">
+          <Field label={t('admin.network.remoteIpFilter')} hint={t('admin.network.onePerLine')}>
             <TextArea className="font-mono" value={lists.filter} onChange={(e) => setLists((l) => ({ ...l, filter: e.target.value }))} />
           </Field>
         </div>
         <div className="mt-2">
           <Switch
-            label="Remote IP filter is a blocklist"
-            description="When off, the filter is an allowlist."
+            label={t('admin.network.remoteIpFilterIsA')}
+            description={t('admin.network.whenOffTheFilterIs')}
             checked={draft.IsRemoteIPFilterBlacklist}
             onChange={(v) => set('IsRemoteIPFilterBlacklist', v)}
           />

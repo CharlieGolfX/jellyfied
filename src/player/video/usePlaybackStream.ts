@@ -21,6 +21,7 @@ import {
   type SubtitleKind,
 } from './subtitleRenderers';
 import { useLatest } from '@/lib/useLatest';
+import { t } from '@/i18n';
 
 /**
  * Everything between the video element and the server for one playback: asking for a stream,
@@ -115,7 +116,7 @@ export function usePlaybackStream({
 
   const clearSubtitles = useCallback(() => {
     const video = videoRef.current;
-    if (video) video.querySelectorAll('track').forEach((t) => t.remove());
+    if (video) video.querySelectorAll('track').forEach((entry) => entry.remove());
     subtitleTrackRef.current = null;
     canvasSubtitlesRef.current?.destroy();
     canvasSubtitlesRef.current = null;
@@ -134,13 +135,13 @@ export function usePlaybackStream({
       const format = subtitleFormat(s.DeliveryUrl);
       try {
         const res = await fetch(url, { headers: { Authorization: api.authorizationHeader() } });
-        if (!res.ok) throw new Error(`Subtitle request failed (${res.status})`);
+        if (!res.ok) throw new Error(t('player.video.usePlaybackStream.subtitleRequestFailed', { status: res.status }));
         if (format !== 'vtt') {
           const layer = format === 'ass' ? assLayerRef.current : pgsLayerRef.current;
           const source = streamRef.current?.source;
           let subtitles: CanvasSubtitles;
           try {
-            if (!layer) throw new Error('The player has no subtitle layer.');
+            if (!layer) throw new Error(t('player.video.usePlaybackStream.thePlayerHasNoSubtitle'));
             subtitles =
               format === 'ass'
                 ? await createAssSubtitles({
@@ -241,14 +242,14 @@ export function usePlaybackStream({
         if (info.ErrorCode) {
           throw new Error(
             info.ErrorCode === 'NotAllowed'
-              ? 'You are not allowed to play this item.'
+              ? t('player.video.usePlaybackStream.youAreNotAllowedTo')
               : info.ErrorCode === 'RateLimitExceeded'
-                ? 'The server’s bitrate limit was exceeded.'
-                : 'No compatible stream is available for this browser.',
+                ? t('player.video.usePlaybackStream.theServerSBitrateLimit')
+                : t('player.video.usePlaybackStream.noCompatibleStreamIsAvailable'),
           );
         }
         const source = info.MediaSources.find((s) => s.Id === opts.mediaSourceId) ?? info.MediaSources[0];
-        if (!source) throw new Error('No playable media source was found.');
+        if (!source) throw new Error(t('player.video.usePlaybackStream.noPlayableMediaSourceWas'));
 
         const playSessionId = info.PlaySessionId ?? generateId();
         const staticUrl = () =>
@@ -279,7 +280,7 @@ export function usePlaybackStream({
           url = staticUrl();
           method = 'DirectStream';
         } else {
-          throw new Error('This item can’t be played in this browser, and the server could not provide a transcode.');
+          throw new Error(t('player.video.usePlaybackStream.thisItemCanTBe'));
         }
 
         const reasons = (() => {
@@ -337,8 +338,8 @@ export function usePlaybackStream({
             setLoading(false);
             setError(
               data.type === ErrorTypes.NETWORK_ERROR
-                ? 'Lost connection to the stream. The server may have stopped transcoding.'
-                : `Playback error: ${data.details}`,
+                ? t('player.video.usePlaybackStream.lostConnectionToTheStream')
+                : t('player.playbackError', { details: data.details }),
             );
           });
           hls.loadSource(url);
@@ -532,7 +533,7 @@ export function usePlaybackStream({
         return;
       }
       setLoading(false);
-      setError(`The video could not be played (${mediaError.message || `code ${mediaError.code}`}).`);
+      setError(t('player.couldNotBePlayed', { reason: mediaError.message || t('player.errorCode', { code: mediaError.code }) }));
     };
 
     video.addEventListener('playing', onPlaying);

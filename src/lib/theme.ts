@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { onPrefPulled, prefChanged } from './prefsBus';
+import { t } from '@/i18n';
 
 /** Interface colours: the accent colour and the background tone. Synced with the account (see prefsSync). */
 export interface Theme {
@@ -11,14 +12,14 @@ export interface Theme {
 export type BackgroundId = 'dark' | 'black' | 'graphite' | 'midnight' | 'plum' | 'forest';
 
 export const ACCENT_PRESETS: { value: string; label: string }[] = [
-  { value: '#00a4dc', label: 'Jellyfin blue' },
-  { value: '#aa5cc3', label: 'Jellyfin purple' },
-  { value: '#e5a00d', label: 'Amber' },
-  { value: '#f76b15', label: 'Orange' },
-  { value: '#e5484d', label: 'Red' },
-  { value: '#e93d82', label: 'Pink' },
-  { value: '#3dbb6b', label: 'Green' },
-  { value: '#12a594', label: 'Teal' },
+  { value: '#00a4dc', label: t('lib.theme.jellyfinBlue') },
+  { value: '#aa5cc3', label: t('lib.theme.jellyfinPurple') },
+  { value: '#e5a00d', label: t('lib.theme.amber') },
+  { value: '#f76b15', label: t('lib.theme.orange') },
+  { value: '#e5484d', label: t('lib.theme.red') },
+  { value: '#e93d82', label: t('lib.theme.pink') },
+  { value: '#3dbb6b', label: t('lib.theme.green') },
+  { value: '#12a594', label: t('lib.theme.teal') },
 ];
 
 /** Lightness (%) of the background steps 950, 900, 850, 800, 750, 700, 600 and 500. */
@@ -26,12 +27,12 @@ const STEPS = ['950', '900', '850', '800', '750', '700', '600', '500'] as const;
 const LADDER = [4, 6.5, 9.5, 12.5, 16, 20, 29, 41.5];
 
 export const BACKGROUNDS: { value: BackgroundId; label: string; hue: number; saturation: number; ladder: number[] }[] = [
-  { value: 'dark', label: 'Jellyfin dark', hue: 0, saturation: 0, ladder: LADDER },
-  { value: 'black', label: 'Black (OLED)', hue: 0, saturation: 0, ladder: [0, 0, 5, 8.5, 12, 16, 26, 40] },
-  { value: 'graphite', label: 'Graphite', hue: 215, saturation: 9, ladder: [8, 11, 14, 17.5, 21, 25, 34, 46] },
-  { value: 'midnight', label: 'Midnight blue', hue: 222, saturation: 32, ladder: LADDER },
-  { value: 'plum', label: 'Plum', hue: 278, saturation: 24, ladder: LADDER },
-  { value: 'forest', label: 'Forest', hue: 158, saturation: 22, ladder: LADDER },
+  { value: 'dark', label: t('lib.theme.jellyfinDark'), hue: 0, saturation: 0, ladder: LADDER },
+  { value: 'black', label: t('lib.theme.blackOled'), hue: 0, saturation: 0, ladder: [0, 0, 5, 8.5, 12, 16, 26, 40] },
+  { value: 'graphite', label: t('lib.theme.graphite'), hue: 215, saturation: 9, ladder: [8, 11, 14, 17.5, 21, 25, 34, 46] },
+  { value: 'midnight', label: t('lib.theme.midnightBlue'), hue: 222, saturation: 32, ladder: LADDER },
+  { value: 'plum', label: t('lib.theme.plum'), hue: 278, saturation: 24, ladder: LADDER },
+  { value: 'forest', label: t('lib.theme.forest'), hue: 158, saturation: 22, ladder: LADDER },
 ];
 
 export const DEFAULT_THEME: Theme = { accent: ACCENT_PRESETS[0].value, background: 'dark' };

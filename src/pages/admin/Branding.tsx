@@ -9,6 +9,7 @@ import { useApi } from '@/auth/AuthProvider';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/Toast';
 import { AdminPage } from './shared';
+import { t } from '@/i18n';
 
 export default function BrandingPage() {
   const api = useApi();
@@ -19,7 +20,7 @@ export default function BrandingPage() {
   const save = useMutation({
     mutationFn: (value: BrandingOptionsDto) => api.post('/System/Configuration/Branding', value),
     onSuccess: () => {
-      toast.success('Branding saved');
+      toast.success(t('admin.branding.brandingSaved'));
       void qc.invalidateQueries({ queryKey: ['branding'] });
     },
     onError: (e) => toast.error(e),
@@ -32,25 +33,22 @@ export default function BrandingPage() {
 
   return (
     <AdminPage
-      title="Branding"
-      description="What people see before they sign in."
+      title={t('admin.branding.branding')}
+      description={t('admin.branding.whatPeopleSeeBeforeThey')}
       actions={
         <Button variant="primary" loading={save.isPending} onClick={() => save.mutate(draft)}>
-          Save changes
+          {t('common.saveChanges')}
         </Button>
       }
     >
-      <Card title="Login screen">
-        <Field
-          label="Login disclaimer"
-          hint="Shown under the sign-in form, here and in other Jellyfin apps. Jellyplex shows it as plain text; the Jellyfin web interface also accepts HTML."
-        >
+      <Card title={t('admin.branding.loginScreen')}>
+        <Field label={t('admin.branding.loginDisclaimer')} hint={t('admin.branding.shownUnderTheSignIn')}>
           <TextArea rows={4} value={draft.LoginDisclaimer ?? ''} onChange={(e) => set('LoginDisclaimer', e.target.value)} />
         </Field>
       </Card>
 
-      <Card title="Jellyfin web interface" description="These two only affect Jellyfin's own web interface, not Jellyplex.">
-        <Field label="Custom CSS" hint="Jellyplex does not load it: its colours are set under Account settings.">
+      <Card title={t('admin.branding.jellyfinWebInterface')} description={t('admin.branding.theseTwoOnlyAffectJellyfin')}>
+        <Field label={t('admin.branding.customCss')} hint={t('admin.branding.jellyplexDoesNotLoadIt')}>
           <TextArea
             rows={8}
             spellCheck={false}
@@ -61,8 +59,8 @@ export default function BrandingPage() {
         </Field>
         <div className="mt-3">
           <Switch
-            label="Splash screen"
-            description="Show an image made from the library while the web interface loads."
+            label={t('admin.branding.splashScreen')}
+            description={t('admin.branding.showAnImageMadeFrom')}
             checked={Boolean(draft.SplashscreenEnabled)}
             onChange={(v) => set('SplashscreenEnabled', v)}
           />

@@ -16,6 +16,7 @@ import { plural } from '@/lib/format';
 import { useLibraryView } from '@/lib/libraryView';
 import { SORT_ADDED, SORT_TITLE, type SortDef } from './config';
 import { DropdownButton, Toolbar, ViewToggle } from './toolbar';
+import { t } from '@/i18n';
 
 interface FolderGridProps {
   parentId: string;
@@ -76,7 +77,7 @@ function FolderItems({ parentId, shape, sorts = [SORT_TITLE, SORT_ADDED], shuffl
         <Toolbar>
           {shuffleItem && total > 0 && (
             <Button size="sm" variant="ghost" icon={<Shuffle size={15} />} onClick={() => play(shuffleItem, { shuffle: true })}>
-              Shuffle
+              {t('common.shuffle')}
             </Button>
           )}
           <ViewToggle />
@@ -86,7 +87,7 @@ function FolderItems({ parentId, shape, sorts = [SORT_TITLE, SORT_ADDED], shuffl
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : !result.isLoading && items.length === 0 ? (
-        <EmptyState title="This folder is empty" />
+        <EmptyState title={t('library.folderGrid.thisFolderIsEmpty')} />
       ) : view === 'list' ? (
         <ItemList
           items={items}

@@ -11,6 +11,7 @@ import { FolderGrid } from './library/FolderGrid';
 import { ArtistsGrid, GenreGrid } from './library/GenreGrid';
 import { LibraryGrid } from './library/LibraryGrid';
 import { Recommended } from './library/Recommended';
+import { t } from '@/i18n';
 
 const LiveTvPage = lazy(() => import('./LiveTv'));
 
@@ -22,7 +23,7 @@ export default function LibraryPage() {
   usePageTitle(library?.Name);
 
   if (isLoading) return <PageSpinner />;
-  if (error || !library) return <ErrorState error={error ?? 'Library not found'} onRetry={() => refetch()} />;
+  if (error || !library) return <ErrorState error={error ?? t('library.libraryNotFound')} onRetry={() => refetch()} />;
 
   if (library.CollectionType === 'livetv') {
     return (
@@ -33,11 +34,11 @@ export default function LibraryPage() {
   }
 
   const tabParam = params.get('tab') as TabId | null;
-  const tab: TabId = config.tabs.some((t) => t.id === tabParam) ? tabParam! : config.tabs[0].id;
+  const tab: TabId = config.tabs.some((entry) => entry.id === tabParam) ? tabParam! : config.tabs[0].id;
 
-  const setTab = (t: TabId) => {
+  const setTab = (entry: TabId) => {
     const next = new URLSearchParams();
-    next.set('tab', t);
+    next.set('tab', entry);
     setParams(next, { replace: true });
   };
 
@@ -53,17 +54,17 @@ export default function LibraryPage() {
           </div>
           {config.tabs.length > 1 && (
             <div className="flex gap-1 overflow-x-auto scrollbar-none">
-              {config.tabs.map((t) => (
+              {config.tabs.map((entry) => (
                 <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
+                  key={entry.id}
+                  onClick={() => setTab(entry.id)}
                   className={clsx(
                     'relative h-9 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                    tab === t.id ? 'text-fg' : 'text-muted hover:text-fg',
+                    tab === entry.id ? 'text-fg' : 'text-muted hover:text-fg',
                   )}
                 >
-                  {t.label}
-                  {tab === t.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
+                  {entry.label}
+                  {tab === entry.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
                 </button>
               ))}
             </div>

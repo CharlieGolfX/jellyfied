@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { formatDate, formatRuntime, playedPercent } from '@/lib/format';
 import { fallbackIcon } from '@/components/media/PosterCard';
 import { usePlay } from '@/player/usePlay';
+import { t } from '@/i18n';
 
 export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: () => void }) {
   const api = useApi();
@@ -28,7 +29,7 @@ export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: 
         onClick={onPlay}
         disabled={missing}
         className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-md bg-base-800 ring-white/0 transition group-hover:ring-2 group-hover:ring-accent sm:w-60"
-        aria-label={`Play ${episode.Name}`}
+        aria-label={t('item.episodeList.play', { name: episode.Name })}
       >
         <Img
           src={src}
@@ -63,24 +64,24 @@ export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: 
             <div className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-muted">
               {episode.PremiereDate && <span>{formatDate(episode.PremiereDate)}</span>}
               {episode.RunTimeTicks ? <span>{formatRuntime(episode.RunTimeTicks)}</span> : null}
-              {missing && <span className="text-accent">Missing</span>}
+              {missing && <span className="text-accent">{t('item.episodeList.missing')}</span>}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
             <button
               onClick={() => setPlayed.mutate({ id: episode.Id, played: !played }, { onError: (e) => toast.error(e) })}
               className="rounded-full p-1.5 hover:bg-white/10"
-              title={played ? 'Mark as unwatched' : 'Mark as watched'}
-              aria-label={played ? 'Mark as unwatched' : 'Mark as watched'}
+              title={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
+              aria-label={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
             >
               {played ? <CheckCircle size={18} className="text-accent" /> : <Circle size={18} className="text-muted" />}
             </button>
             <Menu
               items={[
-                { label: 'Play', icon: <Play size={16} />, onSelect: onPlay },
-                ...(pct > 0 ? [{ label: 'Play from beginning', onSelect: () => play(episode, { fromStart: true }) }] : []),
+                { label: t('common.play'), icon: <Play size={16} />, onSelect: onPlay },
+                ...(pct > 0 ? [{ label: t('common.playFromBeginning'), onSelect: () => play(episode, { fromStart: true }) }] : []),
                 {
-                  label: played ? 'Mark as unwatched' : 'Mark as watched',
+                  label: played ? t('common.markAsUnwatched') : t('common.markAsWatched'),
                   onSelect: () => setPlayed.mutate({ id: episode.Id, played: !played }, { onError: (e) => toast.error(e) }),
                 },
               ]}
@@ -89,7 +90,7 @@ export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: 
                   onClick={toggle}
                   aria-expanded={open}
                   className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg"
-                  aria-label="More"
+                  aria-label={t('common.more')}
                 >
                   <MoreHorizontal size={18} />
                 </button>

@@ -304,7 +304,8 @@ test.describe('playback on a real server', () => {
     await expect(page).toHaveURL(/letter=S/);
     await expect(page.getByLabel(firstS.Name, { exact: true }).first()).toBeInViewport();
     await expect(count).toHaveText(all!);
-    // The titles before it are loaded above, and the bar stays in reach.
+    // The titles before it are loaded above when asked for, and the bar stays in reach.
+    await page.getByRole('button', { name: 'Earlier titles' }).click();
     await expect(page.getByLabel(lastBeforeS.Name, { exact: true }).first()).toBeAttached();
     await expect(page.getByLabel(firstS.Name, { exact: true }).first()).toBeInViewport();
     await expect(bar).toBeInViewport();

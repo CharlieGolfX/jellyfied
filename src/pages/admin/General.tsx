@@ -8,10 +8,11 @@ import { ErrorState } from '@/components/ui/States';
 import { Card } from '@/pages/Settings';
 import { AdminPage, useConfigEditor } from './shared';
 import { useDraft } from '@/lib/useDraft';
+import { t } from '@/i18n';
 
 export default function GeneralPage() {
   const api = useApi();
-  const { query, save } = useConfigEditor<ServerConfiguration>('/System/Configuration', 'Server settings');
+  const { query, save } = useConfigEditor<ServerConfiguration>('/System/Configuration', t('admin.general.serverSettings'));
   const cultures = useQuery({
     queryKey: ['cultures'],
     queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'),
@@ -38,20 +39,20 @@ export default function GeneralPage() {
 
   return (
     <AdminPage
-      title="General"
-      description="Server-wide settings. Changes to paths may require a restart."
+      title={t('admin.general.general')}
+      description={t('admin.general.serverWideSettingsChangesTo')}
       actions={
         <Button variant="primary" loading={save.isPending} onClick={() => save.mutate(draft)}>
-          Save changes
+          {t('common.saveChanges')}
         </Button>
       }
     >
-      <Card title="Server">
+      <Card title={t('admin.general.server')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Server name" hint="Shown to clients and on the login screen.">
+          <Field label={t('admin.general.serverName')} hint={t('admin.general.shownToClientsAndOn')}>
             <Input value={draft.ServerName ?? ''} onChange={(e) => set('ServerName', e.target.value)} />
           </Field>
-          <Field label="Display language (server UI)" hint="Used for text the server writes, such as notifications and the activity log.">
+          <Field label={t('admin.general.displayLanguageServerUi')} hint={t('admin.general.usedForTextTheServer')}>
             <Select value={draft.UICulture ?? ''} onChange={(e) => set('UICulture', e.target.value)}>
               {(Array.isArray(uiLanguages.data) ? uiLanguages.data : [])
                 .filter((l) => l.Value)
@@ -70,17 +71,17 @@ export default function GeneralPage() {
         </div>
         <div className="mt-3 divide-y divide-white/5">
           <Switch
-            label="Enable Quick Connect"
-            description="Allow signing in on new devices with a code from an existing session."
+            label={t('admin.general.enableQuickConnect')}
+            description={t('admin.general.allowSigningInOnNew')}
             checked={draft.QuickConnectAvailable}
             onChange={(v) => set('QuickConnectAvailable', v)}
           />
         </div>
       </Card>
 
-      <Card title="Metadata">
+      <Card title={t('common.metadata')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Preferred metadata language">
+          <Field label={t('admin.general.preferredMetadataLanguage')}>
             <Select value={draft.PreferredMetadataLanguage ?? ''} onChange={(e) => set('PreferredMetadataLanguage', e.target.value)}>
               {(cultures.data ?? [])
                 .slice()
@@ -93,7 +94,7 @@ export default function GeneralPage() {
               {!cultures.data && <option value={draft.PreferredMetadataLanguage}>{draft.PreferredMetadataLanguage}</option>}
             </Select>
           </Field>
-          <Field label="Country">
+          <Field label={t('admin.general.country')}>
             <Select value={draft.MetadataCountryCode ?? ''} onChange={(e) => set('MetadataCountryCode', e.target.value)}>
               {(countries.data ?? [])
                 .slice()
@@ -109,33 +110,33 @@ export default function GeneralPage() {
         </div>
       </Card>
 
-      <Card title="Library behaviour">
+      <Card title={t('admin.general.libraryBehaviour')}>
         <div className="divide-y divide-white/5">
           <Switch
-            label="Display a folder view"
-            description="Show plain media folders alongside libraries."
+            label={t('admin.general.displayAFolderView')}
+            description={t('admin.general.showPlainMediaFoldersAlongside')}
             checked={draft.EnableFolderView}
             onChange={(v) => set('EnableFolderView', v)}
           />
           <Switch
-            label="Group movies into collections"
-            description="Movies that belong to a collection are shown as a single grouped item in movie lists."
+            label={t('admin.general.groupMoviesIntoCollections')}
+            description={t('admin.general.moviesThatBelongToA')}
             checked={draft.EnableGroupingMoviesIntoCollections}
             onChange={(v) => set('EnableGroupingMoviesIntoCollections', v)}
           />
           <Switch
-            label="Display specials within the seasons they aired in"
+            label={t('admin.general.displaySpecialsWithinTheSeasons')}
             checked={draft.DisplaySpecialsWithinSeasons}
             onChange={(v) => set('DisplaySpecialsWithinSeasons', v)}
           />
           <Switch
-            label="Include external content in suggestions"
+            label={t('admin.general.includeExternalContentInSuggestions')}
             checked={draft.EnableExternalContentInSuggestions}
             onChange={(v) => set('EnableExternalContentInSuggestions', v)}
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Library monitor delay (seconds)" hint="Wait time after file changes before scanning.">
+          <Field label={t('admin.general.libraryMonitorDelaySeconds')} hint={t('admin.general.waitTimeAfterFileChanges')}>
             <Input
               type="number"
               min={0}
@@ -144,7 +145,7 @@ export default function GeneralPage() {
             />
           </Field>
           {'LibraryScanFanoutConcurrency' in draft && (
-            <Field label="Parallel library scan tasks" hint="0 uses the number of CPU cores.">
+            <Field label={t('admin.general.parallelLibraryScanTasks')} hint={t('admin.general.n0UsesTheNumberOf')}>
               <Input
                 type="number"
                 min={0}
@@ -154,7 +155,7 @@ export default function GeneralPage() {
             </Field>
           )}
           {'ParallelImageEncodingLimit' in draft && (
-            <Field label="Parallel image encoding limit" hint="0 uses the number of CPU cores.">
+            <Field label={t('admin.general.parallelImageEncodingLimit')} hint={t('admin.general.n0UsesTheNumberOf')}>
               <Input
                 type="number"
                 min={0}
@@ -164,7 +165,7 @@ export default function GeneralPage() {
             </Field>
           )}
           {'ActivityLogRetentionDays' in draft && (
-            <Field label="Activity log retention (days)" hint="Leave empty to keep forever.">
+            <Field label={t('admin.general.activityLogRetentionDays')} hint={t('admin.general.leaveEmptyToKeepForever')}>
               <Input
                 type="number"
                 min={1}
@@ -176,12 +177,12 @@ export default function GeneralPage() {
         </div>
       </Card>
 
-      <Card title="Paths">
+      <Card title={t('admin.general.paths')}>
         <div className="grid gap-4">
-          <Field label="Cache path" hint="Leave empty for the default.">
+          <Field label={t('admin.general.cachePath')} hint={t('admin.general.leaveEmptyForTheDefault')}>
             <Input value={draft.CachePath ?? ''} onChange={(e) => set('CachePath', e.target.value)} className="font-mono" />
           </Field>
-          <Field label="Metadata path" hint="Leave empty for the default.">
+          <Field label={t('admin.general.metadataPath')} hint={t('admin.general.leaveEmptyForTheDefault')}>
             <Input value={draft.MetadataPath ?? ''} onChange={(e) => set('MetadataPath', e.target.value)} className="font-mono" />
           </Field>
         </div>

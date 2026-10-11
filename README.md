@@ -45,7 +45,13 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   resolution (4K / HD / SD), tag and studio. Genre, year, rating, tag and studio take several
   values at once (any of them matches).
 - An A–Z bar in libraries sorted by title: a letter moves the list there, with the rest of the
-  library still above and below it. A list view as a denser alternative to the poster grid.
+  library still above and below it (the titles before it load when you scroll up). Sorting,
+  filters and the A–Z bar stay at the top of the page while you scroll. A list view as a denser
+  alternative to the poster grid.
+- Built for large libraries: only the rows near the screen are kept in the page, posters are
+  requested in the size the screen needs and show a blurred preview until they arrive, an
+  item's page is fetched while the pointer rests on its card, and going back returns to where
+  you were in a list.
 - Select several items (the tick on a card or row; shift-click for everything in between) to mark
   them watched or unwatched, add them to a playlist or collection, or delete them in one go.
 - Pages update on their own: new media after a library scan, and watched state, favorites and
@@ -144,7 +150,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Several accounts on one device: "Add another account" in the account menu keeps the current one
   signed in, and you switch between them from the same menu or the sign-in screen without typing
   a password again. An account can be given a PIN (Account settings) that is asked for before
-  anyone switches to it on that device.
+  anyone switches to it on that device; while another account is in use, its sign-in is stored
+  encrypted with that PIN.
 - Your preferences follow your account: colours, subtitle appearance, skip lengths, time display,
   the home page layout and the tracks remembered per show are the same in every browser you sign
   in to. This can be switched off under Account settings.
@@ -340,24 +347,35 @@ The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
 
 ### Translations
 
-Interface text is being moved out of the components into one file per language under
-`src/i18n/locales/`. English (`en.json`) is the reference and the fallback. So far it holds the
-sign-in screen, the sidebar, the top bar and the account menu; the other pages still have their
-English text in the code and are moved over the same way:
+Interface text is not written in the components. It lives in one file per language under
+`src/i18n/locales/`; English (`en.json`) is the reference and the fallback.
 
 ```tsx
-const t = useT();                       // import { useT } from '@/i18n'
+import { t, tRich } from '@/i18n';
+
 <Button>{t('login.signIn')}</Button>
-t('userMenu.switchTo', { name })        // "Switch to {name}"
-t('settings.language.count', { count }) // { "one": "…", "other": "…" } picks the plural form
+t('userMenu.switchTo', { name })                  // "Switch to {name}"
+t('settings.seconds', { count })                  // { "one": "…", "other": "…" } picks the plural form
+tRich('admin.userEdit.deleteConfirm', { name: <strong>{user.Name}</strong> })   // an element inside a sentence
 ```
 
-Keys are checked by TypeScript against `en.json`, so a misspelt key fails the type check. To add
-a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`) with the
-keys you have translated; missing ones fall back to English. It then appears under Account
-settings → Language by itself, is loaded only when chosen, and is picked automatically for
-browsers set to that language. A unit test checks that no language file has keys or
-placeholders that English lacks.
+- Keys are checked by TypeScript against `en.json`, so a misspelt key fails the type check.
+- Texts are grouped by where they are used (`admin.backups.…`, `player.…`); texts used in several
+  places are under `common`. Counted things ("3 items") are under `count` and go through
+  `plural()` in `lib/format`.
+- The language is loaded before the app starts, and changing it reloads the page. `t` can
+  therefore be called anywhere, including where a module defines its constants.
+- Keep sentences whole. A sentence glued together from translated pieces cannot be reordered by
+  a language with another word order; use placeholders, or `tRich` when a piece is an element.
+- Not translated on purpose: messages for developers (`useAuth must be used inside AuthProvider`)
+  and product names.
+
+To add a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`)
+with the keys you have translated; missing ones fall back to English. It then appears under
+Account settings → Language by itself, is loaded only when chosen, and is picked automatically
+for browsers set to that language. A unit test checks that no language file has keys or
+placeholders that English lacks. Dates and numbers are still formatted for the browser's
+language, not the chosen one.
 
 ### Tests
 
@@ -424,10 +442,13 @@ docker/         container entrypoint that writes config.js and the nginx site
 - Live TV covers watching channels and recordings. The programme guide grid, and scheduling or
   cancelling recordings (DVR), are not implemented; use the regular Jellyfin web UI for those.
 - Every account signed in on a device can be switched to from that device without a password,
-  like in other apps with an account switcher. An account PIN stops that from the menu, but it is
-  a lock on the interface, not encryption: the sign-in stays stored in the browser, so someone
-  who can use the browser's developer tools can get past it. On a shared device with people you
-  don't trust, sign out instead.
+  like in other apps with an account switcher, unless it has a PIN. With a PIN, the account's
+  sign-in is stored encrypted while someone else uses the browser. Two limits: the account that
+  is in use at the moment is not protected by its PIN, and a short PIN can be found by a program
+  that tries every combination against the stored data (each try is slowed down, and every extra
+  digit makes it ten times as long). On a shared device with people you don't trust, sign out
+  instead. Signing in with the password again removes the PIN, and an account whose PIN is
+  forgotten can only be removed from the device, not signed out on the server from there.
 - The login disclaimer is shown as plain text; HTML in it is not rendered.
 - "Play on another device" works with apps that are signed in to your Jellyfin server and accept
   remote control.

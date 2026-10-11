@@ -40,6 +40,9 @@ export function setCardScale(v: number) {
   listeners.forEach((l) => l());
 }
 
+/** The size right now, for code that should not render again when it changes. */
+export const cardScale = () => current;
+
 function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);

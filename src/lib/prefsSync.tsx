@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { JellyfinApi } from '@/api/client';
 import { useApi, useSession } from '@/auth/AuthProvider';
-import { onPrefChanged, prefPulled } from './prefsBus';
+import { onFlushPrefs, onPrefChanged, prefPulled } from './prefsBus';
 
 /**
  * Preferences that follow the user to other browsers. They are kept in local storage as before,
@@ -149,6 +149,10 @@ function start(api: JellyfinApi, userId: string): () => void {
   const offChanged = onPrefChanged((key) => {
     if (SYNCED_KEYS.includes(key)) schedulePush();
   });
+  const offFlush = onFlushPrefs(() => {
+    window.clearTimeout(timer);
+    return push();
+  });
   // Coming back to a tab that sat in the background: another device may have changed something.
   const onVisible = () => {
     if (document.visibilityState === 'visible' && Date.now() - pulledAt > REFRESH_AFTER) void pull();
@@ -159,6 +163,7 @@ function start(api: JellyfinApi, userId: string): () => void {
     stopped = true;
     window.clearTimeout(timer);
     offChanged();
+    offFlush();
     document.removeEventListener('visibilitychange', onVisible);
   };
 }

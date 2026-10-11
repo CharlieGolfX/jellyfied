@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, UserDto } from '@/api/types';
 import { appPath } from '@/lib/basePath';
-import { clearPin } from './accountPin';
+import { clearPin, setPin } from './accountPin';
 
 const SESSION_KEY = 'jellyplex.session';
 /** Every account signed in on this browser, the current one included, so users can switch without a password (see accountPin). */
@@ -16,7 +16,9 @@ export interface StoredSession {
   serverName: string;
   userId: string;
   userName: string;
+  /** Empty in the list of saved accounts when a PIN has locked it away (see accountPin). */
   accessToken: string;
+  sealed?: boolean;
 }
 
 interface AuthState {
@@ -26,8 +28,13 @@ interface AuthState {
   logout: () => Promise<void>;
   /** The other accounts that are signed in on this browser. */
   otherAccounts: StoredSession[];
-  /** Continues as another signed-in account. Reloads the app, so nothing of the previous user lingers. */
-  switchAccount: (account: StoredSession) => void;
+  /**
+   * Continues as another signed-in account. Reloads the app, so nothing of the previous user lingers.
+   * An account protected by a PIN needs the access token its PIN gave back.
+   */
+  switchAccount: (account: StoredSession, accessToken?: string) => void;
+  /** Sets (or with null, removes) the PIN of the account in use, and locks or frees its saved sign-in. */
+  protectAccount: (pin: string | null) => void;
   /** Leaves the current account signed in and opens the sign-in screen for another one. */
   addAccount: () => void;
   /** Signs a saved account out and forgets it. */
@@ -38,7 +45,7 @@ export const sameAccount = (a: StoredSession, b: StoredSession) => a.userId === 
 
 function validSession(s: unknown): s is StoredSession {
   const v = s as Partial<StoredSession> | null;
-  return Boolean(v && typeof v === 'object' && v.accessToken && v.serverUrl && v.userId);
+  return Boolean(v && typeof v === 'object' && (v.accessToken || v.sealed) && v.serverUrl && v.userId);
 }
 
 /** The saved accounts with `account` added or replaced (newest first), or removed. */
@@ -140,6 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
       updateAccounts((list) => withAccount(list, next));
+      // Signing in with the password again starts over: the PIN locked away the previous sign-in.
+      clearPin(next);
       queryClient.clear();
       queryClient.setQueryData(['me', result.User.Id], result.User);
       setSession(next);
@@ -158,14 +167,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clear();
   }, [api, clear]);
 
-  const switchAccount = useCallback((account: StoredSession) => {
+  const switchAccount = useCallback((account: StoredSession, accessToken?: string) => {
+    const token = accessToken ?? account.accessToken;
+    if (!token) return;
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(account));
+      // The session in use has its token in the clear; the saved account keeps it locked away.
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...account, accessToken: token, sealed: undefined }));
     } catch {
       return;
     }
     window.location.assign(appPath('/'));
   }, []);
+
+  const protectAccount = useCallback(
+    (pin: string | null) => {
+      if (!session) return;
+      if (pin) setPin(session, pin, session.accessToken);
+      else clearPin(session);
+      const saved: StoredSession = pin ? { ...session, accessToken: '', sealed: true } : { ...session, sealed: undefined };
+      updateAccounts((list) => list.map((a) => (sameAccount(a, session) ? saved : a)));
+    },
+    [session, updateAccounts],
+  );
 
   const addAccount = useCallback(() => {
     try {
@@ -178,10 +201,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const forgetAccount = useCallback(
     async (account: StoredSession) => {
-      try {
-        await new JellyfinApi(account.serverUrl, account.accessToken, account.userId).post('/Sessions/Logout');
-      } catch {
-        /* token may already be invalid */
+      // A sign-in that a PIN has locked away can't be ended on the server from here; it is only forgotten.
+      if (account.accessToken) {
+        try {
+          await new JellyfinApi(account.serverUrl, account.accessToken, account.userId).post('/Sessions/Logout');
+        } catch {
+          /* token may already be invalid */
+        }
       }
       updateAccounts((list) => withAccount(list, account, true));
       clearPin(account);
@@ -192,8 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const otherAccounts = useMemo(() => accounts.filter((a) => !session || !sameAccount(a, session)), [accounts, session]);
 
   const value = useMemo(
-    () => ({ session, api, completeLogin, logout, otherAccounts, switchAccount, addAccount, forgetAccount }),
-    [session, api, completeLogin, logout, otherAccounts, switchAccount, addAccount, forgetAccount],
+    () => ({ session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount }),
+    [session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

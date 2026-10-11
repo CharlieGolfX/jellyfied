@@ -1,13 +1,19 @@
 import clsx from 'clsx';
 import { RectangleVertical } from 'lucide-react';
 import { CARD_SCALE_MAX, CARD_SCALE_MIN, useCardScale } from '@/lib/cardScale';
+import { t } from '@/i18n';
 
 /** Plex-style poster size slider. The setting is global and persisted. */
 export function CardSizeSlider({ className }: { className?: string }) {
   const [scale, setScale] = useCardScale();
   return (
-    <div className={clsx('flex items-center gap-2 text-muted', className)} title="Poster size">
-      <button type="button" onClick={() => setScale(scale - 0.1)} className="rounded p-0.5 hover:text-fg" aria-label="Smaller posters">
+    <div className={clsx('flex items-center gap-2 text-muted', className)} title={t('media.cardSizeSlider.posterSize')}>
+      <button
+        type="button"
+        onClick={() => setScale(scale - 0.1)}
+        className="rounded p-0.5 hover:text-fg"
+        aria-label={t('media.cardSizeSlider.smallerPosters')}
+      >
         <RectangleVertical size={11} />
       </button>
       <input
@@ -19,9 +25,14 @@ export function CardSizeSlider({ className }: { className?: string }) {
         onChange={(e) => setScale(Number(e.target.value))}
         onDoubleClick={() => setScale(1)}
         className="w-28"
-        aria-label="Poster size"
+        aria-label={t('media.cardSizeSlider.posterSize')}
       />
-      <button type="button" onClick={() => setScale(scale + 0.1)} className="rounded p-0.5 hover:text-fg" aria-label="Larger posters">
+      <button
+        type="button"
+        onClick={() => setScale(scale + 0.1)}
+        className="rounded p-0.5 hover:text-fg"
+        aria-label={t('media.cardSizeSlider.largerPosters')}
+      >
         <RectangleVertical size={17} />
       </button>
     </div>

@@ -15,14 +15,18 @@ import {
 } from 'lucide-react';
 import { memo, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { cardImage, defaultShape, imageSrc, type CardShape } from '@/api/images';
+import { blurHashOf, cardImage, cardSrcSet, defaultShape, imageSrc, type CardShape } from '@/api/images';
+import { usePrefetchItem } from '@/api/queries';
+import { blurHashImage } from '@/lib/blurhash';
+import { cardScale } from '@/lib/cardScale';
 import type { BaseItemDto } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { Img } from '@/components/ui/States';
 import { Menu } from '@/components/ui/Menu';
-import { episodeLabel } from '@/lib/format';
+import { episodeLabel, plural } from '@/lib/format';
 import { useIsSelected, useSelection, useSelectionCount } from './selection';
 import { useItemActions } from './useItemActions';
+import { t } from '@/i18n';
 
 const aspect: Record<CardShape, string> = {
   poster: 'aspect-[2/3]',
@@ -77,7 +81,7 @@ export function defaultTitles(item: BaseItemDto, context?: 'series'): { title: s
     case 'Season':
       return {
         title: name,
-        subtitle: item.ChildCount ? `${item.ChildCount} episode${item.ChildCount === 1 ? '' : 's'}` : (item.SeriesName ?? ''),
+        subtitle: item.ChildCount ? plural(item.ChildCount, 'episode') : (item.SeriesName ?? ''),
       };
     case 'Series':
       return { title: name, subtitle: item.ProductionYear ? String(item.ProductionYear) : '' };
@@ -91,7 +95,7 @@ export function defaultTitles(item: BaseItemDto, context?: 'series'): { title: s
     case 'Playlist':
       return {
         title: name,
-        subtitle: item.ChildCount ? `${item.ChildCount} item${item.ChildCount === 1 ? '' : 's'}` : '',
+        subtitle: item.ChildCount ? plural(item.ChildCount, 'item') : '',
       };
     default:
       return { title: name, subtitle: item.ProductionYear ? String(item.ProductionYear) : '' };
@@ -125,7 +129,12 @@ export const PosterCard = memo(function PosterCard({
 }: PosterCardProps) {
   const api = useApi();
   const s = shape ?? defaultShape(item);
-  const src = imageSrc(api, cardImage(item, s), imageWidth[s]);
+  const image = cardImage(item, s);
+  const src = imageSrc(api, image, imageWidth[s]);
+  // Read once: cards already on screen keep their image while the size slider is dragged.
+  const responsive = cardSrcSet(api, image, s, cardScale());
+  const blur = blurHashImage(blurHashOf(item, image));
+  const prefetch = usePrefetchItem(item.Id);
   const titles = defaultTitles(item, context);
   const { menuItems, dialogs, play, togglePlayed, played, pct, unplayedCount, watchable, playable, showUnplayedTriangle } = useItemActions(
     item,
@@ -140,7 +149,7 @@ export const PosterCard = memo(function PosterCard({
   const round = item.Type === 'MusicArtist' || item.Type === 'Person';
 
   return (
-    <div className={clsx('group/card relative min-w-0', className)} style={style}>
+    <div className={clsx('group/card relative min-w-0', className)} style={style} {...prefetch}>
       <Link
         to={itemLink(item)}
         // While items are being selected, a click on a card selects it instead of opening it.
@@ -160,8 +169,11 @@ export const PosterCard = memo(function PosterCard({
         )}
         aria-label={finalTitle}
       >
+        {/* What the image roughly looks like, until it is there. */}
+        {blur && src && <img src={blur} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />}
         <Img
           src={src}
+          {...responsive}
           className="absolute inset-0 h-full w-full object-cover"
           fallback={
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-base-750 to-base-850 p-3 text-center text-faint">
@@ -174,7 +186,7 @@ export const PosterCard = memo(function PosterCard({
         {showUnplayedTriangle && (
           <span
             className="absolute top-0 right-0 h-0 w-0 border-t-[22px] border-l-[22px] border-t-accent border-l-transparent drop-shadow"
-            aria-label="Unwatched"
+            aria-label={t('common.unwatched')}
           />
         )}
         {item.IsFolder && unplayedCount > 0 && (item.Type === 'Series' || item.Type === 'Season' || item.Type === 'BoxSet') && (
@@ -206,7 +218,7 @@ export const PosterCard = memo(function PosterCard({
           onMouseDown={(e) => e.shiftKey && e.preventDefault()}
           role="checkbox"
           aria-checked={selected}
-          aria-label={`Select ${finalTitle}`}
+          aria-label={t('media.posterCard.select', { finalTitle })}
           className={clsx(
             'absolute top-1.5 left-1.5 z-[1] flex h-6 w-6 items-center justify-center rounded-full border-2 shadow transition-opacity',
             selected ? 'border-accent bg-accent text-accent-ink' : 'border-white/80 bg-black/50 text-transparent hover:text-white/80',
@@ -219,7 +231,7 @@ export const PosterCard = memo(function PosterCard({
       {playable && !round && !selecting && (
         <button
           onClick={() => play(item)}
-          aria-label={`Play ${finalTitle}`}
+          aria-label={t('media.posterCard.play', { finalTitle })}
           className={clsx(
             'absolute top-0 left-0 flex w-full items-center justify-center opacity-0 transition-opacity group-hover/card:opacity-100 pointer-events-none',
             aspect[s],
@@ -238,8 +250,8 @@ export const PosterCard = memo(function PosterCard({
               <button
                 onClick={togglePlayed}
                 className="pointer-events-auto rounded-full p-1.5 text-white/85 hover:bg-white/15 hover:text-white"
-                aria-label={played ? 'Mark as unwatched' : 'Mark as watched'}
-                title={played ? 'Mark as unwatched' : 'Mark as watched'}
+                aria-label={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
+                title={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
               >
                 {played ? <CheckCircle size={18} className="text-accent" /> : <CheckCircle size={18} />}
               </button>
@@ -252,7 +264,7 @@ export const PosterCard = memo(function PosterCard({
                 <button
                   onClick={toggle}
                   aria-expanded={open}
-                  aria-label="More actions"
+                  aria-label={t('media.posterCard.moreActions')}
                   className="pointer-events-auto rounded-full p-1.5 text-white/85 hover:bg-white/15 hover:text-white"
                 >
                   <MoreHorizontal size={18} />
@@ -268,11 +280,10 @@ export const PosterCard = memo(function PosterCard({
           <Link to={itemLink(item)} className="block truncate text-sm font-medium text-fg hover:underline" title={finalTitle}>
             {finalTitle}
           </Link>
-          {finalSubtitle && (
-            <div className="truncate text-xs text-muted" title={finalSubtitle}>
-              {finalSubtitle}
-            </div>
-          )}
+          {/* Always there, so cards with and without a second line are equally tall. */}
+          <div className="h-4 truncate text-xs text-muted" title={finalSubtitle || undefined}>
+            {finalSubtitle}
+          </div>
         </div>
       )}
       {dialogs}

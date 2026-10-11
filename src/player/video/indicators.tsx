@@ -3,6 +3,7 @@ import { formatClock } from '@/lib/format';
 import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
 import { useSleepTimer } from '../sleepTimer';
 import { useClock } from '@/lib/useClock';
+import { t } from '@/i18n';
 
 /** Wall-clock time at which playback will finish, taking playback speed into account. */
 export function EndsAt({ remaining, speed }: { remaining: number; speed: number }) {
@@ -10,7 +11,11 @@ export function EndsAt({ remaining, speed }: { remaining: number; speed: number 
   const now = useClock(15_000);
   const [timeFormat] = useTimeFormat();
   const end = new Date(now + (remaining / speed) * 1000);
-  return <span className="mr-2 hidden text-sm text-white/70 tabular-nums sm:inline">Ends at {formatTimeOfDay(end, timeFormat)}</span>;
+  return (
+    <span className="mr-2 hidden text-sm text-white/70 tabular-nums sm:inline">
+      {t('player.video.indicators.endsAt')} {formatTimeOfDay(end, timeFormat)}
+    </span>
+  );
 }
 
 /** Countdown shown in the controls while a sleep timer is running. */
@@ -23,10 +28,10 @@ export function SleepIndicator() {
     <span
       data-testid="sleep-indicator"
       className="mr-2 flex items-center gap-1 text-sm text-accent tabular-nums"
-      title={sleep.endOfVideo ? 'Sleep timer: stops when this video ends' : 'Sleep timer'}
+      title={sleep.endOfVideo ? t('player.video.indicators.sleepTimerStopsWhenThis') : t('player.video.indicators.sleepTimer')}
     >
       <Moon size={15} />
-      {sleep.endOfVideo ? 'End of video' : formatClock(left)}
+      {sleep.endOfVideo ? t('player.video.indicators.endOfVideo') : formatClock(left)}
     </span>
   );
 }

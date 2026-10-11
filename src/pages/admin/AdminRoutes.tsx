@@ -38,23 +38,65 @@ import TasksPage from './Tasks';
 import UserEditPage from './UserEdit';
 import { usePageTitle } from '@/lib/usePageTitle';
 import UsersPage from './Users';
+import { t } from '@/i18n';
 
 const NAV: { to: string; label: string; icon: ReactNode; end?: boolean; group: string }[] = [
-  { to: '/admin', label: 'Dashboard', icon: <Gauge size={18} />, end: true, group: 'Server' },
-  { to: '/admin/general', label: 'General', icon: <Settings size={18} />, group: 'Server' },
-  { to: '/admin/users', label: 'Users', icon: <Users size={18} />, group: 'Server' },
-  { to: '/admin/libraries', label: 'Libraries', icon: <Library size={18} />, group: 'Server' },
-  { to: '/admin/metadata', label: 'Metadata', icon: <FileCog size={18} />, group: 'Server' },
-  { to: '/admin/playback', label: 'Transcoding', icon: <Zap size={18} />, group: 'Server' },
-  { to: '/admin/network', label: 'Networking', icon: <Network size={18} />, group: 'Server' },
-  { to: '/admin/branding', label: 'Branding', icon: <Paintbrush size={18} />, group: 'Server' },
-  { to: '/admin/tasks', label: 'Scheduled Tasks', icon: <CalendarClock size={18} />, group: 'Manage' },
-  { to: '/admin/activity', label: 'Activity', icon: <Activity size={18} />, group: 'Manage' },
-  { to: '/admin/devices', label: 'Devices', icon: <MonitorSmartphone size={18} />, group: 'Manage' },
-  { to: '/admin/plugins', label: 'Plugins', icon: <Puzzle size={18} />, group: 'Manage' },
-  { to: '/admin/backups', label: 'Backups', icon: <DatabaseBackup size={18} />, group: 'Manage' },
-  { to: '/admin/apikeys', label: 'API Keys', icon: <KeyRound size={18} />, group: 'Manage' },
-  { to: '/admin/logs', label: 'Logs', icon: <FileText size={18} />, group: 'Manage' },
+  {
+    to: '/admin',
+    label: t('admin.adminRoutes.dashboard'),
+    icon: <Gauge size={18} />,
+    end: true,
+    group: t('admin.adminRoutes.groupServer'),
+  },
+  { to: '/admin/general', label: t('admin.adminRoutes.general'), icon: <Settings size={18} />, group: t('admin.adminRoutes.groupServer') },
+  { to: '/admin/users', label: t('admin.adminRoutes.users'), icon: <Users size={18} />, group: t('admin.adminRoutes.groupServer') },
+  {
+    to: '/admin/libraries',
+    label: t('admin.adminRoutes.libraries'),
+    icon: <Library size={18} />,
+    group: t('admin.adminRoutes.groupServer'),
+  },
+  { to: '/admin/metadata', label: t('common.metadata'), icon: <FileCog size={18} />, group: t('admin.adminRoutes.groupServer') },
+  { to: '/admin/playback', label: t('common.transcoding'), icon: <Zap size={18} />, group: t('admin.adminRoutes.groupServer') },
+  {
+    to: '/admin/network',
+    label: t('admin.adminRoutes.networking'),
+    icon: <Network size={18} />,
+    group: t('admin.adminRoutes.groupServer'),
+  },
+  {
+    to: '/admin/branding',
+    label: t('admin.adminRoutes.branding'),
+    icon: <Paintbrush size={18} />,
+    group: t('admin.adminRoutes.groupServer'),
+  },
+  {
+    to: '/admin/tasks',
+    label: t('admin.adminRoutes.scheduledTasks'),
+    icon: <CalendarClock size={18} />,
+    group: t('admin.adminRoutes.groupManage'),
+  },
+  {
+    to: '/admin/activity',
+    label: t('admin.adminRoutes.activity'),
+    icon: <Activity size={18} />,
+    group: t('admin.adminRoutes.groupManage'),
+  },
+  {
+    to: '/admin/devices',
+    label: t('admin.adminRoutes.devices'),
+    icon: <MonitorSmartphone size={18} />,
+    group: t('admin.adminRoutes.groupManage'),
+  },
+  { to: '/admin/plugins', label: t('admin.adminRoutes.plugins'), icon: <Puzzle size={18} />, group: t('admin.adminRoutes.groupManage') },
+  {
+    to: '/admin/backups',
+    label: t('admin.adminRoutes.backups'),
+    icon: <DatabaseBackup size={18} />,
+    group: t('admin.adminRoutes.groupManage'),
+  },
+  { to: '/admin/apikeys', label: t('admin.adminRoutes.apiKeys'), icon: <KeyRound size={18} />, group: t('admin.adminRoutes.groupManage') },
+  { to: '/admin/logs', label: t('admin.adminRoutes.logs'), icon: <FileText size={18} />, group: t('admin.adminRoutes.groupManage') },
 ];
 
 function AdminNav() {
@@ -91,11 +133,15 @@ function AdminNav() {
 }
 
 export default function AdminRoutes() {
-  usePageTitle('Server dashboard');
+  usePageTitle(t('admin.adminRoutes.serverDashboard'));
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading) return <PageSpinner />;
   if (!user?.Policy?.IsAdministrator) {
-    return <EmptyState title="Administrator access required">Only Jellyfin administrators can open the server dashboard.</EmptyState>;
+    return (
+      <EmptyState title={t('admin.adminRoutes.administratorAccessRequired')}>
+        {t('admin.adminRoutes.onlyJellyfinAdministratorsCanOpen')}
+      </EmptyState>
+    );
   }
 
   return (
@@ -123,7 +169,7 @@ export default function AdminRoutes() {
           <Route path="plugins" element={<PluginsPage />} />
           <Route path="apikeys" element={<ApiKeysPage />} />
           <Route path="logs" element={<LogsPage />} />
-          <Route path="*" element={<EmptyState title="Page not found" />} />
+          <Route path="*" element={<EmptyState title={t('admin.adminRoutes.pageNotFound')} />} />
         </Routes>
       </div>
     </div>

@@ -7,9 +7,10 @@ import { Hub } from '@/components/media/Hub';
 import { episodeLabel, formatBitrate, formatBytes, formatDate } from '@/lib/format';
 import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from '@/player/trackMemory';
 import { ActionBar, CastHub, CreditsList, DetailFrame, ExpandableText, MetaLine } from './common';
+import { t } from '@/i18n';
 
 function streamLabel(s: MediaStream): string {
-  return s.DisplayTitle || [s.Language, s.Codec?.toUpperCase()].filter(Boolean).join(' ') || `Track ${s.Index}`;
+  return s.DisplayTitle || [s.Language, s.Codec?.toUpperCase()].filter(Boolean).join(' ') || t('player.trackNumber', { number: s.Index });
 }
 
 function StreamSelect({
@@ -39,7 +40,7 @@ function StreamSelect({
           ))}
         </select>
       ) : (
-        <span className="truncate text-fg/90">{options[0]?.label ?? 'None'}</span>
+        <span className="truncate text-fg/90">{options[0]?.label ?? t('common.none')}</span>
       )}
     </label>
   );
@@ -82,7 +83,7 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
         <>
           <span className="mx-2 text-faint">›</span>
           <Link to={`/item/${item.SeasonId}`} className="hover:text-fg hover:underline">
-            {item.SeasonName ?? `Season ${item.ParentIndexNumber}`}
+            {item.SeasonName ?? t('item.videoDetails.season', { parentIndexNumber: item.ParentIndexNumber })}
           </Link>
         </>
       )}
@@ -101,7 +102,10 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
             extra={
               isEpisode ? (
                 <span className="text-fg/90">
-                  {[episodeLabel(item, true), item.PremiereDate ? `Aired ${formatDate(item.PremiereDate)}` : '']
+                  {[
+                    episodeLabel(item, true),
+                    item.PremiereDate ? t('item.videoDetails.aired', { date: formatDate(item.PremiereDate) }) : '',
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
@@ -128,7 +132,7 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
             <div className="grid max-w-4xl gap-2 pt-3 lg:grid-cols-2">
               {sources.length > 1 && (
                 <StreamSelect
-                  label="Version"
+                  label={t('item.videoDetails.version')}
                   value={source.Id}
                   options={sources.map((s) => ({ value: s.Id, label: s.Name ?? s.Container ?? s.Id }))}
                   onChange={(v) => {
@@ -140,19 +144,19 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
               )}
               {videoStreams[0] && (
                 <StreamSelect
-                  label="Video"
+                  label={t('item.videoDetails.video')}
                   value={String(videoStreams[0].Index)}
                   options={[{ value: String(videoStreams[0].Index), label: streamLabel(videoStreams[0]) }]}
                   onChange={() => {}}
                 />
               )}
               <StreamSelect
-                label="Audio"
+                label={t('item.videoDetails.audio')}
                 value={String(effectiveAudio ?? '')}
                 options={
                   audioStreams.length
                     ? audioStreams.map((s) => ({ value: String(s.Index), label: streamLabel(s) }))
-                    : [{ value: '', label: 'None' }]
+                    : [{ value: '', label: t('common.none') }]
                 }
                 onChange={(v) => {
                   setAudioIndex(Number(v));
@@ -164,10 +168,10 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                 }}
               />
               <StreamSelect
-                label="Subtitles"
+                label={t('common.subtitles')}
                 value={String(effectiveSub)}
                 options={[
-                  { value: '-1', label: 'None' },
+                  { value: '-1', label: t('common.none') },
                   ...subtitleStreams.map((s) => ({ value: String(s.Index), label: streamLabel(s) })),
                 ]}
                 onChange={(v) => {
@@ -184,7 +188,7 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
 
           {source && (
             <details className="max-w-4xl pt-2 text-sm text-muted">
-              <summary className="cursor-pointer text-faint select-none hover:text-fg">Media info</summary>
+              <summary className="cursor-pointer text-faint select-none hover:text-fg">{t('item.videoDetails.mediaInfo')}</summary>
               <div className="mt-2 space-y-1 rounded-md bg-black/30 p-3 font-mono text-xs leading-relaxed">
                 <div>
                   {source.Container?.toUpperCase()} · {formatBytes(source.Size)} · {formatBitrate(source.Bitrate)}
@@ -205,7 +209,7 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
     >
       {isEpisode && (
         <Hub
-          title={item.SeasonName ? `More from ${item.SeasonName}` : 'More Episodes'}
+          title={item.SeasonName ? t('item.videoDetails.moreFrom', { seasonName: item.SeasonName }) : t('item.videoDetails.moreEpisodes')}
           to={item.SeasonId ? `/item/${item.SeasonId}` : undefined}
           items={otherEpisodes}
           shape="landscape"
@@ -213,8 +217,8 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
         />
       )}
       <CastHub people={item.People} />
-      <Hub title="Extras" items={extras.data} shape="landscape" />
-      <Hub title="More Like This" items={similar.data?.Items} shape="poster" />
+      <Hub title={t('item.videoDetails.extras')} items={extras.data} shape="landscape" />
+      <Hub title={t('item.videoDetails.moreLikeThis')} items={similar.data?.Items} shape="poster" />
     </DetailFrame>
   );
 }

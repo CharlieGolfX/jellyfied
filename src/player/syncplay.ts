@@ -1,5 +1,6 @@
 import type { JellyfinApi } from '@/api/client';
 import type { JellyfinSocket } from '@/realtime/socket';
+import { t } from '@/i18n';
 
 /**
  * SyncPlay ("watch together"). The server owns the group state: clients ask it to pause, resume
@@ -284,12 +285,12 @@ export class SyncPlayManager {
       case 'GroupDoesNotExist':
         // Also the answer when a remembered group has ended in the meantime: nothing to report then.
         if (this.inGroup) {
-          this.onNotice?.({ type: 'error', message: 'That SyncPlay group no longer exists.' });
+          this.onNotice?.({ type: 'error', message: t('player.syncplay.thatSyncplayGroupNoLonger') });
           this.clearGroup();
         } else storeGroup(null);
         break;
       case 'LibraryAccessDenied':
-        this.onNotice?.({ type: 'error', message: 'You don’t have access to what this SyncPlay group is watching.' });
+        this.onNotice?.({ type: 'error', message: t('player.syncplay.youDonTHaveAccess') });
         break;
       case 'StateUpdate': {
         const state = (u.Data as { State?: SyncPlayGroup['State'] })?.State;

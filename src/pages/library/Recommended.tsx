@@ -4,6 +4,7 @@ import { useItems, useLatest, useNextUp, useResume } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
 import { Hub } from '@/components/media/Hub';
 import { EmptyState } from '@/components/ui/States';
+import { t } from '@/i18n';
 
 export function Recommended({ library }: { library: BaseItemDto }) {
   const type = library.CollectionType;
@@ -77,27 +78,33 @@ export function Recommended({ library }: { library: BaseItemDto }) {
   const noContent = !latest.isLoading && (latest.data?.length ?? 0) === 0 && !random.isLoading && (random.data?.Items.length ?? 0) === 0;
 
   if (noContent) {
-    return (
-      <EmptyState title="This library is empty">Add media to the library folders and run a library scan from the dashboard.</EmptyState>
-    );
+    return <EmptyState title={t('library.recommended.thisLibraryIsEmpty')}>{t('library.recommended.addMediaToTheLibrary')}</EmptyState>;
   }
 
   return (
     <div className="space-y-9 pt-6">
-      <Hub title={square ? 'Continue Listening' : 'Continue Watching'} items={continueItems} shape={square ? 'square' : 'landscape'} />
       <Hub
-        title={type === 'tvshows' ? 'Recently Added Episodes' : 'Recently Added'}
+        title={square ? t('library.recommended.continueListening') : t('library.recommended.continueWatching')}
+        items={continueItems}
+        shape={square ? 'square' : 'landscape'}
+      />
+      <Hub
+        title={type === 'tvshows' ? t('library.recommended.recentlyAddedEpisodes') : t('library.recommended.recentlyAdded')}
         items={latest.data}
         loading={latest.isLoading}
         shape={square ? 'square' : 'poster'}
       />
-      {type === 'tvshows' && <Hub title="New Episodes" items={newEpisodes.data?.Items} shape="landscape" />}
-      {type !== 'music' && <Hub title="Recently Released" items={released.data?.Items} shape="poster" />}
-      {type === 'music' && <Hub title="Recently Played" items={recentlyPlayed.data?.Items} shape="square" />}
-      {type === 'music' && <Hub title="Most Played" items={mostPlayed.data?.Items} shape="square" />}
-      {type !== 'music' && <Hub title="Top Rated Unwatched" items={topRated.data?.Items} shape="poster" />}
-      {type !== 'music' && <Hub title="Recently Watched" items={recentlyPlayed.data?.Items} shape="poster" />}
-      <Hub title={type === 'music' ? 'Rediscover' : 'Random Picks'} items={random.data?.Items} shape={square ? 'square' : 'poster'} />
+      {type === 'tvshows' && <Hub title={t('library.recommended.newEpisodes')} items={newEpisodes.data?.Items} shape="landscape" />}
+      {type !== 'music' && <Hub title={t('library.recommended.recentlyReleased')} items={released.data?.Items} shape="poster" />}
+      {type === 'music' && <Hub title={t('library.recommended.recentlyPlayed')} items={recentlyPlayed.data?.Items} shape="square" />}
+      {type === 'music' && <Hub title={t('library.recommended.mostPlayed')} items={mostPlayed.data?.Items} shape="square" />}
+      {type !== 'music' && <Hub title={t('library.recommended.topRatedUnwatched')} items={topRated.data?.Items} shape="poster" />}
+      {type !== 'music' && <Hub title={t('library.recommended.recentlyWatched')} items={recentlyPlayed.data?.Items} shape="poster" />}
+      <Hub
+        title={type === 'music' ? t('library.recommended.rediscover') : t('library.recommended.randomPicks')}
+        items={random.data?.Items}
+        shape={square ? 'square' : 'poster'}
+      />
     </div>
   );
 }

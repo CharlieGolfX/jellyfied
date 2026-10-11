@@ -2,6 +2,7 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { AUDIO_DELAY_STEP, MAX_AUDIO_DELAY } from '../audioDelay';
 import type { SeekSteps } from '../seekSteps';
 import { clampStep, formatAudioDelay, formatSubtitleDelay, MAX_SUBTITLE_DELAY, SPEED_OPTIONS, type PlayerPanel } from './shared';
+import { t } from '@/i18n';
 
 interface ShortcutOptions {
   /** Off for the mini player, which must not hijack page keys. */
@@ -70,8 +71,8 @@ export function usePlayerShortcuts({
   useEffect(() => {
     if (!isFull) return;
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+      const target = e.target as HTMLElement;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       let handled = true;
       switch (e.key.length === 1 && e.key !== '<' && e.key !== '>' ? e.key.toLowerCase() : e.key) {
@@ -117,7 +118,7 @@ export function usePlayerShortcuts({
           if (subtitleTiming) {
             const next = clampStep(subtitleDelay + (e.key.toLowerCase() === 'h' ? 0.1 : -0.1), -MAX_SUBTITLE_DELAY, MAX_SUBTITLE_DELAY);
             setSubtitleDelay(next);
-            flash(`Subtitle delay ${formatSubtitleDelay(next)}`);
+            flash(t('player.subtitleDelay', { delay: formatSubtitleDelay(next) }));
           } else handled = false;
           break;
         case 'z':
@@ -125,7 +126,7 @@ export function usePlayerShortcuts({
           if (audioDelayAvailable) {
             const next = clampStep(audioDelay + (e.key.toLowerCase() === 'x' ? AUDIO_DELAY_STEP : -AUDIO_DELAY_STEP), 0, MAX_AUDIO_DELAY);
             setAudioDelay(next);
-            flash(`Audio delay ${formatAudioDelay(next)}`);
+            flash(t('player.audioDelay', { delay: formatAudioDelay(next) }));
           } else handled = false;
           break;
         case '>':

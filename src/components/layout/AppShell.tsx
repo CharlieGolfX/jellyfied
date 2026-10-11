@@ -1,8 +1,8 @@
 import clsx from 'clsx';
-import { useT } from '@/i18n';
+import { t } from '@/i18n';
 import { LayoutDashboard, Menu as MenuIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { useIsAdmin } from '@/auth/AuthProvider';
 import { CrashState } from '@/components/ui/CrashState';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -18,9 +18,10 @@ import { Sidebar } from './Sidebar';
 import { UserMenu } from './UserMenu';
 
 const COLLAPSE_KEY = 'jellyplex.sidebarCollapsed';
+/** How far each page in the history was scrolled, by the key the router gives its history entry. */
+const scrollPositions = new Map<string, number>();
 
 export function AppShell() {
-  const t = useT();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -50,11 +51,59 @@ export function AppShell() {
     setPath(location.pathname);
     setMobileOpen(false);
   }
-  // …and starts at the top.
-  useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0 });
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  // …and starts at the top, except when going back or forward: then it returns to where it was.
+  const navigation = useNavigationType();
+  // Filters and tabs replace the history entry, which gives it a new key: positions go under the latest.
+  const entryKey = useRef(location.key);
+  const entryPath = useRef(location.pathname);
+  // Both of these run as part of the page change itself, not after it: the old page's content
+  // going away scrolls the area to the top, and that must not be taken for the user doing so.
+  useLayoutEffect(() => {
+    const samePage = entryPath.current === location.pathname && entryKey.current !== location.key;
+    entryKey.current = location.key;
+    entryPath.current = location.pathname;
+    if (samePage && mainRef.current) scrollPositions.set(location.key, mainRef.current.scrollTop);
+  }, [location.key, location.pathname]);
+  // A change of filter or tab is the same page: it has the same path, and keeps its place. So this
+  // runs for a new path only, whatever else changed with it.
+  // oxlint-disable react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const target = navigation === 'POP' ? (scrollPositions.get(entryKey.current) ?? 0) : 0;
+    // Not while the old position is being returned to: the page may be too short for it at first.
+    let restoring = target > 0;
+    const remember = () => {
+      if (!restoring) scrollPositions.set(entryKey.current, main.scrollTop);
+    };
+    main.addEventListener('scroll', remember, { passive: true });
+    main.scrollTo({ top: target });
+    // A long list is only that long once it has loaded and been laid out again: keep trying for a
+    // moment, and stop as soon as the user scrolls themselves.
+    let frame = 0;
+    let tries = 0;
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      restoring = false;
+    };
+    const retry = () => {
+      if (Math.abs(main.scrollTop - target) < 2 || ++tries > 120) return stop();
+      main.scrollTo({ top: target });
+      frame = requestAnimationFrame(retry);
+    };
+    if (target > 0) {
+      frame = requestAnimationFrame(retry);
+      main.addEventListener('wheel', stop, { passive: true, once: true });
+      main.addEventListener('touchstart', stop, { passive: true, once: true });
+    }
+    return () => {
+      stop();
+      main.removeEventListener('scroll', remember);
+      main.removeEventListener('wheel', stop);
+      main.removeEventListener('touchstart', stop);
+    };
   }, [location.pathname]);
+  // oxlint-enable react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
 
   const toggleSidebar = () => {
     if (window.matchMedia('(min-width: 1024px)').matches) setCollapsed((c) => !c);

@@ -1,17 +1,18 @@
 import type { CSSProperties } from 'react';
+import { t } from '@/i18n';
 
 /** How the picture is scaled to the player. */
 export type PictureFit = 'fit' | 'fill' | 'stretch';
 export type PictureAspect = 'auto' | '16:9' | '4:3' | '21:9' | '2.39:1';
 
 export const PICTURE_FITS: { value: PictureFit; label: string; title: string }[] = [
-  { value: 'fit', label: 'Fit', title: 'Show the whole picture' },
-  { value: 'fill', label: 'Fill', title: 'Fill the screen and crop what doesn’t fit' },
-  { value: 'stretch', label: 'Stretch', title: 'Stretch the picture to the screen' },
+  { value: 'fit', label: t('player.picture.fit'), title: t('player.picture.showTheWholePicture') },
+  { value: 'fill', label: t('player.picture.fill'), title: t('player.picture.fillTheScreenAndCrop') },
+  { value: 'stretch', label: t('player.picture.stretch'), title: t('player.picture.stretchThePictureToThe') },
 ];
 
 export const PICTURE_ASPECTS: { value: PictureAspect; label: string; ratio?: number }[] = [
-  { value: 'auto', label: 'Original' },
+  { value: 'auto', label: t('player.picture.original') },
   { value: '16:9', label: '16:9', ratio: 16 / 9 },
   { value: '4:3', label: '4:3', ratio: 4 / 3 },
   { value: '21:9', label: '21:9', ratio: 21 / 9 },

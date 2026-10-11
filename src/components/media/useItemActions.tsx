@@ -25,6 +25,7 @@ import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, us
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections, useRemoveFromCollection } from './AddToCollection';
 import { supportsMetadataEditing } from './metadataEditing';
 import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
+import { t } from '@/i18n';
 
 const MetadataEditor = lazy(() => import('./MetadataEditor'));
 
@@ -58,27 +59,27 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
 
   const menuItems: MenuItem[] = [];
   if (playable) {
-    menuItems.push({ label: 'Play', icon: <Play size={16} />, onSelect: () => play(item) });
+    menuItems.push({ label: t('common.play'), icon: <Play size={16} />, onSelect: () => play(item) });
     if (pct > 0)
       menuItems.push({
-        label: 'Play from beginning',
+        label: t('common.playFromBeginning'),
         icon: <RotateCcw size={16} />,
         onSelect: () => play(item, { fromStart: true }),
       });
   }
   if (supportsInstantMix(item)) {
-    menuItems.push({ label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(item) });
+    menuItems.push({ label: t('common.instantMix'), icon: <Radio size={16} />, onSelect: () => void instantMix(item) });
   }
   if (watchable) {
     menuItems.push({
-      label: played ? 'Mark as unwatched' : 'Mark as watched',
+      label: played ? t('common.markAsUnwatched') : t('common.markAsWatched'),
       icon: played ? <Circle size={16} /> : <CheckCircle size={16} />,
       onSelect: togglePlayed,
     });
   }
   if (item.Type !== 'Person' && item.Type !== 'UserView' && item.Type !== 'CollectionFolder') {
     menuItems.push({
-      label: item.UserData?.IsFavorite ? 'Remove from favorites' : 'Add to favorites',
+      label: item.UserData?.IsFavorite ? t('media.useItemActions.removeFromFavorites') : t('media.useItemActions.addToFavorites'),
       icon: <Heart size={16} />,
       onSelect: () => setFavorite.mutate({ id: item.Id, favorite: !item.UserData?.IsFavorite }, { onError: (e) => toast.error(e) }),
     });
@@ -86,44 +87,56 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   // Based on the saved position, not the progress bar: a watched item that is being rewatched has both.
   if ((item.UserData?.PlaybackPositionTicks ?? 0) > 0 && item.MediaType === 'Video' && !item.IsFolder) {
     menuItems.push({
-      label: 'Remove from Continue Watching',
+      label: t('media.useItemActions.removeFromContinueWatching'),
       icon: <History size={16} />,
       // The card may be gone by the time the lists have refreshed, so don't rely on mutate() callbacks.
       onSelect: () =>
         void clearProgress.mutateAsync(item.Id).then(
-          () => toast.success('Removed from Continue Watching'),
+          () => toast.success(t('media.useItemActions.removedFromContinueWatching')),
           (e) => toast.error(e),
         ),
     });
   }
   if (supportsPlaylists(item)) {
-    menuItems.push({ label: 'Add to playlist', icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
+    menuItems.push({ label: t('common.addToPlaylist'), icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
   }
   if (canManageCollections && supportsCollections(item)) {
-    menuItems.push({ label: 'Add to collection', icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
+    menuItems.push({ label: t('common.addToCollection'), icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
     if (collectionId) {
       menuItems.push({
-        label: 'Remove from collection',
+        label: t('media.useItemActions.removeFromCollection'),
         icon: <FolderMinus size={16} />,
         onSelect: () =>
           void removeFromCollection.mutateAsync({ collectionId, itemId: item.Id }).then(
-            () => toast.success('Removed from collection'),
+            () => toast.success(t('media.useItemActions.removedFromCollection')),
             (e) => toast.error(e),
           ),
       });
     }
   }
   if (isAdmin && supportsMetadataEditing(item) && item.Type !== 'Person') {
-    menuItems.push({ label: 'Edit metadata', icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
+    menuItems.push({ label: t('common.editMetadata'), icon: <Pencil size={16} />, onSelect: () => setEditing(true) });
   }
   if (item.Type === 'Episode' && item.SeriesId) {
     menuItems.push({ divider: true, label: '' });
-    menuItems.push({ label: 'Go to show', icon: <Tv size={16} />, onSelect: () => navigate(`/item/${item.SeriesId}`) });
+    menuItems.push({
+      label: t('media.useItemActions.goToShow'),
+      icon: <Tv size={16} />,
+      onSelect: () => navigate(`/item/${item.SeriesId}`),
+    });
     if (item.SeasonId)
-      menuItems.push({ label: 'Go to season', icon: <Tv size={16} />, onSelect: () => navigate(`/item/${item.SeasonId}`) });
+      menuItems.push({
+        label: t('media.useItemActions.goToSeason'),
+        icon: <Tv size={16} />,
+        onSelect: () => navigate(`/item/${item.SeasonId}`),
+      });
   }
   if (item.Type === 'Audio' && item.AlbumId) {
-    menuItems.push({ label: 'Go to album', icon: <Music size={16} />, onSelect: () => navigate(`/item/${item.AlbumId}`) });
+    menuItems.push({
+      label: t('media.useItemActions.goToAlbum'),
+      icon: <Music size={16} />,
+      onSelect: () => navigate(`/item/${item.AlbumId}`),
+    });
   }
 
   const dialogs: ReactNode = (

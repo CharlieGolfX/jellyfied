@@ -11,6 +11,7 @@ import { useAudioPlayer } from '@/player/AudioPlayerProvider';
 import type { VideoPlayerState } from '@/player/usePlay';
 import { ActionBar, CastHub, CreditsList, DetailFrame, ExpandableText, MetaLine } from './common';
 import { EpisodeRow } from './EpisodeList';
+import { t } from '@/i18n';
 
 export function SeriesDetails({ item }: { item: BaseItemDto }) {
   const seasons = useSeasons(item.Id);
@@ -24,13 +25,13 @@ export function SeriesDetails({ item }: { item: BaseItemDto }) {
       item={item}
       header={
         <>
-          <MetaLine item={item} extra={seasonCount > 0 ? <span>{plural(seasonCount, 'Season')}</span> : undefined} />
+          <MetaLine item={item} extra={seasonCount > 0 ? <span>{plural(seasonCount, 'seasonTitle')}</span> : undefined} />
           <div className="pt-2">
             <ActionBar item={item} showShuffle />
           </div>
           {next && (
             <div className="text-sm text-muted">
-              Up next:{' '}
+              {t('item.seriesDetails.upNext')}{' '}
               <Link to={`/item/${next.Id}`} className="font-medium text-fg hover:text-accent hover:underline">
                 {episodeLabel(next)} · {next.Name}
               </Link>
@@ -43,9 +44,14 @@ export function SeriesDetails({ item }: { item: BaseItemDto }) {
         </>
       }
     >
-      <Hub title={seasonCount === 1 ? 'Season' : 'Seasons'} items={seasons.data?.Items} loading={seasons.isLoading} shape="poster" />
+      <Hub
+        title={seasonCount === 1 ? t('item.seriesDetails.season') : t('item.seriesDetails.seasons')}
+        items={seasons.data?.Items}
+        loading={seasons.isLoading}
+        shape="poster"
+      />
       <CastHub people={item.People} />
-      <Hub title="More Like This" items={similar.data?.Items} shape="poster" />
+      <Hub title={t('item.seriesDetails.moreLikeThis')} items={similar.data?.Items} shape="poster" />
     </DetailFrame>
   );
 }
@@ -83,7 +89,7 @@ export function SeasonDetails({ item }: { item: BaseItemDto }) {
       }
       header={
         <>
-          <MetaLine item={item} extra={count > 0 ? <span>{plural(count, 'Episode')}</span> : undefined} />
+          <MetaLine item={item} extra={count > 0 ? <span>{plural(count, 'episodeTitle')}</span> : undefined} />
           <div className="pt-2">
             <ActionBar item={item} showShuffle />
           </div>
@@ -92,7 +98,7 @@ export function SeasonDetails({ item }: { item: BaseItemDto }) {
       }
     >
       <section className="px-4 sm:px-8 lg:px-10">
-        <h2 className="mb-3 text-lg font-semibold">Episodes</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t('common.episodes')}</h2>
         {episodes.isLoading ? (
           <PageSpinner />
         ) : episodes.error ? (

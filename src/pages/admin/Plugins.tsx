@@ -13,6 +13,7 @@ import { ErrorState, Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { useDraft } from '@/lib/useDraft';
 import { AdminPage, StatusPill } from './shared';
+import { t } from '@/i18n';
 
 const STATUS_TONE: Record<PluginInfo['Status'], 'green' | 'amber' | 'red' | 'gray'> = {
   Active: 'green',
@@ -46,7 +47,7 @@ function Installed() {
   const toggle = useMutation({
     mutationFn: (p: PluginInfo) => api.post(`/Plugins/${p.Id}/${p.Version}/${p.Status === 'Disabled' ? 'Enable' : 'Disable'}`),
     onSuccess: () => {
-      toast.success('Plugin updated. Restart the server to apply.');
+      toast.success(t('admin.plugins.pluginUpdatedRestartTheServer'));
       void invalidate();
     },
     onError: (e) => toast.error(e),
@@ -54,7 +55,7 @@ function Installed() {
   const uninstall = useMutation({
     mutationFn: (p: PluginInfo) => api.delete(`/Plugins/${p.Id}/${p.Version}`),
     onSuccess: () => {
-      toast.success('Plugin will be removed after a restart.');
+      toast.success(t('admin.plugins.pluginWillBeRemovedAfter'));
       setRemoving(null);
       void invalidate();
     },
@@ -84,7 +85,9 @@ function Installed() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">{p.Name}</span>
                 <span className="text-xs text-faint">v{p.Version}</span>
-                <StatusPill tone={STATUS_TONE[p.Status] ?? 'gray'}>{p.Status === 'Restart' ? 'Restart required' : p.Status}</StatusPill>
+                <StatusPill tone={STATUS_TONE[p.Status] ?? 'gray'}>
+                  {p.Status === 'Restart' ? t('admin.plugins.restartRequired') : p.Status}
+                </StatusPill>
               </div>
               {p.Description && <p className="mt-1 line-clamp-2 text-sm text-muted">{p.Description}</p>}
               <div className="mt-2 flex gap-2">
@@ -94,9 +97,9 @@ function Installed() {
                     variant="ghost"
                     icon={<ExternalLink size={14} />}
                     onClick={() => window.open(configUrl(p)!, '_blank', 'noopener')}
-                    title="Opens the plugin's settings in the Jellyfin web interface"
+                    title={t('admin.plugins.opensThePluginSSettings')}
                   >
-                    Configure
+                    {t('admin.plugins.configure')}
                   </Button>
                 )}
                 {(p.Status === 'Active' || p.Status === 'Disabled') && (
@@ -107,27 +110,27 @@ function Installed() {
                     loading={toggle.isPending && toggle.variables?.Id === p.Id}
                     onClick={() => toggle.mutate(p)}
                   >
-                    {p.Status === 'Disabled' ? 'Enable' : 'Disable'}
+                    {p.Status === 'Disabled' ? t('admin.plugins.enable') : t('admin.plugins.disable')}
                   </Button>
                 )}
                 {p.CanUninstall && (
                   <Button size="sm" variant="ghost" icon={<Trash2 size={14} />} onClick={() => setRemoving(p)}>
-                    Uninstall
+                    {t('admin.plugins.uninstall')}
                   </Button>
                 )}
               </div>
             </div>
           </div>
         ))}
-        {plugins.data!.length === 0 && <p className="text-sm text-muted">No plugins installed.</p>}
+        {plugins.data!.length === 0 && <p className="text-sm text-muted">{t('admin.plugins.noPluginsInstalled')}</p>}
       </div>
       <ConfirmDialog
         open={removing !== null}
-        title="Uninstall plugin"
+        title={t('admin.plugins.uninstallPlugin')}
         danger
-        confirmLabel="Uninstall"
+        confirmLabel={t('admin.plugins.uninstall')}
         loading={uninstall.isPending}
-        message={`Uninstall ${removing?.Name}? The server must be restarted to finish.`}
+        message={t('admin.plugins.uninstallTheServerMustBe', { name: removing?.Name })}
         onClose={() => setRemoving(null)}
         onConfirm={() => removing && uninstall.mutate(removing)}
       />
@@ -154,7 +157,7 @@ function Catalog() {
       });
     },
     onSuccess: (_d, p) => {
-      toast.success(`Installing ${p.name}. Restart the server once it finishes.`);
+      toast.success(t('admin.plugins.installingRestartTheServerOnce', { name: p.name }));
       void qc.invalidateQueries({ queryKey: ['admin', 'plugins'] });
     },
     onError: (e) => toast.error(e),
@@ -172,7 +175,7 @@ function Catalog() {
     <>
       <div className="relative max-w-sm">
         <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint" />
-        <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter plugins" className="pl-9" />
+        <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('admin.plugins.filterPlugins')} className="pl-9" />
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         {list.map((p) => {
@@ -201,7 +204,7 @@ function Catalog() {
                     loading={install.isPending && install.variables?.guid === p.guid}
                     onClick={() => install.mutate(p)}
                   >
-                    {isInstalled ? 'Installed' : `Install ${p.versions[0]?.version ?? ''}`}
+                    {isInstalled ? t('admin.plugins.installed') : t('admin.plugins.install', { version: p.versions[0]?.version ?? '' })}
                   </Button>
                 </div>
               </div>
@@ -223,7 +226,7 @@ function Repositories() {
   const save = useMutation({
     mutationFn: (list: RepositoryInfo[]) => api.post('/Repositories', list),
     onSuccess: () => {
-      toast.success('Repositories saved');
+      toast.success(t('admin.plugins.repositoriesSaved'));
       void qc.invalidateQueries({ queryKey: ['admin', 'repositories'] });
       void qc.invalidateQueries({ queryKey: ['admin', 'packages'] });
     },
@@ -238,20 +241,17 @@ function Repositories() {
 
   return (
     <div className="space-y-3">
-      <p className="max-w-2xl text-sm text-muted">
-        The catalogue lists the plugins of every repository that is switched on. Only add repositories you trust: a plugin runs with the
-        server's full rights.
-      </p>
+      <p className="max-w-2xl text-sm text-muted">{t('admin.plugins.theCatalogueListsThePlugins')}</p>
       {draft.map((r, i) => (
         <div
           key={i}
           className="grid items-end gap-3 rounded-lg bg-base-800/70 p-4 ring-1 ring-white/5 sm:grid-cols-[1fr_2fr_auto_auto]"
           data-testid="repository"
         >
-          <Field label="Name">
+          <Field label={t('common.name')}>
             <Input value={r.Name ?? ''} onChange={(e) => change(i, { Name: e.target.value })} />
           </Field>
-          <Field label="Address of its manifest">
+          <Field label={t('admin.plugins.addressOfItsManifest')}>
             <Input
               value={r.Url ?? ''}
               onChange={(e) => change(i, { Url: e.target.value })}
@@ -259,30 +259,30 @@ function Repositories() {
               className="font-mono text-xs"
             />
           </Field>
-          <Switch label="On" checked={r.Enabled !== false} onChange={(v) => change(i, { Enabled: v })} />
+          <Switch label={t('admin.plugins.on')} checked={r.Enabled !== false} onChange={(v) => change(i, { Enabled: v })} />
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Remove ${r.Name || 'repository'}`}
+            aria-label={r.Name ? t('admin.plugins.removeNamed', { name: r.Name }) : t('admin.plugins.removeRepository')}
             onClick={() => setDraft(draft.filter((_, n) => n !== i))}
           >
             <Trash2 size={16} />
           </Button>
         </div>
       ))}
-      {draft.length === 0 && <p className="text-sm text-muted">No repositories. The catalogue is empty without one.</p>}
+      {draft.length === 0 && <p className="text-sm text-muted">{t('admin.plugins.noRepositoriesTheCatalogueIs')}</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setDraft([...draft, { Name: '', Url: '', Enabled: true }])}>
-          Add repository
+          {t('admin.plugins.addRepository')}
         </Button>
         <Button
           variant="primary"
           loading={save.isPending}
           disabled={!complete}
-          title={complete ? undefined : 'Every repository needs a name and an http(s) address'}
+          title={complete ? undefined : t('admin.plugins.everyRepositoryNeedsAName')}
           onClick={() => save.mutate(draft.map((r) => ({ ...r, Name: r.Name?.trim(), Url: r.Url?.trim() })))}
         >
-          Save repositories
+          {t('admin.plugins.saveRepositories')}
         </Button>
       </div>
     </div>
@@ -293,20 +293,20 @@ export default function PluginsPage() {
   const [tab, setTab] = useState<'installed' | 'catalog' | 'repositories'>('installed');
   return (
     <AdminPage
-      title="Plugins"
-      description="Extend Jellyfin with metadata providers, authentication and more. Most changes need a server restart."
+      title={t('admin.plugins.plugins')}
+      description={t('admin.plugins.extendJellyfinWithMetadataProviders')}
       actions={
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['installed', 'catalog', 'repositories'] as const).map((t) => (
+          {(['installed', 'catalog', 'repositories'] as const).map((entry) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={entry}
+              onClick={() => setTab(entry)}
               className={clsx(
                 'rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors',
-                tab === t ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
+                tab === entry ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
               )}
             >
-              {t}
+              {entry}
             </button>
           ))}
         </div>

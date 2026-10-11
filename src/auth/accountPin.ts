@@ -1,21 +1,30 @@
 import type { StoredSession } from './AuthProvider';
 
 /**
- * A PIN that is asked for before switching to an account that is signed in on this browser.
+ * A PIN that protects an account that is signed in on this browser while someone else is using it.
  *
- * It stops someone else in the household from picking the account from the menu. It is not a
- * second password: the account's sign-in stays stored in this browser, so anyone who can open the
- * browser's developer tools can get past it.
+ * The account's sign-in (its access token) is encrypted with the PIN. While another account is in
+ * use, only the encrypted form is stored, so the token cannot be read out of the browser's storage
+ * and the account cannot be switched to without the PIN. The account that is in use right now
+ * keeps its token readable, as it has to: the PIN guards switching to an account, not using it.
+ *
+ * A short PIN can be found by trying every one against the stored data with a program; each try is
+ * made slow to hold that up, not to prevent it. More digits help: every extra one makes it ten
+ * times as long.
  */
 const KEY = 'jellyplex.pins';
-const ROUNDS = 5000;
+/** How often the PIN is hashed over to make one key: what makes a try slow. */
+const ROUNDS = 20_000;
 /** After this many wrong tries in a row, the PIN can't be tried again for a while. */
 export const MAX_TRIES = 5;
 export const LOCK_MS = 60_000;
 
 interface StoredPin {
   salt: string;
+  /** Tells a right PIN from a wrong one. */
   hash: string;
+  /** The account's access token, encrypted with the PIN (hex). Missing on PINs set before tokens were encrypted. */
+  token?: string;
   tries?: number;
   lockedUntil?: number;
 }
@@ -84,10 +93,25 @@ export function sha256(text: string): string {
   return Array.from(h, (x) => x.toString(16).padStart(8, '0')).join('');
 }
 
-function hashPin(pin: string, salt: string): string {
+/** What a PIN and its salt work out to: a value to recognise the PIN by, and a key to encrypt with. */
+function derive(pin: string, salt: string): { hash: string; key: string } {
   let value = `${salt}:${pin}`;
   for (let i = 0; i < ROUNDS; i++) value = sha256(value);
-  return value;
+  return { hash: sha256(`verify:${value}`), key: sha256(`key:${value}`) };
+}
+
+const toHex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+const fromHex = (hex: string) => new Uint8Array((hex.match(/../g) ?? []).map((pair) => parseInt(pair, 16)));
+
+/** Encrypts or decrypts: the bytes are combined with a stream of bytes made from the key. */
+function crypt(bytes: Uint8Array, key: string): Uint8Array {
+  const out = new Uint8Array(bytes.length);
+  let block = new Uint8Array();
+  for (let i = 0; i < bytes.length; i++) {
+    if (i % 32 === 0) block = fromHex(sha256(`${key}:${i / 32}`));
+    out[i] = bytes[i] ^ block[i % 32];
+  }
+  return out;
 }
 
 function load(): Record<string, StoredPin> {
@@ -111,9 +135,16 @@ export function hasPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>): bo
   return Boolean(load()[idOf(account)]?.hash);
 }
 
-export function setPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string) {
-  const salt = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
-  store({ ...load(), [idOf(account)]: { salt, hash: hashPin(pin, salt) } });
+/** Sets the PIN of an account and locks its access token away with it. */
+export function setPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, accessToken: string) {
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(12)));
+  const { hash, key } = derive(pin, salt);
+  store({ ...load(), [idOf(account)]: { salt, hash, token: toHex(crypt(new TextEncoder().encode(accessToken), key)) } });
+}
+
+/** Whether the account's token is stored encrypted, so that it has to be taken out of the saved account. */
+export function sealsToken(account: Pick<StoredSession, 'serverUrl' | 'userId'>): boolean {
+  return Boolean(load()[idOf(account)]?.token);
 }
 
 export function clearPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>) {
@@ -122,17 +153,21 @@ export function clearPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>) {
   store(pins);
 }
 
-export type PinCheck = { ok: true } | { ok: false; lockedFor?: number; triesLeft?: number };
+export type PinCheck = { ok: true; accessToken?: string } | { ok: false; lockedFor?: number; triesLeft?: number };
 
-/** Checks a PIN and keeps count of wrong tries. An account without a PIN always passes. */
+/**
+ * Checks a PIN and keeps count of wrong tries. The right PIN also gives back the access token it
+ * locked away. An account without a PIN always passes.
+ */
 export function checkPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, now = Date.now()): PinCheck {
   const pins = load();
   const saved = pins[idOf(account)];
   if (!saved?.hash) return { ok: true };
   if (saved.lockedUntil && saved.lockedUntil > now) return { ok: false, lockedFor: saved.lockedUntil - now };
-  if (hashPin(pin, saved.salt) === saved.hash) {
-    store({ ...pins, [idOf(account)]: { salt: saved.salt, hash: saved.hash } });
-    return { ok: true };
+  const { hash, key } = derive(pin, saved.salt);
+  if (hash === saved.hash) {
+    store({ ...pins, [idOf(account)]: { salt: saved.salt, hash: saved.hash, token: saved.token } });
+    return { ok: true, accessToken: saved.token ? new TextDecoder().decode(crypt(fromHex(saved.token), key)) : undefined };
   }
   const tries = (saved.lockedUntil ? 0 : (saved.tries ?? 0)) + 1;
   const locked = tries >= MAX_TRIES;

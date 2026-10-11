@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
+import { t } from '@/i18n';
+import { plural } from '@/lib/format';
 
 const COLLECTABLE = new Set(['Movie', 'Series', 'Video', 'MusicVideo']);
 
@@ -57,7 +59,7 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto | B
 
   const done = (collectionName: string) => {
     void qc.invalidateQueries({ queryKey: [MEDIA] });
-    toast.success(`Added to ${collectionName}`);
+    toast.success(t('media.addToCollection.addedTo', { collectionName }));
     onClose();
   };
 
@@ -77,8 +79,8 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto | B
   const busy = add.isPending || create.isPending;
 
   return (
-    <Modal open onClose={onClose} title="Add to collection" size="sm">
-      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : `${items.length} items`}</p>
+    <Modal open onClose={onClose} title={t('common.addToCollection')} size="sm">
+      <p className="mb-3 truncate text-sm text-muted">{items.length === 1 ? items[0].Name : plural(items.length, 'item')}</p>
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -89,12 +91,12 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto | B
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="New collection name"
-          aria-label="New collection name"
+          placeholder={t('media.addToCollection.newCollectionName')}
+          aria-label={t('media.addToCollection.newCollectionName')}
           maxLength={200}
         />
         <Button type="submit" variant="primary" icon={<Plus size={16} />} disabled={!name.trim() || busy} loading={create.isPending}>
-          Create
+          {t('common.create')}
         </Button>
       </form>
 
@@ -104,7 +106,7 @@ export function AddToCollectionDialog({ item, onClose }: { item: BaseItemDto | B
             <Spinner size={24} />
           </div>
         ) : list.length === 0 ? (
-          <p className="px-2 py-4 text-sm text-faint">There are no collections yet. Enter a name above to create the first one.</p>
+          <p className="px-2 py-4 text-sm text-faint">{t('media.addToCollection.thereAreNoCollectionsYet')}</p>
         ) : (
           list.map((c) => (
             <button

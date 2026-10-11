@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ui/States';
 import { formatDateTime } from '@/lib/format';
 import { AdminPage } from './shared';
 import { useUsers } from './Users';
+import { t } from '@/i18n';
 
 const PAGE = 50;
 
@@ -30,17 +31,29 @@ export default function ActivityPage() {
 
   return (
     <AdminPage
-      title="Activity"
-      description="A log of sign-ins, playback, library changes and server events."
+      title={t('admin.activity.activity')}
+      description={t('admin.activity.aLogOfSignIns')}
       actions={
         <div className="flex items-center gap-2 text-sm text-muted">
-          <Button size="icon-sm" variant="ghost" disabled={page === 0} onClick={() => setPage((p) => p - 1)} aria-label="Previous page">
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            aria-label={t('admin.activity.previousPage')}
+          >
             <ChevronLeft size={18} />
           </Button>
           <span className="tabular-nums">
             {page + 1} / {pages}
           </span>
-          <Button size="icon-sm" variant="ghost" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)} aria-label="Next page">
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            disabled={page + 1 >= pages}
+            onClick={() => setPage((p) => p + 1)}
+            aria-label={t('admin.activity.nextPage')}
+          >
             <ChevronRight size={18} />
           </Button>
         </div>
@@ -55,9 +68,9 @@ export default function ActivityPage() {
           <table className="w-full text-sm">
             <thead className="bg-black/20 text-left text-xs tracking-wider text-faint uppercase">
               <tr>
-                <th className="px-4 py-2.5 font-semibold">Event</th>
-                <th className="hidden px-4 py-2.5 font-semibold md:table-cell">User</th>
-                <th className="px-4 py-2.5 text-right font-semibold">Date</th>
+                <th className="px-4 py-2.5 font-semibold">{t('admin.activity.event')}</th>
+                <th className="hidden px-4 py-2.5 font-semibold md:table-cell">{t('admin.activity.user')}</th>
+                <th className="px-4 py-2.5 text-right font-semibold">{t('admin.activity.date')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -93,7 +106,7 @@ export default function ActivityPage() {
               {log.data?.Items.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-muted">
-                    No activity recorded.
+                    {t('admin.activity.noActivityRecorded')}
                   </td>
                 </tr>
               )}

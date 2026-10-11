@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatRelative } from '@/lib/format';
 import { AdminPage, StatusPill } from './shared';
+import { t } from '@/i18n';
 
 export default function DevicesPage() {
   const api = useApi();
@@ -27,7 +28,7 @@ export default function DevicesPage() {
       for (const d of list) await api.delete('/Devices', { id: d.Id });
     },
     onSuccess: () => {
-      toast.success('Signed out');
+      toast.success(t('admin.devices.signedOut'));
       setDeleting(null);
       void qc.invalidateQueries({ queryKey: ['admin', 'devices'] });
     },
@@ -40,12 +41,12 @@ export default function DevicesPage() {
 
   return (
     <AdminPage
-      title="Devices"
-      description="Every device that has signed in. Removing a device signs it out."
+      title={t('admin.devices.devices')}
+      description={t('admin.devices.everyDeviceThatHasSigned')}
       actions={
         items.length > 1 && (
           <Button variant="outline" icon={<Trash2 size={16} />} onClick={() => setDeleting('all')}>
-            Sign out all others
+            {t('admin.devices.signOutAllOthers')}
           </Button>
         )
       }
@@ -63,7 +64,7 @@ export default function DevicesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{d.CustomName || d.Name}</span>
-                    {isThis && <StatusPill tone="green">This device</StatusPill>}
+                    {isThis && <StatusPill tone="green">{t('common.thisDevice')}</StatusPill>}
                   </div>
                   <div className="truncate text-sm text-muted">
                     {d.AppName} {d.AppVersion}
@@ -76,8 +77,8 @@ export default function DevicesPage() {
                   variant="ghost"
                   disabled={isThis}
                   onClick={() => setDeleting(d)}
-                  aria-label="Remove device"
-                  title={isThis ? 'You can’t remove the device you are using' : 'Remove device'}
+                  aria-label={t('admin.devices.removeDevice')}
+                  title={isThis ? t('admin.devices.youCanTRemoveThe') : t('admin.devices.removeDevice')}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -88,13 +89,13 @@ export default function DevicesPage() {
       )}
       <ConfirmDialog
         open={deleting !== null}
-        title={deleting === 'all' ? 'Sign out all other devices?' : 'Remove device?'}
+        title={deleting === 'all' ? t('admin.devices.signOutAllOtherDevices') : t('admin.devices.removeDevice2')}
         message={
           deleting === 'all'
-            ? 'Every device except this one will need to sign in again.'
-            : `${deleting?.Name ?? 'The device'} will be signed out.`
+            ? t('admin.devices.everyDeviceExceptThisOne')
+            : t('admin.devices.willBeSignedOut', { name: deleting?.Name ?? t('admin.devices.theDevice') })
         }
-        confirmLabel="Sign out"
+        confirmLabel={t('admin.devices.signOut')}
         danger
         loading={remove.isPending}
         onClose={() => setDeleting(null)}

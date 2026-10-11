@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { useT } from '@/i18n';
+import { t } from '@/i18n';
 import { Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,24 +28,24 @@ export const SEARCH_TYPES = [
 function useDebounced<T>(value: T, delay: number): T {
   const [v, setV] = useState(value);
   useEffect(() => {
-    const t = window.setTimeout(() => setV(value), delay);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setV(value), delay);
+    return () => window.clearTimeout(timer);
   }, [value, delay]);
   return v;
 }
 
 const typeLabel: Partial<Record<BaseItemDto['Type'], string>> = {
-  Movie: 'Movie',
-  Series: 'TV Show',
-  Episode: 'Episode',
-  MusicAlbum: 'Album',
-  MusicArtist: 'Artist',
-  Audio: 'Track',
-  BoxSet: 'Collection',
-  Playlist: 'Playlist',
-  Person: 'Person',
-  MusicVideo: 'Music video',
-  Video: 'Video',
+  Movie: t('layout.searchBox.type.movie'),
+  Series: t('layout.searchBox.tvShow'),
+  Episode: t('layout.searchBox.type.episode'),
+  MusicAlbum: t('layout.searchBox.type.album'),
+  MusicArtist: t('layout.searchBox.type.artist'),
+  Audio: t('layout.searchBox.type.track'),
+  BoxSet: t('layout.searchBox.type.collection'),
+  Playlist: t('layout.searchBox.type.playlist'),
+  Person: t('layout.searchBox.type.person'),
+  MusicVideo: t('layout.searchBox.musicVideo'),
+  Video: t('layout.searchBox.type.video'),
 };
 
 function describe(item: BaseItemDto): string {
@@ -57,7 +57,6 @@ function describe(item: BaseItemDto): string {
 }
 
 export function SearchBox() {
-  const t = useT();
   const api = useApi();
   const { userId } = useSession();
   const navigate = useNavigate();
@@ -226,7 +225,7 @@ export function SearchBox() {
               onClick={submit}
               className="block w-full border-t border-white/10 px-4 py-2.5 text-left text-sm text-accent hover:bg-white/5"
             >
-              See all results for “{debounced}”
+              {t('layout.searchBox.seeAllResultsFor', { debounced })}
             </button>
           )}
         </div>

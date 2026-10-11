@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { checkPin, clearPin, hasPin, LOCK_MS, MAX_TRIES, setPin, sha256, validPin } from './accountPin';
+import { checkPin, clearPin, hasPin, LOCK_MS, MAX_TRIES, sealsToken, setPin, sha256, validPin } from './accountPin';
 
 const account = { serverUrl: 'http://jellyfin.test', userId: 'user-1' };
 const other = { serverUrl: 'http://jellyfin.test', userId: 'user-2' };
@@ -30,30 +30,52 @@ describe('account PIN', () => {
   });
 
   it('accepts the right PIN and refuses a wrong one, per account', () => {
-    setPin(account, '4821');
+    setPin(account, '4821', 'token-abc');
     expect(hasPin(account)).toBe(true);
     expect(hasPin(other)).toBe(false);
-    expect(checkPin(account, '4821')).toEqual({ ok: true });
+    expect(checkPin(account, '4821').ok).toBe(true);
     expect(checkPin(account, '0000')).toEqual({ ok: false, triesLeft: MAX_TRIES - 1 });
   });
 
+  it('gives the access token back for the right PIN only', () => {
+    setPin(account, '4821', 'a-long-access-token-0123456789abcdef-0123456789abcdef');
+    expect(sealsToken(account)).toBe(true);
+    expect(checkPin(account, '4821')).toEqual({ ok: true, accessToken: 'a-long-access-token-0123456789abcdef-0123456789abcdef' });
+    expect(checkPin(account, '4822').ok).toBe(false);
+  });
+
+  it('does not keep the access token in a readable form', () => {
+    setPin(account, '4821', 'token-abc');
+    const stored = localStorage.getItem('jellyplex.pins')!;
+    expect(stored).not.toContain('token-abc');
+    // Not merely written in another notation either.
+    expect(stored).not.toContain(Array.from(new TextEncoder().encode('token-abc'), (b) => b.toString(16)).join(''));
+  });
+
+  it('encrypts differently each time, even for the same PIN and token', () => {
+    setPin(account, '4821', 'token-abc');
+    const first = localStorage.getItem('jellyplex.pins');
+    setPin(account, '4821', 'token-abc');
+    expect(localStorage.getItem('jellyplex.pins')).not.toBe(first);
+  });
+
   it('does not keep the PIN itself', () => {
-    setPin(account, '4821');
+    setPin(account, '4821', 'token-abc');
     expect(localStorage.getItem('jellyplex.pins')).not.toContain('4821');
   });
 
   it('locks after too many wrong tries, and opens again later', () => {
-    setPin(account, '4821');
+    setPin(account, '4821', 'token-abc');
     const now = 1_000_000;
     for (let i = 1; i < MAX_TRIES; i++) expect(checkPin(account, '0000', now).ok).toBe(false);
     expect(checkPin(account, '0000', now)).toEqual({ ok: false, lockedFor: LOCK_MS });
     // Even the right PIN has to wait.
     expect(checkPin(account, '4821', now + 1000)).toEqual({ ok: false, lockedFor: LOCK_MS - 1000 });
-    expect(checkPin(account, '4821', now + LOCK_MS + 1)).toEqual({ ok: true });
+    expect(checkPin(account, '4821', now + LOCK_MS + 1).ok).toBe(true);
   });
 
   it('can be removed', () => {
-    setPin(account, '4821');
+    setPin(account, '4821', 'token-abc');
     clearPin(account);
     expect(hasPin(account)).toBe(false);
   });

@@ -1,5 +1,6 @@
 import type { CardShape } from '@/api/images';
 import type { CollectionType } from '@/api/types';
+import { t } from '@/i18n';
 
 export type TabId = 'recommended' | 'library' | 'collections' | 'genres' | 'albums' | 'artists' | 'browse';
 
@@ -14,17 +15,25 @@ export interface SortDef {
   defaultOrder: 'Ascending' | 'Descending';
 }
 
-export const SORT_TITLE: SortDef = { label: 'Title', value: 'SortName', defaultOrder: 'Ascending' };
-export const SORT_ADDED: SortDef = { label: 'Date Added', value: 'DateCreated,SortName', defaultOrder: 'Descending' };
-export const SORT_RELEASE: SortDef = { label: 'Release Date', value: 'PremiereDate,ProductionYear,SortName', defaultOrder: 'Descending' };
-export const SORT_YEAR: SortDef = { label: 'Year', value: 'ProductionYear,SortName', defaultOrder: 'Descending' };
-export const SORT_RATING: SortDef = { label: 'Audience Rating', value: 'CommunityRating,SortName', defaultOrder: 'Descending' };
-export const SORT_CRITIC: SortDef = { label: 'Critic Rating', value: 'CriticRating,SortName', defaultOrder: 'Descending' };
-export const SORT_RUNTIME: SortDef = { label: 'Duration', value: 'Runtime,SortName', defaultOrder: 'Ascending' };
-export const SORT_PLAYED: SortDef = { label: 'Last Played', value: 'DatePlayed,SortName', defaultOrder: 'Descending' };
-export const SORT_PLAYCOUNT: SortDef = { label: 'Plays', value: 'PlayCount,SortName', defaultOrder: 'Descending' };
-export const SORT_ARTIST: SortDef = { label: 'Album Artist', value: 'AlbumArtist,SortName', defaultOrder: 'Ascending' };
-export const SORT_RANDOM: SortDef = { label: 'Randomly', value: 'Random', defaultOrder: 'Ascending' };
+export const SORT_TITLE: SortDef = { label: t('common.title'), value: 'SortName', defaultOrder: 'Ascending' };
+export const SORT_ADDED: SortDef = { label: t('library.config.dateAdded'), value: 'DateCreated,SortName', defaultOrder: 'Descending' };
+export const SORT_RELEASE: SortDef = {
+  label: t('library.config.releaseDate'),
+  value: 'PremiereDate,ProductionYear,SortName',
+  defaultOrder: 'Descending',
+};
+export const SORT_YEAR: SortDef = { label: t('common.year'), value: 'ProductionYear,SortName', defaultOrder: 'Descending' };
+export const SORT_RATING: SortDef = {
+  label: t('library.config.audienceRating'),
+  value: 'CommunityRating,SortName',
+  defaultOrder: 'Descending',
+};
+export const SORT_CRITIC: SortDef = { label: t('library.config.criticRating'), value: 'CriticRating,SortName', defaultOrder: 'Descending' };
+export const SORT_RUNTIME: SortDef = { label: t('library.config.duration'), value: 'Runtime,SortName', defaultOrder: 'Ascending' };
+export const SORT_PLAYED: SortDef = { label: t('library.config.lastPlayed'), value: 'DatePlayed,SortName', defaultOrder: 'Descending' };
+export const SORT_PLAYCOUNT: SortDef = { label: t('library.config.plays'), value: 'PlayCount,SortName', defaultOrder: 'Descending' };
+export const SORT_ARTIST: SortDef = { label: t('library.config.albumArtist'), value: 'AlbumArtist,SortName', defaultOrder: 'Ascending' };
+export const SORT_RANDOM: SortDef = { label: t('library.config.randomly'), value: 'Random', defaultOrder: 'Ascending' };
 
 export interface LibraryConfig {
   tabs: TabDef[];
@@ -40,10 +49,10 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
     case 'movies':
       return {
         tabs: [
-          { id: 'recommended', label: 'Recommended' },
-          { id: 'library', label: 'Library' },
-          { id: 'collections', label: 'Collections' },
-          { id: 'genres', label: 'Categories' },
+          { id: 'recommended', label: t('library.config.recommended') },
+          { id: 'library', label: t('library.config.library') },
+          { id: 'collections', label: t('common.collections') },
+          { id: 'genres', label: t('library.config.categories') },
         ],
         itemTypes: ['Movie'],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_RELEASE, SORT_RATING, SORT_CRITIC, SORT_RUNTIME, SORT_PLAYED, SORT_RANDOM],
@@ -53,9 +62,9 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
     case 'tvshows':
       return {
         tabs: [
-          { id: 'recommended', label: 'Recommended' },
-          { id: 'library', label: 'Library' },
-          { id: 'genres', label: 'Categories' },
+          { id: 'recommended', label: t('library.config.recommended') },
+          { id: 'library', label: t('library.config.library') },
+          { id: 'genres', label: t('library.config.categories') },
         ],
         itemTypes: ['Series'],
         sorts: [SORT_TITLE, { ...SORT_ADDED, value: 'DateLastContentAdded,SortName' }, SORT_RELEASE, SORT_RATING, SORT_PLAYED, SORT_RANDOM],
@@ -65,10 +74,10 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
     case 'music':
       return {
         tabs: [
-          { id: 'recommended', label: 'Recommended' },
-          { id: 'albums', label: 'Albums' },
-          { id: 'artists', label: 'Artists' },
-          { id: 'genres', label: 'Genres' },
+          { id: 'recommended', label: t('library.config.recommended') },
+          { id: 'albums', label: t('common.albums') },
+          { id: 'artists', label: t('common.artists') },
+          { id: 'genres', label: t('library.config.genres') },
         ],
         itemTypes: ['MusicAlbum'],
         sorts: [SORT_TITLE, SORT_ARTIST, SORT_YEAR, SORT_ADDED, SORT_PLAYED, SORT_PLAYCOUNT, SORT_RANDOM],
@@ -77,7 +86,7 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
       };
     case 'musicvideos':
       return {
-        tabs: [{ id: 'library', label: 'Library' }],
+        tabs: [{ id: 'library', label: t('library.config.library') }],
         itemTypes: ['MusicVideo'],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_YEAR, SORT_RANDOM],
         shape: 'landscape',
@@ -85,7 +94,7 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
       };
     case 'boxsets':
       return {
-        tabs: [{ id: 'library', label: 'Collections' }],
+        tabs: [{ id: 'library', label: t('common.collections') }],
         itemTypes: ['BoxSet'],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_RANDOM],
         shape: 'poster',
@@ -93,7 +102,7 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
       };
     case 'playlists':
       return {
-        tabs: [{ id: 'library', label: 'Playlists' }],
+        tabs: [{ id: 'library', label: t('common.playlists') }],
         itemTypes: ['Playlist'],
         sorts: [SORT_TITLE, SORT_ADDED],
         shape: 'square',
@@ -102,8 +111,8 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
     case 'books':
       return {
         tabs: [
-          { id: 'browse', label: 'Folders' },
-          { id: 'library', label: 'All Books' },
+          { id: 'browse', label: t('library.config.folders') },
+          { id: 'library', label: t('library.config.allBooks') },
         ],
         itemTypes: ['Book', 'AudioBook'],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_YEAR],
@@ -111,10 +120,15 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
         watchFilters: false,
       };
     case 'photos':
-      return { tabs: [{ id: 'browse', label: 'Browse' }], sorts: [SORT_TITLE, SORT_ADDED], shape: 'square', watchFilters: false };
+      return {
+        tabs: [{ id: 'browse', label: t('library.config.browse') }],
+        sorts: [SORT_TITLE, SORT_ADDED],
+        shape: 'square',
+        watchFilters: false,
+      };
     case 'homevideos':
       return {
-        tabs: [{ id: 'browse', label: 'Browse' }],
+        tabs: [{ id: 'browse', label: t('library.config.browse') }],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_RELEASE],
         shape: 'landscape',
         watchFilters: true,
@@ -122,8 +136,8 @@ export function configFor(type: CollectionType | null | undefined): LibraryConfi
     default:
       return {
         tabs: [
-          { id: 'browse', label: 'Browse' },
-          { id: 'library', label: 'All Videos' },
+          { id: 'browse', label: t('library.config.browse') },
+          { id: 'library', label: t('library.config.allVideos') },
         ],
         itemTypes: ['Movie', 'Series', 'Video', 'MusicVideo'],
         sorts: [SORT_TITLE, SORT_ADDED, SORT_RELEASE],
