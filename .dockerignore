@@ -6,3 +6,6 @@ dist
 *.log
 docker-compose*.yml
 README.md
+test-results
+playwright-report
+e2e

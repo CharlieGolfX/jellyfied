@@ -7,3 +7,7 @@ dist
 *.log
 .DS_Store
 .remember
+
+# Test output
+test-results
+playwright-report

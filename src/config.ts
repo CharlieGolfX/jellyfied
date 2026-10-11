@@ -12,7 +12,7 @@ declare global {
 }
 
 export const APP_NAME = 'Jellyplex';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = __APP_VERSION__;
 
 const raw: RuntimeConfig = (typeof window !== 'undefined' && window.JELLYPLEX_CONFIG) || {};
 

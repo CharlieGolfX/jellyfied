@@ -162,7 +162,7 @@ function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<string, unkn
     Album: item.Album ?? '',
     AlbumArtists: fromNames(item.AlbumArtists),
     Artists: fromNames(item.ArtistItems),
-    ProviderIds: { ...(item.ProviderIds ?? {}) } as Record<string, string>,
+    ProviderIds: { ...item.ProviderIds } as Record<string, string>,
     LockData: Boolean(item.LockData),
   }));
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));

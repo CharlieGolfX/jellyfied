@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build ------------------------------------------------------------------
-FROM node:24-alpine AS build
+# The site is the same for every CPU architecture, so it is built once, on the build machine's own.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund

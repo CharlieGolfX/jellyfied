@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Menu } from '@/components/ui/Menu';
 import { Img } from '@/components/ui/States';
+import { APP_NAME, APP_VERSION } from '@/config';
 
 export function Avatar({ userId, tag, name, size = 32 }: { userId: string; tag?: string | null; name?: string; size?: number }) {
   const api = useApi();
@@ -46,6 +47,8 @@ export function UserMenu() {
             navigate('/login');
           },
         },
+        { divider: true, label: '' },
+        { header: true, label: `${APP_NAME} ${APP_VERSION}` },
       ]}
       trigger={({ toggle, open }) => (
         <button

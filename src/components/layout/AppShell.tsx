@@ -3,6 +3,8 @@ import { LayoutDashboard, Menu as MenuIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useIsAdmin } from '@/auth/AuthProvider';
+import { CrashState } from '@/components/ui/CrashState';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AudioBar } from '@/player/AudioBar';
 import { CastButton, RemoteBar } from '@/player/RemoteControl';
 import { SyncPlayButton } from '@/player/SyncPlayProvider';
@@ -113,7 +115,9 @@ export function AppShell() {
           className="bg-app-gradient min-w-0 flex-1 overflow-y-auto"
           style={{ paddingBottom: miniPlayerPad }}
         >
-          <Outlet />
+          <ErrorBoundary resetKey={location.pathname} fallback={(error, reset) => <CrashState error={error} onRetry={reset} />}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

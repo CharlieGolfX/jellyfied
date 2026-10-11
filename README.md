@@ -101,10 +101,35 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 ## Installation
 
-Jellyplex needs a running Jellyfin server (10.9 or newer, 10.11 recommended) and Docker with the
-Compose plugin. There is no prebuilt image yet, so the container is built from source.
+Jellyplex needs a running Jellyfin server (10.9 or newer, 10.11 recommended) and Docker. You can
+run the [prebuilt image](#prebuilt-image) or build the container from source with
+[Docker Compose](#docker-compose).
+
+### Prebuilt image
+
+Images for amd64 and arm64 are published to the GitHub Container Registry:
+
+```bash
+docker run -d --name jellyplex -p 8080:80 \
+  -e JELLYFIN_URL=http://192.168.1.10:8096 \
+  --restart unless-stopped ghcr.io/charliegolfx/jellyplex:latest
+```
+
+Set `JELLYFIN_URL` to your Jellyfin server as reachable from inside the container (see the table
+under [Docker Compose](#docker-compose)), then open `http://localhost:8080`.
+
+| Tag      | Contents |
+| -------- | -------- |
+| `latest` | The newest release. |
+| `1.2.3`, `1.2`, `1` | A specific release, or the newest one within that version line. |
+| `edge`   | The current `main` branch. |
+
+To update, pull the image again and recreate the container. What changed in each release is in
+the [changelog](CHANGELOG.md).
 
 ### Docker Compose
+
+This builds the container from source.
 
 1. Clone the repository:
 
@@ -146,7 +171,7 @@ git pull
 docker compose up -d --build
 ```
 
-### Docker without Compose
+### Building with Docker, without Compose
 
 ```bash
 git clone https://github.com/CharlieGolfX/jellyplex.git
@@ -229,6 +254,8 @@ npm install
 cp .env.example .env          # set JELLYFIN_URL to your Jellyfin server
 npm run dev                   # http://localhost:5173
 npm run build                 # type-check and production build into dist/
+npm run check                 # lint, type-check and unit tests
+npm run test:e2e              # browser tests (first run: npx playwright install chromium)
 ```
 
 The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
@@ -238,6 +265,34 @@ and `JELLYPLEX_DEV_PORT` to use a port other than 5173.
 Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
 The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
 
+### Tests
+
+- **Unit tests** ([Vitest](https://vitest.dev)) live next to the code as `*.test.ts(x)`. `npm test`
+  runs them once, `npm run test:watch` re-runs them as you edit.
+- **Browser tests** ([Playwright](https://playwright.dev)) are in `e2e/`. `npm run test:e2e` builds
+  the site and runs `smoke.spec.ts` against a mocked Jellyfin API, so no server is needed.
+- **Playback tests** (`e2e/live.spec.ts`) play real media and are skipped unless you give them a
+  test account. They change the watched state of what they play, so use a throwaway user:
+
+  ```bash
+  E2E_USERNAME=test E2E_PASSWORD=secret E2E_JELLYFIN_URL=http://localhost:8096 npm run test:e2e
+  ```
+
+  Add `E2E_BASE_URL=http://localhost:8080` to test a running container instead of a fresh build.
+- **Linting** uses [oxlint](https://oxc.rs/docs/guide/usage/linter) (`npm run lint`), including the
+  React hooks rules. Errors fail the build; warnings mark code that is worth a second look.
+
+GitHub Actions runs all of this, and a build of the container, on every push and pull request.
+
+### Releasing
+
+1. Set the new version in `package.json` (`npm version --no-git-tag-version 1.2.3`) and move the
+   "Unreleased" entries in `CHANGELOG.md` under it.
+2. Commit, then tag the commit `v1.2.3` and push the tag. The tag has to match `package.json`.
+
+The "Container image" workflow then publishes `ghcr.io/charliegolfx/jellyplex` with that version
+and `latest`. Every push to `main` publishes `edge`.
+
 ```
 src/
   api/          API client, types, image helpers, React Query hooks
@@ -246,7 +301,9 @@ src/
   pages/        home, library, item details, search, favorites, settings, admin/*
   player/       video player, device profile, music player, playback reporting,
                 SyncPlay, remote control
+  player/video/ parts of the video player: stream handling, menus, shortcuts
   realtime/     WebSocket connection to the server
+e2e/            browser tests
 docker/         container entrypoint that writes config.js and the nginx site
 ```
 
@@ -278,7 +335,8 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 Bug reports, feature requests and pull requests are welcome.
 
-- **Bugs:** open an issue and include your Jellyfin server version, the browser you use, and the steps
+- **Bugs:** open an issue and include your Jellyplex version (shown in the account menu), your
+  Jellyfin server version, the browser you use, and the steps
   to reproduce the problem. For playback problems, also say whether the player showed direct play
   or transcode, and include the media info for the file if you can.
 - **Features:** open an issue to discuss larger changes before you start, so we can agree on the
@@ -287,7 +345,8 @@ Bug reports, feature requests and pull requests are welcome.
   1. Fork the repository and create a branch from `main`.
   2. Set up the development environment as described under [Development](#development).
   3. Keep each pull request focused on one change, and follow the existing code style.
-  4. Run `npm run build` before you submit. It type-checks the project and must pass.
+  4. Run `npm run check` and `npm run build` before you submit. Both must pass, and new logic
+     should come with a test.
   5. Describe what you changed and how you tested it. For UI changes, add a screenshot.
 
 By submitting a contribution you agree that it is licensed under the GPLv2, the same license as the

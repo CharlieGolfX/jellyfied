@@ -2,6 +2,8 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
+import { CrashState } from '@/components/ui/CrashState';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PageSpinner } from '@/components/ui/Spinner';
 import HomePage from '@/pages/Home';
 import LibraryPage from '@/pages/Library';
@@ -26,6 +28,31 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Shown instead of the player when it crashed, so a player bug never takes browsing down with it. */
+function PlayerCrash() {
+  const { mode, minimize, close } = useVideoSession();
+  const dismiss = () => {
+    minimize();
+    close();
+  };
+  return (
+    <div
+      role="alert"
+      data-testid="player-crash"
+      className={
+        mode === 'full'
+          ? 'fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black px-6 text-center'
+          : 'fixed right-4 bottom-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] flex-col items-center gap-3 rounded-lg bg-base-850 p-4 text-center shadow-2xl ring-1 ring-white/15'
+      }
+    >
+      <p className="text-sm text-muted">The player ran into an error and was stopped.</p>
+      <button onClick={dismiss} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
+        {mode === 'full' ? 'Go back' : 'Close'}
+      </button>
+    </div>
+  );
+}
+
 /** The video player is mounted outside the routes so it keeps playing while you browse. */
 function PlayerHost() {
   const { session } = useVideoSession();
@@ -35,9 +62,11 @@ function PlayerHost() {
     <>
       <RemoteControlReceiver />
       {session && (
-        <Suspense fallback={null}>
-          <GlobalVideoPlayer />
-        </Suspense>
+        <ErrorBoundary resetKey={session.key} fallback={() => <PlayerCrash />}>
+          <Suspense fallback={null}>
+            <GlobalVideoPlayer />
+          </Suspense>
+        </ErrorBoundary>
       )}
     </>
   );
@@ -45,7 +74,7 @@ function PlayerHost() {
 
 export default function App() {
   return (
-    <>
+    <ErrorBoundary fallback={(error, reset) => <CrashState error={error} onRetry={reset} fullPage />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -88,6 +117,6 @@ export default function App() {
         </Route>
       </Routes>
       <PlayerHost />
-    </>
+    </ErrorBoundary>
   );
 }

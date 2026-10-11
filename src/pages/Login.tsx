@@ -5,7 +5,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, PublicSystemInfo, QuickConnectResult, UserDto } from '@/api/types';
 import { LAST_SERVER_KEY, useAuth } from '@/auth/AuthProvider';
-import { normalizeServerUrl, runtimeConfig } from '@/config';
+import { APP_VERSION, normalizeServerUrl, runtimeConfig } from '@/config';
 import { Logo } from '@/components/layout/Logo';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Form';
@@ -113,7 +113,9 @@ export default function LoginPage() {
             />
           )}
         </div>
-        <p className="mt-6 text-center text-xs text-faint">A Plex-style client for Jellyfin</p>
+        <p className="mt-6 text-center text-xs text-faint">
+          A Plex-style client for Jellyfin · v{APP_VERSION}
+        </p>
       </div>
     </div>
   );
