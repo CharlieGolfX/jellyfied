@@ -55,19 +55,7 @@ export type CollectionType =
   | 'unknown';
 
 export type ImageType =
-  | 'Primary'
-  | 'Art'
-  | 'Backdrop'
-  | 'Banner'
-  | 'Logo'
-  | 'Thumb'
-  | 'Disc'
-  | 'Box'
-  | 'Screenshot'
-  | 'Menu'
-  | 'Chapter'
-  | 'BoxRear'
-  | 'Profile';
+  'Primary' | 'Art' | 'Backdrop' | 'Banner' | 'Logo' | 'Thumb' | 'Disc' | 'Box' | 'Screenshot' | 'Menu' | 'Chapter' | 'BoxRear' | 'Profile';
 
 export interface UserItemData {
   PlaybackPositionTicks?: number;
@@ -494,7 +482,7 @@ export interface DeviceInfo {
   AppName?: string | null;
   AppVersion?: string | null;
   LastUserId?: string;
-  DateLastActivated?: string;
+  DateLastActivity?: string;
 }
 
 export interface PluginInfo {

@@ -16,16 +16,13 @@ const LATEST_EXCLUDED = new Set(['livetv', 'playlists', 'boxsets', 'folders']);
 
 function LatestHub({ view }: { view: BaseItemDto }) {
   const { data, isLoading } = useLatest(view.Id, { limit: 24 });
-  const shape = view.CollectionType === 'music' ? 'square' : view.CollectionType === 'homevideos' || view.CollectionType === 'photos' ? 'landscape' : 'poster';
-  return (
-    <Hub
-      title={`Recently Added in ${view.Name}`}
-      to={`/library/${view.Id}`}
-      items={data}
-      loading={isLoading}
-      shape={shape}
-    />
-  );
+  const shape =
+    view.CollectionType === 'music'
+      ? 'square'
+      : view.CollectionType === 'homevideos' || view.CollectionType === 'photos'
+        ? 'landscape'
+        : 'poster';
+  return <Hub title={`Recently Added in ${view.Name}`} to={`/library/${view.Id}`} items={data} loading={isLoading} shape={shape} />;
 }
 
 /** Dialog to reorder and hide the home page's rows. */
@@ -66,9 +63,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
               <Switch
                 label={<span className="block truncate">{row.label}</span>}
                 checked={!row.hidden}
-                onChange={(shown) =>
-                  setLayout({ hidden: shown ? layout.hidden.filter((h) => h !== row.id) : [...layout.hidden, row.id] })
-                }
+                onChange={(shown) => setLayout({ hidden: shown ? layout.hidden.filter((h) => h !== row.id) : [...layout.hidden, row.id] })}
               />
             </div>
             <button
@@ -138,7 +133,9 @@ export default function HomePage() {
 
   const render = (id: string) => {
     if (id === 'continue') {
-      return <Hub key={id} title="Continue Watching" items={continueWatching} loading={resume.isLoading || nextUp.isLoading} shape="landscape" />;
+      return (
+        <Hub key={id} title="Continue Watching" items={continueWatching} loading={resume.isLoading || nextUp.isLoading} shape="landscape" />
+      );
     }
     if (id === 'listening') return <Hub key={id} title="Continue Listening" items={resumeAudio.data?.Items} shape="square" />;
     const view = latest.find((v) => `latest:${v.Id}` === id);

@@ -9,7 +9,7 @@ import { Hub } from '@/components/media/Hub';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState, Img } from '@/components/ui/States';
 import { formatDate, plural } from '@/lib/format';
-import { FolderGrid } from '@/pages/Library';
+import { FolderGrid } from '@/pages/library/FolderGrid';
 import { ActionBar, DetailFrame, ExpandableText, MetaLine } from './common';
 
 export function PersonDetails({ item }: { item: BaseItemDto }) {
@@ -117,9 +117,8 @@ export function FolderDetails({ item }: { item: BaseItemDto }) {
 
 /** Genre, studio and year pages. */
 export function TagDetails({ item }: { item: BaseItemDto }) {
-  const filterKey =
-    item.Type === 'Studio' ? 'studioIds' : item.Type === 'Year' ? 'years' : 'genreIds';
-  const filterValue = item.Type === 'Year' ? item.Name ?? '' : item.Id;
+  const filterKey = item.Type === 'Studio' ? 'studioIds' : item.Type === 'Year' ? 'years' : 'genreIds';
+  const filterValue = item.Type === 'Year' ? (item.Name ?? '') : item.Id;
   const isMusic = item.Type === 'MusicGenre';
   const result = useInfiniteItems({
     [filterKey]: filterValue,
@@ -160,7 +159,14 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
   const api = useApi();
   const navigate = useNavigate();
   const siblings = useItems(
-    { parentId: item.ParentId ?? undefined, includeItemTypes: 'Photo', sortBy: 'SortName', sortOrder: 'Ascending', limit: 2000, fields: [] },
+    {
+      parentId: item.ParentId ?? undefined,
+      includeItemTypes: 'Photo',
+      sortBy: 'SortName',
+      sortOrder: 'Ascending',
+      limit: 2000,
+      fields: [],
+    },
     { enabled: Boolean(item.ParentId), key: ['photo-siblings', item.ParentId] },
   );
   const list = siblings.data?.Items ?? [];
@@ -211,7 +217,11 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
       <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="min-w-0">
           <div className="truncate font-semibold">{item.Name}</div>
-          {list.length > 0 && index >= 0 && <div className="text-sm text-muted">{index + 1} of {list.length}</div>}
+          {list.length > 0 && index >= 0 && (
+            <div className="text-sm text-muted">
+              {index + 1} of {list.length}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {list.length > 1 && (

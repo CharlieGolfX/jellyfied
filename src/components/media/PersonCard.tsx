@@ -6,9 +6,7 @@ import { Img } from '@/components/ui/States';
 
 export function PersonCard({ person }: { person: BaseItemPerson }) {
   const api = useApi();
-  const src = person.PrimaryImageTag
-    ? api.imageUrl(person.Id, 'Primary', { tag: person.PrimaryImageTag, maxWidth: 300 })
-    : undefined;
+  const src = person.PrimaryImageTag ? api.imageUrl(person.Id, 'Primary', { tag: person.PrimaryImageTag, maxWidth: 300 }) : undefined;
   const role = person.Role || person.Type;
   return (
     <Link

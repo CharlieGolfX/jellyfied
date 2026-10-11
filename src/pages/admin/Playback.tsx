@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import type { EncodingOptions, ServerConfiguration } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select, Switch } from '@/components/ui/Form';
@@ -6,6 +5,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { Card } from '@/pages/Settings';
 import { AdminPage, useConfigEditor } from './shared';
+import { useDraft } from '@/lib/useDraft';
 
 const HW_ACCEL = [
   { value: 'none', label: 'None (software)' },
@@ -25,15 +25,8 @@ const PRESETS = ['', 'veryslow', 'slower', 'slow', 'medium', 'fast', 'faster', '
 export default function PlaybackPage() {
   const encoding = useConfigEditor<EncodingOptions>('/System/Configuration/encoding', 'Transcoding settings');
   const server = useConfigEditor<ServerConfiguration>('/System/Configuration', 'Resume settings');
-  const [enc, setEnc] = useState<EncodingOptions | null>(null);
-  const [srv, setSrv] = useState<ServerConfiguration | null>(null);
-
-  useEffect(() => {
-    if (encoding.query.data) setEnc(encoding.query.data);
-  }, [encoding.query.data]);
-  useEffect(() => {
-    if (server.query.data) setSrv(server.query.data);
-  }, [server.query.data]);
+  const [enc, setEnc] = useDraft(encoding.query.data);
+  const [srv, setSrv] = useDraft(server.query.data);
 
   if (encoding.query.error) return <ErrorState error={encoding.query.error} onRetry={() => encoding.query.refetch()} />;
   if (!enc || !srv) return <PageSpinner />;
@@ -103,7 +96,11 @@ export default function PlaybackPage() {
               ))}
             </div>
             <div className="mt-3 divide-y divide-white/5">
-              <Switch label="Enable hardware encoding" checked={enc.EnableHardwareEncoding} onChange={(v) => e('EnableHardwareEncoding', v)} />
+              <Switch
+                label="Enable hardware encoding"
+                checked={enc.EnableHardwareEncoding}
+                onChange={(v) => e('EnableHardwareEncoding', v)}
+              />
               <Switch
                 label="Enable 10-bit HEVC hardware decoding"
                 checked={enc.EnableDecodingColorDepth10Hevc}
@@ -139,7 +136,12 @@ export default function PlaybackPage() {
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Encoding threads" hint="-1 = automatic">
-            <Input type="number" min={-1} value={enc.EncodingThreadCount} onChange={(ev) => e('EncodingThreadCount', num(ev.target.value, -1))} />
+            <Input
+              type="number"
+              min={-1}
+              value={enc.EncodingThreadCount}
+              onChange={(ev) => e('EncodingThreadCount', num(ev.target.value, -1))}
+            />
           </Field>
           <Field label="Encoder preset">
             <Select value={enc.EncoderPreset ?? ''} onChange={(ev) => e('EncoderPreset', ev.target.value || null)}>
@@ -157,12 +159,23 @@ export default function PlaybackPage() {
             <Input type="number" min={0} max={51} value={enc.H265Crf} onChange={(ev) => e('H265Crf', num(ev.target.value, 28))} />
           </Field>
           <Field label="Audio downmix boost">
-            <Input type="number" step={0.1} min={0.5} max={3} value={enc.DownMixAudioBoost} onChange={(ev) => e('DownMixAudioBoost', num(ev.target.value, 2))} />
+            <Input
+              type="number"
+              step={0.1}
+              min={0.5}
+              max={3}
+              value={enc.DownMixAudioBoost}
+              onChange={(ev) => e('DownMixAudioBoost', num(ev.target.value, 2))}
+            />
           </Field>
         </div>
         <div className="mt-4">
           <Field label="Transcode path" hint="Leave empty for the default.">
-            <Input className="font-mono" value={enc.TranscodingTempPath ?? ''} onChange={(ev) => e('TranscodingTempPath', ev.target.value)} />
+            <Input
+              className="font-mono"
+              value={enc.TranscodingTempPath ?? ''}
+              onChange={(ev) => e('TranscodingTempPath', ev.target.value)}
+            />
           </Field>
         </div>
       </Card>
@@ -184,10 +197,20 @@ export default function PlaybackPage() {
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Throttle after (seconds)">
-            <Input type="number" min={0} value={enc.ThrottleDelaySeconds} onChange={(ev) => e('ThrottleDelaySeconds', num(ev.target.value, 180))} />
+            <Input
+              type="number"
+              min={0}
+              value={enc.ThrottleDelaySeconds}
+              onChange={(ev) => e('ThrottleDelaySeconds', num(ev.target.value, 180))}
+            />
           </Field>
           <Field label="Keep segments for (seconds)">
-            <Input type="number" min={0} value={enc.SegmentKeepSeconds} onChange={(ev) => e('SegmentKeepSeconds', num(ev.target.value, 720))} />
+            <Input
+              type="number"
+              min={0}
+              value={enc.SegmentKeepSeconds}
+              onChange={(ev) => e('SegmentKeepSeconds', num(ev.target.value, 720))}
+            />
           </Field>
         </div>
       </Card>
@@ -198,7 +221,13 @@ export default function PlaybackPage() {
             <Input type="number" min={0} max={100} value={srv.MinResumePct} onChange={(ev) => s('MinResumePct', num(ev.target.value, 5))} />
           </Field>
           <Field label="Maximum resume %" hint="Above this, the item is marked watched.">
-            <Input type="number" min={1} max={100} value={srv.MaxResumePct} onChange={(ev) => s('MaxResumePct', num(ev.target.value, 90))} />
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={srv.MaxResumePct}
+              onChange={(ev) => s('MaxResumePct', num(ev.target.value, 90))}
+            />
           </Field>
           <Field label="Minimum duration (seconds)" hint="Shorter items are never resumable.">
             <Input

@@ -38,9 +38,33 @@ shown in the account menu and on the login screen.
 - Live TV: channels with what is on, programmes airing now, and recordings.
 - Photo slideshow.
 
+- `JELLYPLEX_BASE_PATH` serves Jellyplex under a path such as `/jellyplex`.
+
 ### Changed
+- The container's nginx no longer runs as root, and is based on nginx 1.30. The default port is
+  still 80; set `JELLYPLEX_PORT=8080` on runtimes that do not let an unprivileged process use it.
 - The container's Content-Security-Policy now allows WebAssembly (for styled subtitles) and
-  scripts from `www.gstatic.com` (Google's Cast software, loaded only when Chromecast is picked).
+  scripts from `www.gstatic.com` (Google's Cast software, loaded only when Chromecast is picked),
+  and no longer allows inline styles.
+- Build assets are compressed once at build time instead of on every request.
+
+### Fixed
+- The device list in the server dashboard shows when each device was last active, and sorts by it.
+- Files without a date no longer show "Jan 1, 1970" in the library list.
+
+### Development
+- Lint is free of warnings, with every rule an error; Prettier formats the code.
+- Unit tests for the WebSocket client, SyncPlay, signing in and out, and what "Play" does; browser
+  tests for search, settings, the dashboard and the metadata editor; all browser tests also run in
+  Firefox and WebKit. Coverage is reported in CI.
+- The container is tested in CI against a stand-in server (proxy, WebSocket, base path) and
+  scanned for known vulnerabilities. Images carry provenance and a bill of materials.
+- Actions are pinned to commits, Dependabot keeps dependencies current, and a version tag creates
+  the GitHub release from the changelog.
+- API types can be generated from the server's OpenAPI document and are checked against the
+  hand-written ones.
+- The library page, remote control, metadata editor and parts of the video player are split into
+  smaller files.
 
 ## [1.0.0] - 2026-10-11
 

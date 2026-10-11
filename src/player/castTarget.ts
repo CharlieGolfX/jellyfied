@@ -45,7 +45,11 @@ function subscribe(cb: () => void) {
 }
 
 export function useCastTarget(): CastTarget | null {
-  return useSyncExternalStore(subscribe, () => current, () => null);
+  return useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => null,
+  );
 }
 
 export type RemotePlayCommand = 'PlayNow' | 'PlayNext' | 'PlayLast' | 'PlayShuffle';

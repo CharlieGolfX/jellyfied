@@ -56,8 +56,7 @@ export function pictureStyle(opts: {
   if (fit === 'fit' && aspect === 'auto' && zoom === 1) return undefined;
   if (!box.width || !box.height) return undefined;
   const original = video.width && video.height ? video.width / video.height : 16 / 9;
-  const ratio =
-    fit === 'stretch' ? box.width / box.height : (PICTURE_ASPECTS.find((a) => a.value === aspect)?.ratio ?? original);
+  const ratio = fit === 'stretch' ? box.width / box.height : (PICTURE_ASPECTS.find((a) => a.value === aspect)?.ratio ?? original);
   const fitted = fit === 'fill' ? Math.max(box.width, box.height * ratio) : Math.min(box.width, box.height * ratio);
   const width = fitted * zoom;
   const height = (fitted / ratio) * zoom;

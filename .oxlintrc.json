@@ -3,17 +3,19 @@
   "plugins": ["typescript", "react", "oxc", "unicorn"],
   "categories": {
     "correctness": "error",
-    "suspicious": "warn"
+    "suspicious": "error"
   },
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/exhaustive-deps": "warn",
+    "react/exhaustive-deps": "error",
     "react/react-in-jsx-scope": "off",
 
-    "react/refs": "warn",
-    "react/purity": "warn",
-    "react/immutability": "warn",
-    "react/set-state-in-effect": "warn",
+    "react/refs": "error",
+    "react/purity": "error",
+    "react/immutability": "error",
+    "react/set-state-in-effect": "error",
+    "react/no-unstable-nested-components": ["error", { "allowAsProps": true }],
+    "no-underscore-dangle": ["error", { "allow": ["__APP_VERSION__", "__onGCastApiAvailable"] }],
 
     "unicorn/no-array-sort": "off",
     "unicorn/prefer-add-event-listener": "off",

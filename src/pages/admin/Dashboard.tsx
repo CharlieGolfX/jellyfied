@@ -1,17 +1,5 @@
 import clsx from 'clsx';
-import {
-  Film,
-  HardDrive,
-  MessageSquare,
-  Music,
-  Pause,
-  Play,
-  Power,
-  RefreshCw,
-  RotateCcw,
-  Square,
-  Tv,
-} from 'lucide-react';
+import { Film, HardDrive, MessageSquare, Music, Pause, Play, Power, RefreshCw, RotateCcw, Square, Tv } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -78,7 +66,12 @@ function NowPlayingCard({ session }: { session: SessionInfo }) {
 
   const method = ps.PlayMethod === 'Transcode' ? 'Transcode' : ps.PlayMethod === 'DirectStream' ? 'Direct Stream' : 'Direct Play';
   const title = item.Type === 'Episode' ? item.SeriesName : item.Name;
-  const sub = item.Type === 'Episode' ? `${episodeLabel(item)} · ${item.Name}` : item.Type === 'Audio' ? item.Artists?.join(', ') : item.ProductionYear;
+  const sub =
+    item.Type === 'Episode'
+      ? `${episodeLabel(item)} · ${item.Name}`
+      : item.Type === 'Audio'
+        ? item.Artists?.join(', ')
+        : item.ProductionYear;
 
   return (
     <div className="relative overflow-hidden rounded-lg bg-base-800 ring-1 ring-white/5">
@@ -325,11 +318,7 @@ export default function DashboardPage() {
                   <span
                     className={clsx(
                       'mt-1.5 h-2 w-2 shrink-0 rounded-full',
-                      a.Severity === 'Error' || a.Severity === 'Critical'
-                        ? 'bg-danger'
-                        : a.Severity === 'Warning'
-                          ? 'bg-star'
-                          : 'bg-info',
+                      a.Severity === 'Error' || a.Severity === 'Critical' ? 'bg-danger' : a.Severity === 'Warning' ? 'bg-star' : 'bg-info',
                     )}
                   />
                   <div className="min-w-0 flex-1">

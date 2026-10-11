@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { Camera, Check, KeyRound, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CultureDto, QuickConnectResult, UserConfiguration } from '@/api/types';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
@@ -27,7 +27,17 @@ import {
   type SubtitleStyle,
 } from '@/player/subtitleStyle';
 
-export function Card({ title, description, children, actions }: { title: string; description?: ReactNode; children: ReactNode; actions?: ReactNode }) {
+export function Card({
+  title,
+  description,
+  children,
+  actions,
+}: {
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <section className="rounded-lg bg-base-800/70 ring-1 ring-white/5">
       <div className="flex items-start justify-between gap-4 border-b border-white/5 px-5 py-4">
@@ -70,12 +80,15 @@ export default function SettingsPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const { data: user, isLoading, error, refetch } = useCurrentUser();
-  const cultures = useQuery({ queryKey: ['cultures'], queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'), staleTime: Infinity });
+  const cultures = useQuery({
+    queryKey: ['cultures'],
+    queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'),
+    staleTime: Infinity,
+  });
 
   const [config, setConfig] = useState<UserConfiguration | null>(null);
-  useEffect(() => {
-    if (user && !config) setConfig(user.Configuration);
-  }, [user, config]);
+  // The form starts from the saved preferences once they have arrived.
+  if (user && !config) setConfig(user.Configuration);
 
   const [timeFormat, setTimeFormat] = useTimeFormat();
   const [bitrate, setBitrate] = useState(() => Number(localStorage.getItem('jellyplex.maxBitrate')) || MAX_BITRATE);
@@ -146,7 +159,13 @@ export default function SettingsPage() {
                 Change picture
               </Button>
               {user.PrimaryImageTag && (
-                <Button size="sm" variant="ghost" icon={<Trash2 size={14} />} loading={deleteImage.isPending} onClick={() => deleteImage.mutate()}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<Trash2 size={14} />}
+                  loading={deleteImage.isPending}
+                  onClick={() => deleteImage.mutate()}
+                >
                   Remove
                 </Button>
               )}
@@ -265,7 +284,11 @@ export default function SettingsPage() {
             <option value={1_000_000}>1 Mbps (480p)</option>
           </Select>
         </Field>
-        <Field className="mt-4" label="Default time display" hint="Used for clock times such as “Ends at” in the player and dates in the dashboard.">
+        <Field
+          className="mt-4"
+          label="Default time display"
+          hint="Used for clock times such as “Ends at” in the player and dates in the dashboard."
+        >
           <Select
             value={timeFormat}
             onChange={(e) => {
@@ -386,7 +409,11 @@ function InterfaceColorsCard() {
         ))}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-md bg-base-900 p-4 ring-1 ring-white/5" aria-hidden data-testid="theme-preview">
+      <div
+        className="mt-6 flex flex-wrap items-center gap-3 rounded-md bg-base-900 p-4 ring-1 ring-white/5"
+        aria-hidden
+        data-testid="theme-preview"
+      >
         <Button variant="primary" size="sm" tabIndex={-1}>
           Play
         </Button>
@@ -514,7 +541,13 @@ function QuickConnectCard() {
         className="flex flex-wrap items-end gap-3"
       >
         <Field label="Code" className="w-48">
-          <Input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456" className="font-mono tracking-widest" />
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            inputMode="numeric"
+            placeholder="123456"
+            className="font-mono tracking-widest"
+          />
         </Field>
         <Button type="submit" variant="primary" icon={<KeyRound size={16} />} loading={mutation.isPending} disabled={!code.trim()}>
           Authorize

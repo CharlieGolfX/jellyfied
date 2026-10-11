@@ -56,17 +56,29 @@ const noop = () => () => {};
 
 export function useIsSelected(id: string): boolean {
   const store = useContext(SelectionContext);
-  return useSyncExternalStore(store?.subscribe ?? noop, () => store?.has(id) ?? false, () => false);
+  return useSyncExternalStore(
+    store?.subscribe ?? noop,
+    () => store?.has(id) ?? false,
+    () => false,
+  );
 }
 
 export function useSelectionCount(): number {
   const store = useContext(SelectionContext);
-  return useSyncExternalStore(store?.subscribe ?? noop, () => store?.count() ?? 0, () => 0);
+  return useSyncExternalStore(
+    store?.subscribe ?? noop,
+    () => store?.count() ?? 0,
+    () => 0,
+  );
 }
 
 const NONE: BaseItemDto[] = [];
 
 export function useSelectedItems(): BaseItemDto[] {
   const store = useContext(SelectionContext);
-  return useSyncExternalStore(store?.subscribe ?? noop, () => store?.selected() ?? NONE, () => NONE);
+  return useSyncExternalStore(
+    store?.subscribe ?? noop,
+    () => store?.selected() ?? NONE,
+    () => NONE,
+  );
 }

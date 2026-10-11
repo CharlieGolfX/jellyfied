@@ -1,5 +1,18 @@
 import clsx from 'clsx';
-import { Check, CheckCircle, Clapperboard, Film, Folder, Image as ImageIcon, ListMusic, MoreHorizontal, Music, Play, Tv, User } from 'lucide-react';
+import {
+  Check,
+  CheckCircle,
+  Clapperboard,
+  Film,
+  Folder,
+  Image as ImageIcon,
+  ListMusic,
+  MoreHorizontal,
+  Music,
+  Play,
+  Tv,
+  User,
+} from 'lucide-react';
 import { memo, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cardImage, defaultShape, imageSrc, type CardShape } from '@/api/images';
@@ -64,7 +77,7 @@ export function defaultTitles(item: BaseItemDto, context?: 'series'): { title: s
     case 'Season':
       return {
         title: name,
-        subtitle: item.ChildCount ? `${item.ChildCount} episode${item.ChildCount === 1 ? '' : 's'}` : item.SeriesName ?? '',
+        subtitle: item.ChildCount ? `${item.ChildCount} episode${item.ChildCount === 1 ? '' : 's'}` : (item.SeriesName ?? ''),
       };
     case 'Series':
       return { title: name, subtitle: item.ProductionYear ? String(item.ProductionYear) : '' };
@@ -153,9 +166,7 @@ export const PosterCard = memo(function PosterCard({
           fallback={
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-base-750 to-base-850 p-3 text-center text-faint">
               {fallbackIcon(item)}
-              {s !== 'poster' || hideText ? null : (
-                <span className="line-clamp-3 text-xs font-medium text-muted">{finalTitle}</span>
-              )}
+              {s !== 'poster' || hideText ? null : <span className="line-clamp-3 text-xs font-medium text-muted">{finalTitle}</span>}
             </div>
           }
         />
@@ -178,9 +189,7 @@ export const PosterCard = memo(function PosterCard({
         )}
 
         {/* Hover overlay */}
-        {!round && (
-          <div className="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-150 group-hover/card:opacity-100" />
-        )}
+        {!round && <div className="absolute inset-0 bg-black/45 opacity-0 transition-opacity duration-150 group-hover/card:opacity-100" />}
 
         {pct > 0 && (
           <div className="absolute inset-x-0 bottom-0 h-1 bg-black/60">
@@ -254,11 +263,7 @@ export const PosterCard = memo(function PosterCard({
 
       {!hideText && (
         <div className={clsx('mt-2 min-w-0', round && 'text-center')}>
-          <Link
-            to={itemLink(item)}
-            className="block truncate text-sm font-medium text-fg hover:underline"
-            title={finalTitle}
-          >
+          <Link to={itemLink(item)} className="block truncate text-sm font-medium text-fg hover:underline" title={finalTitle}>
             {finalTitle}
           </Link>
           {finalSubtitle && (

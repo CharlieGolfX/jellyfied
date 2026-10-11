@@ -85,7 +85,7 @@ export default function ActivityPage() {
                     </div>
                   </td>
                   <td className="hidden px-4 py-2.5 text-muted md:table-cell">
-                    {a.UserId && a.UserId !== '00000000000000000000000000000000' ? userName(a.UserId) ?? '—' : '—'}
+                    {a.UserId && a.UserId !== '00000000000000000000000000000000' ? (userName(a.UserId) ?? '—') : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right whitespace-nowrap text-muted">{formatDateTime(a.Date)}</td>
                 </tr>

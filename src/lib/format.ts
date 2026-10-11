@@ -59,14 +59,16 @@ export function formatBitrate(bps?: number | null): string {
 export function formatDate(iso?: string | null, opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }): string {
   if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return '';
+  // Exactly zero (1 January 1970) is how a missing date is stored for some files.
+  if (Number.isNaN(d.getTime()) || d.getTime() === 0 || d.getFullYear() < 1900) return '';
   return d.toLocaleDateString(undefined, opts);
 }
 
 export function formatDateTime(iso?: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return '';
+  // Exactly zero (1 January 1970) is how a missing date is stored for some files.
+  if (Number.isNaN(d.getTime()) || d.getTime() === 0 || d.getFullYear() < 1900) return '';
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', ...hourCycleOption() });
 }
 

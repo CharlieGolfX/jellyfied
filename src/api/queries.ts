@@ -1,10 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryKey,
-} from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import type { Query } from './client';
 import type { BaseItemDto, ItemsResult, LegacyQueryFilters, MediaSegment, QueryFilters } from './types';
@@ -227,7 +221,14 @@ export function useStudios(parentId: string | undefined, includeItemTypes?: stri
   return useQuery({
     queryKey: [MEDIA, 'studios', parentId, includeItemTypes],
     queryFn: () =>
-      api.get<ItemsResult>('/Studios', { userId, parentId, includeItemTypes, sortBy: 'SortName', sortOrder: 'Ascending', enableImages: false }),
+      api.get<ItemsResult>('/Studios', {
+        userId,
+        parentId,
+        includeItemTypes,
+        sortBy: 'SortName',
+        sortOrder: 'Ascending',
+        enableImages: false,
+      }),
     enabled: Boolean(parentId) && enabled,
     staleTime: 5 * 60_000,
   });
@@ -255,9 +256,7 @@ export function useSetPlayed() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, played }: { id: string; played: boolean }) =>
-      played
-        ? api.post(`/UserPlayedItems/${id}`, undefined, { userId })
-        : api.delete(`/UserPlayedItems/${id}`, { userId }),
+      played ? api.post(`/UserPlayedItems/${id}`, undefined, { userId }) : api.delete(`/UserPlayedItems/${id}`, { userId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
   });
 }
@@ -268,9 +267,7 @@ export function useSetFavorite() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
-      favorite
-        ? api.post(`/UserFavoriteItems/${id}`, undefined, { userId })
-        : api.delete(`/UserFavoriteItems/${id}`, { userId }),
+      favorite ? api.post(`/UserFavoriteItems/${id}`, undefined, { userId }) : api.delete(`/UserFavoriteItems/${id}`, { userId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [MEDIA] }),
   });
 }

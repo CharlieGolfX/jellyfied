@@ -1,13 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import type { JellyfinApi } from '@/api/client';
 import type { BaseItemDto } from '@/api/types';
@@ -93,11 +84,9 @@ function shuffled<T>(arr: T[]): T[] {
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const { api } = useAuth();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  if (!audioRef.current && typeof Audio !== 'undefined') {
-    audioRef.current = new Audio();
-    audioRef.current.preload = 'auto';
-  }
+  // One audio element for the life of the app.
+  const [audioElement] = useState(() => (typeof Audio === 'undefined' ? null : Object.assign(new Audio(), { preload: 'auto' })));
+  const audioRef = useRef<HTMLAudioElement | null>(audioElement);
 
   const [queue, setQueue] = useState<BaseItemDto[]>([]);
   const [index, setIndex] = useState(0);
@@ -116,7 +105,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Mutable refs so event handlers always see fresh state.
   const stateRef = useRef({ queue, index, repeat, api });
-  stateRef.current = { queue, index, repeat, api };
+  useLayoutEffect(() => {
+    stateRef.current = { queue, index, repeat, api };
+  });
   const sessionRef = useRef<{ itemId: string; playSessionId: string } | null>(null);
 
   const reportStop = useCallback((keepalive = false) => {
@@ -134,6 +125,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Load the current track whenever it changes.
   const currentId = current?.Id;
+  // Keyed on the track's id: the same track arriving as a new object (a refreshed list) must not
+  // restart it. Loading a track resets what the player shows, which is this effect's whole job.
+  // oxlint-disable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -164,6 +158,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       NowPlayingQueue: stateRef.current.queue.map((q) => ({ Id: q.Id })),
     });
   }, [currentId, api]);
+  // oxlint-enable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
 
   // Wire up element events once.
   useEffect(() => {
@@ -254,6 +249,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('play', onPlay);
     };
+    // The id is listed next to the track so a changed track always starts a fresh reporting timer.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [currentId, api, current]);
 
   // Report stop when the tab closes.
@@ -264,12 +261,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [reportStop]);
 
   // Stop when logging out.
-  useEffect(() => {
-    if (!api) {
-      setQueue([]);
-      setIndex(0);
-    }
-  }, [api]);
+  if (!api && queue.length > 0) {
+    setQueue([]);
+    setIndex(0);
+  }
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -305,32 +300,41 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const play = useCallback((items: BaseItemDto[], startIndex = 0) => {
-    if (!items.length) return;
-    if (sendToCastTarget(items, 'PlayNow', startIndex)) return;
-    const audio = audioRef.current;
-    const sameTrack = stateRef.current.queue[stateRef.current.index]?.Id === items[startIndex]?.Id;
-    setQueue(items);
-    setIndex(startIndex);
-    if (sameTrack && audio) {
-      audio.currentTime = 0;
-      void audio.play();
-    }
-  }, [sendToCastTarget]);
+  const play = useCallback(
+    (items: BaseItemDto[], startIndex = 0) => {
+      if (!items.length) return;
+      if (sendToCastTarget(items, 'PlayNow', startIndex)) return;
+      const audio = audioRef.current;
+      const sameTrack = stateRef.current.queue[stateRef.current.index]?.Id === items[startIndex]?.Id;
+      setQueue(items);
+      setIndex(startIndex);
+      if (sameTrack && audio) {
+        audio.currentTime = 0;
+        void audio.play();
+      }
+    },
+    [sendToCastTarget],
+  );
 
-  const enqueue = useCallback((items: BaseItemDto[]) => {
-    if (sendToCastTarget(items, 'PlayLast')) return;
-    setQueue((q) => [...q, ...items]);
-  }, [sendToCastTarget]);
+  const enqueue = useCallback(
+    (items: BaseItemDto[]) => {
+      if (sendToCastTarget(items, 'PlayLast')) return;
+      setQueue((q) => [...q, ...items]);
+    },
+    [sendToCastTarget],
+  );
 
-  const playNext = useCallback((items: BaseItemDto[]) => {
-    if (sendToCastTarget(items, 'PlayNext')) return;
-    setQueue((q) => {
-      const i = stateRef.current.index;
-      if (q.length === 0) return items;
-      return [...q.slice(0, i + 1), ...items, ...q.slice(i + 1)];
-    });
-  }, [sendToCastTarget]);
+  const playNext = useCallback(
+    (items: BaseItemDto[]) => {
+      if (sendToCastTarget(items, 'PlayNext')) return;
+      setQueue((q) => {
+        const i = stateRef.current.index;
+        if (q.length === 0) return items;
+        return [...q.slice(0, i + 1), ...items, ...q.slice(i + 1)];
+      });
+    },
+    [sendToCastTarget],
+  );
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
@@ -386,10 +390,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
-  const cycleRepeat = useCallback(
-    () => setRepeat((r) => (r === 'off' ? 'all' : r === 'all' ? 'one' : 'off')),
-    [],
-  );
+  const cycleRepeat = useCallback(() => setRepeat((r) => (r === 'off' ? 'all' : r === 'all' ? 'one' : 'off')), []);
 
   const shuffleQueue = useCallback(() => {
     const { queue: q, index: i } = stateRef.current;

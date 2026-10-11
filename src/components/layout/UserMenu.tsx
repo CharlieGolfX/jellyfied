@@ -35,9 +35,7 @@ export function UserMenu() {
       items={[
         { header: true, label: `${user?.Name ?? session.userName} · ${session.serverName}` },
         { label: 'Account settings', icon: <Settings size={16} />, onSelect: () => navigate('/settings') },
-        ...(isAdmin
-          ? [{ label: 'Server dashboard', icon: <LayoutDashboard size={16} />, onSelect: () => navigate('/admin') }]
-          : []),
+        ...(isAdmin ? [{ label: 'Server dashboard', icon: <LayoutDashboard size={16} />, onSelect: () => navigate('/admin') }] : []),
         { divider: true, label: '' },
         ...otherAccounts.map((a) => ({
           label: `Switch to ${a.userName}${a.serverName !== session.serverName ? ` · ${a.serverName}` : ''}`,

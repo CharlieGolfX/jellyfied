@@ -80,7 +80,9 @@ describe('dynamic range', () => {
 
   it('has files tagged as Dolby Vision re-wrapped unless the browser decodes Dolby Vision', () => {
     const tags = (p: Profile) =>
-      p.CodecProfiles.find((c) => c.Codec === 'hevc')!.Conditions.filter((c) => c.Property === 'VideoCodecTag').map((c) => c.Value);
+      p.CodecProfiles.find((c) => c.Codec === 'hevc')!
+        .Conditions.filter((c) => c.Property === 'VideoCodecTag')
+        .map((c) => c.Value);
     expect(tags(build({ hevc: true }))).toEqual(['dvh1', 'dvhe', 'dav1', 'dovi']);
     expect(tags(build({ hevc: true, dolbyVision: true }))).toEqual([]);
   });

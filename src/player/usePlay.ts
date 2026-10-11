@@ -179,11 +179,7 @@ export function useLocalPlay() {
             recursive: true,
             filters: 'IsNotFolder',
             mediaTypes: ['Video', 'Audio'],
-            sortBy: shuffleItems
-              ? 'Random'
-              : item.Type === 'BoxSet'
-                ? ['ProductionYear', 'PremiereDate', 'SortName']
-                : 'SortName',
+            sortBy: shuffleItems ? 'Random' : item.Type === 'BoxSet' ? ['ProductionYear', 'PremiereDate', 'SortName'] : 'SortName',
           });
       }
       const items = result.Items.filter((i) => i.MediaType === 'Video' || i.MediaType === 'Audio');

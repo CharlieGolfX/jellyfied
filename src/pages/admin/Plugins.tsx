@@ -69,7 +69,11 @@ function Installed() {
           <div key={`${p.Id}-${p.Version}`} className="flex gap-4 rounded-lg bg-base-800/70 p-4 ring-1 ring-white/5">
             <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-base-750 text-faint">
               {p.HasImage ? (
-                <Img src={api.url(`/Plugins/${p.Id}/${p.Version}/Image`, {}, true)} className="h-full w-full object-cover" fallback={<Puzzle size={22} />} />
+                <Img
+                  src={api.url(`/Plugins/${p.Id}/${p.Version}/Image`, {}, true)}
+                  className="h-full w-full object-cover"
+                  fallback={<Puzzle size={22} />}
+                />
               ) : (
                 <Puzzle size={22} />
               )}
@@ -94,7 +98,13 @@ function Installed() {
                   </Button>
                 )}
                 {(p.Status === 'Active' || p.Status === 'Disabled') && (
-                  <Button size="sm" variant="ghost" icon={<Power size={14} />} loading={toggle.isPending && toggle.variables?.Id === p.Id} onClick={() => toggle.mutate(p)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<Power size={14} />}
+                    loading={toggle.isPending && toggle.variables?.Id === p.Id}
+                    onClick={() => toggle.mutate(p)}
+                  >
                     {p.Status === 'Disabled' ? 'Enable' : 'Disable'}
                   </Button>
                 )}
@@ -168,7 +178,11 @@ function Catalog() {
           return (
             <div key={p.guid} className="flex gap-4 rounded-lg bg-base-800/70 p-4 ring-1 ring-white/5">
               <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-base-750 text-faint">
-                {p.imageUrl ? <Img src={p.imageUrl} className="h-full w-full object-cover" fallback={<Puzzle size={22} />} /> : <Puzzle size={22} />}
+                {p.imageUrl ? (
+                  <Img src={p.imageUrl} className="h-full w-full object-cover" fallback={<Puzzle size={22} />} />
+                ) : (
+                  <Puzzle size={22} />
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

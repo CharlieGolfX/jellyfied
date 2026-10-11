@@ -3,6 +3,7 @@ import type { BaseItemDto } from '@/api/types';
 import {
   episodeLabel,
   formatBitrate,
+  formatDate,
   formatBytes,
   formatClock,
   formatRemaining,
@@ -69,7 +70,9 @@ describe('formatRemaining', () => {
 
   it('shows what is left', () => {
     expect(formatRemaining(item({ RunTimeTicks: minutes(90), UserData: { PlaybackPositionTicks: minutes(60) } }))).toBe('30 min left');
-    expect(formatRemaining(item({ RunTimeTicks: minutes(150), UserData: { PlaybackPositionTicks: minutes(15) } }))).toBe('2 hr 15 min left');
+    expect(formatRemaining(item({ RunTimeTicks: minutes(150), UserData: { PlaybackPositionTicks: minutes(15) } }))).toBe(
+      '2 hr 15 min left',
+    );
   });
 
   it('never says less than a minute', () => {
@@ -147,5 +150,18 @@ describe('playedPercent', () => {
   it('works it out from the position otherwise', () => {
     expect(playedPercent(item({ RunTimeTicks: 200, UserData: { PlaybackPositionTicks: 50 } }))).toBe(25);
     expect(playedPercent(item({ RunTimeTicks: 200 }))).toBe(0);
+  });
+});
+
+describe('formatDate', () => {
+  it('formats a date', () => {
+    expect(formatDate('2024-03-05T12:00:00Z', { year: 'numeric', timeZone: 'UTC' })).toBe('2024');
+  });
+
+  it('shows nothing for a missing date, including the ways servers store "no date"', () => {
+    expect(formatDate(null)).toBe('');
+    expect(formatDate('not a date')).toBe('');
+    expect(formatDate('0001-01-01T00:00:00.0000000Z')).toBe('');
+    expect(formatDate('1970-01-01T00:00:00.0000000Z')).toBe('');
   });
 });

@@ -12,60 +12,81 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Actions are pinned to the commit of a release; Dependabot keeps the pins current.
 jobs:
   check:
-    name: Lint, type-check, unit tests, build
+    name: Lint, format, type-check, unit tests, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          node -e '
+            const t = require("./coverage/coverage-summary.json").total;
+            console.log("### Unit test coverage\n\n| | Covered |\n| --- | --- |");
+            for (const k of ["lines", "statements", "functions", "branches"]) console.log(`| ${k} | ${t[k].pct}% (${t[k].covered}/${t[k].total}) |`);
+          ' >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: coverage
+          path: coverage
+          retention-days: 7
       - run: npm run build
 
   e2e:
-    name: Browser tests
+    name: Browser tests (${{ matrix.browser }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
       # Runs against a mocked Jellyfin API; the playback tests need a real server and are skipped.
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+        env:
+          E2E_BROWSERS: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: |
             playwright-report
             test-results
           retention-days: 7
 
   container:
-    name: Container builds and starts
+    name: Container builds, serves and proxies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
       - run: docker build -t jellyplex:ci .
-      - name: Start the container and check what it serves
-        run: |
-          docker run -d --name jellyplex -p 8080:80 -e JELLYFIN_URL=http://jellyfin.invalid:8096 jellyplex:ci
-          for i in $(seq 1 20); do
-            curl -fsS http://localhost:8080/healthz && break
-            sleep 1
-          done
-          curl -fsS http://localhost:8080/healthz
-          curl -fsS http://localhost:8080/config.js | grep -F 'serverUrl: "/jellyfin"'
-          curl -fsS http://localhost:8080/some/client/route | grep -F '<div id="root">'
-          curl -fsSI http://localhost:8080/ | grep -i '^content-security-policy:'
-      - if: failure()
-        run: docker logs jellyplex
+      # Starts the image against a stand-in server: site, headers, proxy, WebSocket, base path.
+      - run: node docker/test-container.mjs jellyplex:ci
+      - name: Scan the image for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: jellyplex:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'

@@ -9,11 +9,15 @@
 #   JELLYPLEX_LOCK_SERVER  true/false. Hide "change server" on the login screen (default: true
 #                          when a server is configured).
 #   JELLYPLEX_PORT         Port nginx listens on inside the container (default 80).
+#   JELLYPLEX_BASE_PATH    Optional. Serve Jellyplex under this path, e.g. /jellyplex, for reverse
+#                          proxies that give every app a path instead of a host name.
+#
+# nginx runs as an unprivileged user, so everything written here lives in places that user owns.
 set -eu
 
 HTML_DIR=/usr/share/nginx/html
 CONF=/etc/nginx/conf.d/default.conf
-HEADERS=/etc/nginx/jellyplex-headers.conf
+HEADERS=/tmp/jellyplex-headers.conf
 PROXY_PATH=/jellyfin
 
 JELLYFIN_URL="${JELLYFIN_URL:-}"
@@ -22,6 +26,16 @@ LISTEN_PORT="${JELLYPLEX_PORT:-80}"
 
 log() { echo "jellyplex: $*"; }
 
+# Base path: "/jellyplex" (leading slash, no trailing one), or empty for the root.
+BASE=$(printf '%s' "${JELLYPLEX_BASE_PATH:-}" | sed -e 's:^/*:/:' -e 's:/*$::')
+[ "$BASE" = "/" ] && BASE=""
+case "$BASE" in
+  *[!A-Za-z0-9/._~-]*)
+    log "JELLYPLEX_BASE_PATH may only contain letters, digits and / . _ ~ -; ignoring \"$BASE\""
+    BASE=""
+    ;;
+esac
+
 # Strip trailing slashes.
 JELLYFIN_URL=$(printf '%s' "$JELLYFIN_URL" | sed 's:/*$::')
 JELLYFIN_PUBLIC_URL=$(printf '%s' "$JELLYFIN_PUBLIC_URL" | sed 's:/*$::')
@@ -29,7 +43,7 @@ JELLYFIN_PUBLIC_URL=$(printf '%s' "$JELLYFIN_PUBLIC_URL" | sed 's:/*$::')
 if [ -n "$JELLYFIN_PUBLIC_URL" ]; then
   BROWSER_SERVER="$JELLYFIN_PUBLIC_URL"
 elif [ -n "$JELLYFIN_URL" ]; then
-  BROWSER_SERVER="$PROXY_PATH"
+  BROWSER_SERVER="${BASE}${PROXY_PATH}"
 else
   BROWSER_SERVER=""
 fi
@@ -49,6 +63,26 @@ window.JELLYPLEX_CONFIG = {
 };
 EOF
 log "browser server URL: ${BROWSER_SERVER:-<user chooses at login>} (locked: $LOCK)"
+
+# The page finds its scripts, styles and config relative to its <base> tag.
+sed "s|<base href=\"[^\"]*\"|<base href=\"${BASE}/\"|" "$HTML_DIR/index.html" >/tmp/jellyplex-index.html
+cat /tmp/jellyplex-index.html >"$HTML_DIR/index.html"
+rm -f /tmp/jellyplex-index.html
+[ -n "$BASE" ] && log "serving under ${BASE}/"
+
+BASE_BLOCK=""
+if [ -n "$BASE" ]; then
+  # Requests under the base path are handled as if they had been made without it.
+  BASE_BLOCK="
+    location = ${BASE} {
+        return 301 ${BASE}/;
+    }
+
+    location ^~ ${BASE}/ {
+        rewrite ^${BASE}(/.*)\$ \$1 last;
+    }
+"
+fi
 
 # ---------------------------------------------------------------------------
 # nginx site
@@ -169,7 +203,7 @@ cat >"$HEADERS" <<EOF
 add_header X-Content-Type-Options nosniff always;
 add_header Referrer-Policy same-origin always;
 add_header X-Frame-Options DENY always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src * data: blob:; media-src * data: blob:; connect-src * ws: wss: data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self'; img-src * data: blob:; media-src * data: blob:; connect-src * ws: wss: data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 EOF
 
 cat >"$CONF" <<EOF
@@ -191,6 +225,7 @@ log_format jellyplex '\$remote_addr - \$remote_user [\$time_local] "\$jellyplex_
                      '\$status \$body_bytes_sent "\$http_referer" "\$http_user_agent"';
 
 map \$request_uri \$jellyfin_path {
+    ~^${BASE}${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     ~^${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     default /;
 }
@@ -210,11 +245,14 @@ server {
     gzip_comp_level 5;
     gzip_min_length 1024;
     gzip_types text/plain text/css text/javascript application/javascript application/json application/wasm image/svg+xml;
+    # The build ships a .gz next to its larger files; those are sent as they are.
+    gzip_static on;
 
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy same-origin always;
     add_header X-Frame-Options SAMEORIGIN always;
 
+${BASE_BLOCK}
     location = /healthz {
         access_log off;
         default_type text/plain;

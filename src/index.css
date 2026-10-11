@@ -77,9 +77,7 @@
 }
 
 @utility bg-app-gradient {
-  background:
-    radial-gradient(ellipse at top, rgb(255 255 255 / 0.035), transparent 60%),
-    var(--color-base-900);
+  background: radial-gradient(ellipse at top, rgb(255 255 255 / 0.035), transparent 60%), var(--color-base-900);
 }
 
 @keyframes fade-in {

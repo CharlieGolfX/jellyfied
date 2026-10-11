@@ -67,7 +67,7 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
   const effectiveAudio = audioIndex ?? remembered.audioIndex ?? source?.DefaultAudioStreamIndex ?? audioStreams[0]?.Index;
   const effectiveSub = subtitleIndex ?? remembered.subtitleIndex ?? source?.DefaultSubtitleStreamIndex ?? -1;
 
-  const episodes = useEpisodes(isEpisode ? item.SeriesId ?? undefined : undefined, item.SeasonId ?? undefined);
+  const episodes = useEpisodes(isEpisode ? (item.SeriesId ?? undefined) : undefined, item.SeasonId ?? undefined);
   const extras = useSpecialFeatures(item.Id, (item.SpecialFeatureCount ?? 0) > 0 || item.Type === 'Movie');
   const similar = useSimilar(item.Id, item.Type === 'Movie' || item.Type === 'MusicVideo' || item.Type === 'Video');
 
@@ -156,7 +156,11 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                 }
                 onChange={(v) => {
                   setAudioIndex(Number(v));
-                  if (seriesId && rememberAudio) rememberAudioTrack(seriesId, audioStreams.find((s) => s.Index === Number(v)));
+                  if (seriesId && rememberAudio)
+                    rememberAudioTrack(
+                      seriesId,
+                      audioStreams.find((s) => s.Index === Number(v)),
+                    );
                 }}
               />
               <StreamSelect
@@ -168,7 +172,11 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                 ]}
                 onChange={(v) => {
                   setSubtitleIndex(Number(v));
-                  if (seriesId && rememberSubtitles) rememberSubtitleTrack(seriesId, subtitleStreams.find((s) => s.Index === Number(v)));
+                  if (seriesId && rememberSubtitles)
+                    rememberSubtitleTrack(
+                      seriesId,
+                      subtitleStreams.find((s) => s.Index === Number(v)),
+                    );
                 }}
               />
             </div>

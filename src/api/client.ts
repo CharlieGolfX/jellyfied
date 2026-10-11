@@ -90,10 +90,7 @@ export class JellyfinApi {
   }
 
   imageUrl(itemId: string, type: ImageType = 'Primary', opts: ImageOptions = {}): string {
-    const path =
-      opts.index !== undefined
-        ? `/Items/${itemId}/Images/${type}/${opts.index}`
-        : `/Items/${itemId}/Images/${type}`;
+    const path = opts.index !== undefined ? `/Items/${itemId}/Images/${type}/${opts.index}` : `/Items/${itemId}/Images/${type}`;
     return this.url(path, {
       tag: opts.tag ?? undefined,
       maxWidth: opts.maxWidth,

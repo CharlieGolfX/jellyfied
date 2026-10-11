@@ -11,7 +11,18 @@ import { Spinner } from '@/components/ui/Spinner';
 import { fallbackIcon } from '@/components/media/PosterCard';
 import { episodeLabel } from '@/lib/format';
 
-export const SEARCH_TYPES = ['Movie', 'Series', 'Episode', 'MusicAlbum', 'MusicArtist', 'Audio', 'BoxSet', 'Playlist', 'MusicVideo', 'Video'];
+export const SEARCH_TYPES = [
+  'Movie',
+  'Series',
+  'Episode',
+  'MusicAlbum',
+  'MusicArtist',
+  'Audio',
+  'BoxSet',
+  'Playlist',
+  'MusicVideo',
+  'Video',
+];
 
 function useDebounced<T>(value: T, delay: number): T {
   const [v, setV] = useState(value);
@@ -82,9 +93,14 @@ export function SearchBox() {
     staleTime: 30_000,
   });
 
-  const results = useMemo(() => (debounced.length >= 2 ? data ?? [] : []), [data, debounced]);
+  const results = useMemo(() => (debounced.length >= 2 ? (data ?? []) : []), [data, debounced]);
 
-  useEffect(() => setActive(-1), [results]);
+  // New results: nothing is highlighted yet.
+  const [shown, setShown] = useState(results);
+  if (shown !== results) {
+    setShown(results);
+    setActive(-1);
+  }
 
   // "/" focuses search, like Plex.
   useEffect(() => {
@@ -189,12 +205,7 @@ export function SearchBox() {
                   i === active ? 'bg-white/10' : 'hover:bg-white/5',
                 )}
               >
-                <div
-                  className={clsx(
-                    'relative h-12 w-8 shrink-0 overflow-hidden bg-base-800',
-                    round ? 'h-9 w-9 rounded-full' : 'rounded',
-                  )}
-                >
+                <div className={clsx('relative h-12 w-8 shrink-0 overflow-hidden bg-base-800', round ? 'h-9 w-9 rounded-full' : 'rounded')}>
                   <Img
                     src={src}
                     className="h-full w-full object-cover"

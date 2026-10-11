@@ -27,13 +27,17 @@ function Page({ broken }: { broken: boolean }) {
   return <p>page content</p>;
 }
 
-const fallback = (error: unknown, reset: () => void) => (
-  <button onClick={reset}>failed: {(error as Error).message}</button>
-);
+const fallback = (error: unknown, reset: () => void) => <button onClick={reset}>failed: {(error as Error).message}</button>;
 
 describe('ErrorBoundary', () => {
   it('shows its children while nothing is wrong', () => {
-    act(() => root.render(<ErrorBoundary fallback={fallback}><Page broken={false} /></ErrorBoundary>));
+    act(() =>
+      root.render(
+        <ErrorBoundary fallback={fallback}>
+          <Page broken={false} />
+        </ErrorBoundary>,
+      ),
+    );
     expect(host.textContent).toBe('page content');
   });
 
@@ -42,7 +46,9 @@ describe('ErrorBoundary', () => {
       root.render(
         <>
           <nav>navigation</nav>
-          <ErrorBoundary fallback={fallback}><Page broken /></ErrorBoundary>
+          <ErrorBoundary fallback={fallback}>
+            <Page broken />
+          </ErrorBoundary>
         </>,
       ),
     );
@@ -50,22 +56,52 @@ describe('ErrorBoundary', () => {
   });
 
   it('shows the children again when the reset key changes (e.g. going to another page)', () => {
-    act(() => root.render(<ErrorBoundary resetKey="/a" fallback={fallback}><Page broken /></ErrorBoundary>));
+    act(() =>
+      root.render(
+        <ErrorBoundary resetKey="/a" fallback={fallback}>
+          <Page broken />
+        </ErrorBoundary>,
+      ),
+    );
     expect(host.textContent).toBe('failed: boom');
-    act(() => root.render(<ErrorBoundary resetKey="/b" fallback={fallback}><Page broken={false} /></ErrorBoundary>));
+    act(() =>
+      root.render(
+        <ErrorBoundary resetKey="/b" fallback={fallback}>
+          <Page broken={false} />
+        </ErrorBoundary>,
+      ),
+    );
     expect(host.textContent).toBe('page content');
   });
 
   it('stays on the fallback while the reset key is the same', () => {
-    act(() => root.render(<ErrorBoundary resetKey="/a" fallback={fallback}><Page broken /></ErrorBoundary>));
-    act(() => root.render(<ErrorBoundary resetKey="/a" fallback={fallback}><Page broken={false} /></ErrorBoundary>));
+    act(() =>
+      root.render(
+        <ErrorBoundary resetKey="/a" fallback={fallback}>
+          <Page broken />
+        </ErrorBoundary>,
+      ),
+    );
+    act(() =>
+      root.render(
+        <ErrorBoundary resetKey="/a" fallback={fallback}>
+          <Page broken={false} />
+        </ErrorBoundary>,
+      ),
+    );
     expect(host.textContent).toBe('failed: boom');
   });
 
   it('retries when the fallback asks for it', () => {
     let broken = true;
     const Flaky = () => <Page broken={broken} />;
-    act(() => root.render(<ErrorBoundary fallback={fallback}><Flaky /></ErrorBoundary>));
+    act(() =>
+      root.render(
+        <ErrorBoundary fallback={fallback}>
+          <Flaky />
+        </ErrorBoundary>,
+      ),
+    );
     expect(host.textContent).toBe('failed: boom');
     broken = false;
     act(() => host.querySelector('button')!.click());

@@ -195,7 +195,10 @@ export default function LibrariesPage() {
                     </button>
                   </div>
                 ))}
-                <button onClick={() => setPickerFor(lib)} className="mt-1 inline-flex items-center gap-1.5 text-sm text-accent hover:underline">
+                <button
+                  onClick={() => setPickerFor(lib)}
+                  className="mt-1 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+                >
                   <FolderPlus size={14} /> Add folder
                 </button>
               </div>
@@ -223,8 +226,8 @@ export default function LibrariesPage() {
         loading={remove.isPending}
         message={
           <>
-            Remove <strong className="text-fg">{deleting?.Name}</strong> from Jellyfin? Your media files are not deleted, but watch
-            history for this library will be lost.
+            Remove <strong className="text-fg">{deleting?.Name}</strong> from Jellyfin? Your media files are not deleted, but watch history
+            for this library will be lost.
           </>
         }
         onClose={() => setDeleting(null)}
@@ -275,7 +278,12 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="primary" loading={create.isPending} disabled={!name.trim() || paths.length === 0} onClick={() => create.mutate()}>
+            <Button
+              variant="primary"
+              loading={create.isPending}
+              disabled={!name.trim() || paths.length === 0}
+              onClick={() => create.mutate()}
+            >
               Add library
             </Button>
           </>
@@ -306,7 +314,11 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
               {paths.map((p) => (
                 <div key={p} className="flex items-center gap-2 rounded-md bg-black/25 px-3 py-2">
                   <span className="min-w-0 flex-1 truncate font-mono text-sm">{p}</span>
-                  <button onClick={() => setPaths((ps) => ps.filter((x) => x !== p))} className="text-faint hover:text-danger" aria-label="Remove">
+                  <button
+                    onClick={() => setPaths((ps) => ps.filter((x) => x !== p))}
+                    className="text-faint hover:text-danger"
+                    aria-label="Remove"
+                  >
                     <X size={14} />
                   </button>
                 </div>

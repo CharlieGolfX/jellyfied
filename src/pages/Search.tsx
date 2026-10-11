@@ -75,10 +75,7 @@ export default function SearchPage() {
       {(data?.people.length ?? 0) > 0 && (
         <HubRow title="People">
           {data!.people.map((p) => (
-            <PersonCard
-              key={p.Id}
-              person={{ Id: p.Id, Name: p.Name ?? '', PrimaryImageTag: p.ImageTags?.Primary, Type: undefined }}
-            />
+            <PersonCard key={p.Id} person={{ Id: p.Id, Name: p.Name ?? '', PrimaryImageTag: p.ImageTags?.Primary, Type: undefined }} />
           ))}
         </HubRow>
       )}

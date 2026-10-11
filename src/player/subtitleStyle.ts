@@ -87,7 +87,11 @@ function subscribe(cb: () => void) {
 }
 
 export function useSubtitleStyle(): [SubtitleStyle, (patch: Partial<SubtitleStyle>) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => DEFAULT_SUBTITLE_STYLE);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => DEFAULT_SUBTITLE_STYLE,
+  );
   return [value, setSubtitleStyle];
 }
 

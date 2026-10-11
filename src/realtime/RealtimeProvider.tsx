@@ -9,6 +9,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { api } = useAuth();
   const [socket, setSocket] = useState<JellyfinSocket | null>(null);
 
+  // The connection is opened and closed here, and handed to the rest of the app through state.
+  // oxlint-disable react/set-state-in-effect
   useEffect(() => {
     if (!api) {
       setSocket(null);
@@ -18,6 +20,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     setSocket(s);
     return () => s.close();
   }, [api]);
+  // oxlint-enable react/set-state-in-effect
 
   return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>;
 }

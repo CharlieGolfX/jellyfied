@@ -6,7 +6,8 @@ import { useIsAdmin } from '@/auth/AuthProvider';
 import { CrashState } from '@/components/ui/CrashState';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AudioBar } from '@/player/AudioBar';
-import { CastButton, RemoteBar } from '@/player/RemoteControl';
+import { CastButton } from '@/player/CastButton';
+import { RemoteBar } from '@/player/RemoteBar';
 import { SyncPlayButton } from '@/player/SyncPlayProvider';
 import { useVideoSession } from '@/player/VideoSession';
 import { CardSizeButton } from './CardSizeButton';
@@ -41,10 +42,16 @@ export function AppShell() {
     }
   }, [collapsed]);
 
-  // Start each page at the top, and close the mobile drawer.
+  // A new page closes the mobile drawer…
+  const [path, setPath] = useState(location.pathname);
+  if (path !== location.pathname) {
+    setPath(location.pathname);
+    setMobileOpen(false);
+  }
+  // …and starts at the top.
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
-    setMobileOpen(false);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [location.pathname]);
 
   const toggleSidebar = () => {
@@ -55,11 +62,7 @@ export function AppShell() {
   return (
     <div className="flex h-full flex-col bg-base-900">
       <header className="z-40 flex h-14 shrink-0 items-center gap-3 bg-base-850 px-3 shadow-[0_1px_0_rgba(0,0,0,0.5)] sm:px-4">
-        <button
-          onClick={toggleSidebar}
-          className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg"
-          aria-label="Toggle sidebar"
-        >
+        <button onClick={toggleSidebar} className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg" aria-label="Toggle sidebar">
           <MenuIcon size={22} />
         </button>
         <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label="Home">
@@ -90,12 +93,7 @@ export function AppShell() {
 
       <div className="relative flex min-h-0 flex-1">
         {/* Desktop sidebar */}
-        <aside
-          className={clsx(
-            'hidden shrink-0 bg-base-850/70 transition-[width] duration-200 lg:block',
-            collapsed ? 'w-[68px]' : 'w-60',
-          )}
-        >
+        <aside className={clsx('hidden shrink-0 bg-base-850/70 transition-[width] duration-200 lg:block', collapsed ? 'w-[68px]' : 'w-60')}>
           <Sidebar collapsed={collapsed} />
         </aside>
 

@@ -46,6 +46,10 @@ function subscribe(cb: () => void) {
 }
 
 export function useCardScale(): [number, (v: number) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => 1);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => 1,
+  );
   return [value, setCardScale];
 }

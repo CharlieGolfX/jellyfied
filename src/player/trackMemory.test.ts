@@ -2,8 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { MediaStream } from '@/api/types';
 import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from './trackMemory';
 
-const audio = (Index: number, Language: string, extra: Partial<MediaStream> = {}): MediaStream => ({ Type: 'Audio', Index, Language, ...extra });
-const sub = (Index: number, Language: string, extra: Partial<MediaStream> = {}): MediaStream => ({ Type: 'Subtitle', Index, Language, ...extra });
+const audio = (Index: number, Language: string, extra: Partial<MediaStream> = {}): MediaStream => ({
+  Type: 'Audio',
+  Index,
+  Language,
+  ...extra,
+});
+const sub = (Index: number, Language: string, extra: Partial<MediaStream> = {}): MediaStream => ({
+  Type: 'Subtitle',
+  Index,
+  Language,
+  ...extra,
+});
 const both = { audio: true, subtitle: true };
 
 beforeEach(() => localStorage.clear());
@@ -41,8 +51,26 @@ describe('track memory', () => {
 
   it('needs a matching title when the track has no language', () => {
     rememberAudioTrack('show', { Type: 'Audio', Index: 1, Title: 'Commentary' });
-    expect(recallTracks('show', [{ Type: 'Audio', Index: 1 }, { Type: 'Audio', Index: 2, Title: 'Commentary' }], both).audioIndex).toBe(2);
-    expect(recallTracks('show', [{ Type: 'Audio', Index: 1 }, { Type: 'Audio', Index: 2, Title: 'Other' }], both).audioIndex).toBeUndefined();
+    expect(
+      recallTracks(
+        'show',
+        [
+          { Type: 'Audio', Index: 1 },
+          { Type: 'Audio', Index: 2, Title: 'Commentary' },
+        ],
+        both,
+      ).audioIndex,
+    ).toBe(2);
+    expect(
+      recallTracks(
+        'show',
+        [
+          { Type: 'Audio', Index: 1 },
+          { Type: 'Audio', Index: 2, Title: 'Other' },
+        ],
+        both,
+      ).audioIndex,
+    ).toBeUndefined();
   });
 
   it('remembers that subtitles were turned off', () => {

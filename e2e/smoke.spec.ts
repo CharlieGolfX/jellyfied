@@ -164,7 +164,9 @@ test('preferences are taken from the account and changes are sent back to it', a
   let saved: { CustomPrefs?: Record<string, string> } | null = null;
   await page.route('**/jellyfin/DisplayPreferences/**', async (route) => {
     if (route.request().method() === 'GET') {
-      await route.fulfill({ json: { Id: 'prefs', CustomPrefs: { 'jellyplex.seekSteps': '{"back":5,"forward":90}', chromecastVersion: 'stable' } } });
+      await route.fulfill({
+        json: { Id: 'prefs', CustomPrefs: { 'jellyplex.seekSteps': '{"back":5,"forward":90}', chromecastVersion: 'stable' } },
+      });
     } else {
       saved = route.request().postDataJSON() as typeof saved;
       await route.fulfill({ status: 204 });

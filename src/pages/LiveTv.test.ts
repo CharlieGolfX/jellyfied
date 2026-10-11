@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { letterQuery } from './Library';
+import { letterQuery } from './library/toolbar';
 import { programProgress } from './LiveTv';
 
 describe('programProgress', () => {

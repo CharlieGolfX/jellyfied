@@ -152,5 +152,33 @@ export function usePlayerShortcuts({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFull, togglePlay, skip, toggleFullscreen, togglePip, minimize, goNext, nextId, panel, poke, speed, subtitleTiming, inSync, subtitleDelay, audioDelay, audioDelayAvailable, flash, setPanel, setSpeed, setSubtitleDelay, setAudioDelay, setVolume, setMuted, setShowInfo, showShortcuts, setShowShortcuts, steps]);
+  }, [
+    isFull,
+    togglePlay,
+    skip,
+    toggleFullscreen,
+    togglePip,
+    minimize,
+    goNext,
+    nextId,
+    panel,
+    poke,
+    speed,
+    subtitleTiming,
+    inSync,
+    subtitleDelay,
+    audioDelay,
+    audioDelayAvailable,
+    flash,
+    setPanel,
+    setSpeed,
+    setSubtitleDelay,
+    setAudioDelay,
+    setVolume,
+    setMuted,
+    setShowInfo,
+    showShortcuts,
+    setShowShortcuts,
+    steps,
+  ]);
 }

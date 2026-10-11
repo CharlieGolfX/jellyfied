@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Img } from '@/components/ui/States';
 import { errorMessage } from '@/components/ui/Toast';
 import { usePageTitle } from '@/lib/usePageTitle';
+import { useLatest } from '@/lib/useLatest';
 
 function initialServer(): string {
   if (runtimeConfig.serverUrl) return runtimeConfig.serverUrl;
@@ -52,18 +53,18 @@ export default function LoginPage() {
       setInfo(result);
     } catch (err) {
       setInfo(null);
-      setServerError(
-        err instanceof TypeError ? 'Please enter a valid server address.' : errorMessage(err),
-      );
+      setServerError(err instanceof TypeError ? 'Please enter a valid server address.' : errorMessage(err));
     } finally {
       setChecking(false);
     }
   }, []);
 
+  // Only on first mount: check the server that is already known (configured, or used last time).
+  // oxlint-disable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
   useEffect(() => {
     if (serverUrl && !info) void connect(serverUrl);
-    // Only on first mount.
   }, []);
+  // oxlint-enable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
 
   if (session) return <Navigate to={from} replace />;
 
@@ -115,9 +116,7 @@ export default function LoginPage() {
             />
           )}
         </div>
-        <p className="mt-6 text-center text-xs text-faint">
-          A Plex-style client for Jellyfin · v{APP_VERSION}
-        </p>
+        <p className="mt-6 text-center text-xs text-faint">A Plex-style client for Jellyfin · v{APP_VERSION}</p>
       </div>
     </div>
   );
@@ -195,8 +194,7 @@ function LoginStep({
   const [manual, setManual] = useState(false);
   const [qc, setQc] = useState<QuickConnectResult | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const onAuthRef = useRef(onAuthenticated);
-  onAuthRef.current = onAuthenticated;
+  const onAuthRef = useLatest(onAuthenticated);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,11 +218,7 @@ function LoginStep({
       const result = await api.post<AuthenticationResult>('/Users/AuthenticateByName', { Username: name, Pw: pw });
       onAuthenticated(result);
     } catch (err) {
-      setError(
-        (err as { status?: number }).status === 401
-          ? 'Invalid username or password.'
-          : errorMessage(err),
-      );
+      setError((err as { status?: number }).status === 401 ? 'Invalid username or password.' : errorMessage(err));
       setLoading(false);
     }
   };
@@ -259,7 +253,7 @@ function LoginStep({
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [qc, api]);
+  }, [qc, api, onAuthRef]);
 
   const startQuickConnect = async () => {
     setError(null);
@@ -306,7 +300,11 @@ function LoginStep({
     <div className="space-y-6">
       <div className="flex items-start gap-3">
         {onBack && (
-          <button onClick={onBack} className="mt-0.5 rounded-full p-1 text-muted hover:bg-white/10 hover:text-fg" aria-label="Change server">
+          <button
+            onClick={onBack}
+            className="mt-0.5 rounded-full p-1 text-muted hover:bg-white/10 hover:text-fg"
+            aria-label="Change server"
+          >
             <ArrowLeft size={18} />
           </button>
         )}
@@ -335,7 +333,11 @@ function LoginStep({
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left transition hover:bg-white/10"
                 >
                   <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent font-bold text-accent-ink">
-                    <Img src={api.userImageUrl(a.userId, undefined, 96)} className="absolute inset-0 h-full w-full object-cover" fallback={a.userName.charAt(0).toUpperCase()} />
+                    <Img
+                      src={api.userImageUrl(a.userId, undefined, 96)}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      fallback={a.userName.charAt(0).toUpperCase()}
+                    />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">Continue as {a.userName}</span>
                 </button>
@@ -414,14 +416,7 @@ function LoginStep({
             />
           </Field>
           {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full justify-center"
-            loading={loading}
-            disabled={!username.trim()}
-          >
+          <Button type="submit" variant="primary" size="lg" className="w-full justify-center" loading={loading} disabled={!username.trim()}>
             Sign in
           </Button>
           <div className={clsx('flex gap-2', users.length > 0 ? 'justify-between' : 'justify-center')}>

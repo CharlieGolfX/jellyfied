@@ -4,7 +4,10 @@ import { castServerAddress, isLocalOnlyAddress, parseCastMessage } from './chrom
 describe('parseCastMessage', () => {
   it('reads what the receiver reports about playback', () => {
     const message = parseCastMessage(
-      JSON.stringify({ type: 'playbackprogress', data: { NowPlayingItem: { Id: 'a', Name: 'Film' }, PlayState: { PositionTicks: 50, IsPaused: true } } }),
+      JSON.stringify({
+        type: 'playbackprogress',
+        data: { NowPlayingItem: { Id: 'a', Name: 'Film' }, PlayState: { PositionTicks: 50, IsPaused: true } },
+      }),
     );
     expect(message).toMatchObject({ type: 'playbackprogress', item: { Id: 'a' }, playState: { PositionTicks: 50, IsPaused: true } });
   });

@@ -5,23 +5,14 @@ import { ErrorState } from '@/components/ui/States';
 import { episodeLabel } from '@/lib/format';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { AlbumDetails, ArtistDetails, PlaylistDetails } from './MusicDetails';
-import {
-  CollectionDetails,
-  FolderDetails,
-  GenericDetails,
-  PersonDetails,
-  PhotoViewer,
-  TagDetails,
-} from './OtherDetails';
+import { CollectionDetails, FolderDetails, GenericDetails, PersonDetails, PhotoViewer, TagDetails } from './OtherDetails';
 import { SeasonDetails, SeriesDetails } from './SeriesDetails';
 import { VideoDetails } from './VideoDetails';
 
 export default function ItemPage() {
   const { id } = useParams();
   const { data: item, isLoading, error, refetch } = useItem(id);
-  usePageTitle(
-    item?.Type === 'Episode' ? [item.SeriesName, episodeLabel(item), item.Name].filter(Boolean).join(' · ') : item?.Name,
-  );
+  usePageTitle(item?.Type === 'Episode' ? [item.SeriesName, episodeLabel(item), item.Name].filter(Boolean).join(' · ') : item?.Name);
 
   if (isLoading) return <PageSpinner />;
   if (error || !item) return <ErrorState error={error ?? 'Item not found'} onRetry={() => refetch()} />;

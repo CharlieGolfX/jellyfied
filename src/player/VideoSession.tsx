@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { generateId } from '@/api/device';
 import type { VideoPlayerState } from './usePlay';
+import { stripBasePath } from '@/lib/basePath';
 
 /**
  * The video player lives at app level (outside the routes) so playback survives navigation.
@@ -30,7 +31,8 @@ interface VideoSessionApi {
 
 const VideoSessionContext = createContext<VideoSessionApi | null>(null);
 
-export const isPlayPath = (pathname: string) => pathname.startsWith('/play/');
+/** True on the full-screen player's page. Takes a router path or the browser's own path. */
+export const isPlayPath = (pathname: string) => stripBasePath(pathname).startsWith('/play/');
 
 export function VideoSessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<VideoSession | null>(null);
@@ -40,9 +42,7 @@ export function VideoSessionProvider({ children }: { children: ReactNode }) {
   const mode = isPlayPath(location.pathname) ? 'full' : 'mini';
 
   // Signing out ends playback.
-  useEffect(() => {
-    if (!auth) setSession(null);
-  }, [auth]);
+  if (!auth && session) setSession(null);
 
   const start = useCallback((itemId: string, state: VideoPlayerState = {}) => {
     setSession((prev) => {
@@ -65,14 +65,10 @@ export function VideoSessionProvider({ children }: { children: ReactNode }) {
     else navigate(session ? `/item/${session.itemId}` : '/', { replace: true });
   }, [navigate, session]);
 
-  const value = useMemo(() => ({ session, mode, start, close, expand, minimize }) as VideoSessionApi, [
-    session,
-    mode,
-    start,
-    close,
-    expand,
-    minimize,
-  ]);
+  const value = useMemo(
+    () => ({ session, mode, start, close, expand, minimize }) as VideoSessionApi,
+    [session, mode, start, close, expand, minimize],
+  );
 
   return <VideoSessionContext.Provider value={value}>{children}</VideoSessionContext.Provider>;
 }
@@ -91,6 +87,7 @@ export function PlayRoute() {
   useEffect(() => {
     if (id) start(id, (location.state ?? {}) as VideoPlayerState);
     // location.key changes for every navigation, including repeated plays of the same item.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [id, location.key, location.state, start]);
   return <div className="fixed inset-0 bg-black" />;
 }

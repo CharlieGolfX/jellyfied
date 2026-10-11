@@ -45,7 +45,12 @@ export function FeaturedBanner() {
   const item = items[Math.min(index, count - 1)];
   if (!item) return null;
   const logo = logoSrc(api, item, 500);
-  const facts = [item.ProductionYear, item.OfficialRating, item.Type === 'Movie' ? formatRuntime(item.RunTimeTicks) : null, ...(item.Genres ?? []).slice(0, 2)]
+  const facts = [
+    item.ProductionYear,
+    item.OfficialRating,
+    item.Type === 'Movie' ? formatRuntime(item.RunTimeTicks) : null,
+    ...(item.Genres ?? []).slice(0, 2),
+  ]
     .filter(Boolean)
     .join(' · ');
 
@@ -64,7 +69,12 @@ export function FeaturedBanner() {
       <div className="absolute inset-0 bg-gradient-to-t from-base-900 via-transparent to-transparent" />
       <div className="absolute inset-x-0 bottom-0 max-w-2xl space-y-3 px-4 pb-8 sm:px-8 lg:px-10">
         {logo ? (
-          <Img src={logo} alt={item.Name ?? ''} className="max-h-28 max-w-[min(70vw,420px)] object-contain object-left" fallback={<h2 className="text-3xl font-bold">{item.Name}</h2>} />
+          <Img
+            src={logo}
+            alt={item.Name ?? ''}
+            className="max-h-28 max-w-[min(70vw,420px)] object-contain object-left"
+            fallback={<h2 className="text-3xl font-bold">{item.Name}</h2>}
+          />
         ) : (
           <h2 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">{item.Name}</h2>
         )}

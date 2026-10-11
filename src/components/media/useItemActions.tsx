@@ -1,4 +1,18 @@
-import { CheckCircle, Circle, FolderMinus, FolderPlus, Heart, History, ListPlus, Music, Pencil, Play, Radio, RotateCcw, Tv } from 'lucide-react';
+import {
+  CheckCircle,
+  Circle,
+  FolderMinus,
+  FolderPlus,
+  Heart,
+  History,
+  ListPlus,
+  Music,
+  Pencil,
+  Play,
+  Radio,
+  RotateCcw,
+  Tv,
+} from 'lucide-react';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClearProgress, useSetFavorite, useSetPlayed } from '@/api/queries';
@@ -40,8 +54,7 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   const playable = isPlayable(item);
   const showUnplayedTriangle = watchable && !item.IsFolder && !played && pct === 0 && item.MediaType === 'Video';
 
-  const togglePlayed = () =>
-    setPlayed.mutate({ id: item.Id, played: !played }, { onError: (e) => toast.error(e) });
+  const togglePlayed = () => setPlayed.mutate({ id: item.Id, played: !played }, { onError: (e) => toast.error(e) });
 
   const menuItems: MenuItem[] = [];
   if (playable) {
@@ -67,11 +80,7 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
     menuItems.push({
       label: item.UserData?.IsFavorite ? 'Remove from favorites' : 'Add to favorites',
       icon: <Heart size={16} />,
-      onSelect: () =>
-        setFavorite.mutate(
-          { id: item.Id, favorite: !item.UserData?.IsFavorite },
-          { onError: (e) => toast.error(e) },
-        ),
+      onSelect: () => setFavorite.mutate({ id: item.Id, favorite: !item.UserData?.IsFavorite }, { onError: (e) => toast.error(e) }),
     });
   }
   // Based on the saved position, not the progress bar: a watched item that is being rewatched has both.

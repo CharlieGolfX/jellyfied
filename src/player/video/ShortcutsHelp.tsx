@@ -23,11 +23,7 @@ export function playerShortcuts(steps: SeekSteps): { keys: string[]; action: str
 
 export function ShortcutsHelp({ steps, onClose }: { steps: SeekSteps; onClose: () => void }) {
   return (
-    <div
-      className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-      data-testid="shortcuts-help"
-    >
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-4" onClick={onClose} data-testid="shortcuts-help">
       <div
         role="dialog"
         aria-label="Keyboard shortcuts"
@@ -45,7 +41,10 @@ export function ShortcutsHelp({ steps, onClose }: { steps: SeekSteps; onClose: (
             <div key={s.action} className="contents">
               <dt className="flex gap-1">
                 {s.keys.map((k) => (
-                  <kbd key={k} className="min-w-7 rounded bg-white/10 px-1.5 py-0.5 text-center font-sans text-xs font-semibold text-white/90 ring-1 ring-white/15">
+                  <kbd
+                    key={k}
+                    className="min-w-7 rounded bg-white/10 px-1.5 py-0.5 text-center font-sans text-xs font-semibold text-white/90 ring-1 ring-white/15"
+                  >
                     {k}
                   </kbd>
                 ))}

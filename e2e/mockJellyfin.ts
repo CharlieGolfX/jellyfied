@@ -35,7 +35,15 @@ const brokenMovie = { ...movie, Id: 'movie-broken', Name: 'Broken', Genres: 5, P
 
 const list = (items: unknown[]) => ({ Items: items, TotalRecordCount: items.length, StartIndex: 0 });
 
-function answer(route: Route): { status?: number; body?: unknown } {
+interface MockOptions {
+  /** Sign the demo user in as an administrator. */
+  admin?: boolean;
+}
+
+const serverConfig = { ServerName: 'Mock Server', UICulture: 'en-US', PreferredMetadataLanguage: 'en', MetadataCountryCode: 'US' };
+
+function answer(route: Route, options: MockOptions): { status?: number; body?: unknown } {
+  const me = options.admin ? { ...user, Policy: { ...user.Policy, IsAdministrator: true } } : user;
   const request = route.request();
   const url = new URL(request.url());
   const path = url.pathname.slice(SERVER.length);
@@ -49,13 +57,22 @@ function answer(route: Route): { status?: number; body?: unknown } {
   if (path === '/Users/AuthenticateByName') {
     const body = request.postDataJSON() as { Username?: string; Pw?: string };
     if (body.Username !== USER.name || body.Pw !== USER.password) return { status: 401 };
-    return { body: { User: user, AccessToken: 'mock-token', ServerId: 'server-1' } };
+    return { body: { User: me, AccessToken: 'mock-token', ServerId: 'server-1' } };
   }
 
   // Everything else needs the token the login handed out.
   if (!(request.headers().authorization ?? '').includes('Token="mock-token"')) return { status: 401 };
 
-  if (path === '/Users/Me') return { body: user };
+  if (path === '/Users/Me') return { body: me };
+  // The server dashboard.
+  if (path === '/Users') return { body: [me] };
+  if (path === '/System/Info') return { body: { ServerName: 'Mock Server', Version: '10.11.0', OperatingSystem: 'Linux', Id: 'server-1' } };
+  if (path === '/Items/Counts') return { body: { MovieCount: 1, SeriesCount: 0, EpisodeCount: 0, SongCount: 0, AlbumCount: 0 } };
+  if (path === '/System/Info/Storage') return { status: 404 };
+  if (path === '/ScheduledTasks' || path === '/Localization/Countries') return { body: [] };
+  if (path === '/System/Configuration' && method === 'GET') return { body: serverConfig };
+  if (path === `/Items/${movie.Id}/MetadataEditor`)
+    return { body: { ExternalIdInfos: [], ParentalRatingOptions: [], Countries: [], Cultures: [] } };
   if (path === '/Sessions/Logout') return { status: 204 };
   if (path === '/UserViews') return { body: list([library]) };
   if (path === '/Items/Latest') return { body: [movie] };
@@ -71,17 +88,20 @@ function answer(route: Route): { status?: number; body?: unknown } {
   return { body: list([]) };
 }
 
-export async function mockJellyfin(page: Page) {
+export async function mockJellyfin(page: Page, options: MockOptions = {}) {
   // What the container's entrypoint writes when JELLYFIN_URL is set.
   await page.route('**/config.js', (route) =>
-    route.fulfill({ contentType: 'application/javascript', body: `window.JELLYPLEX_CONFIG = { serverUrl: "${SERVER}", lockServer: true };` }),
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.JELLYPLEX_CONFIG = { serverUrl: "${SERVER}", lockServer: true };`,
+    }),
   );
   // The realtime connection (remote control, SyncPlay): accepted and left silent.
   await page.routeWebSocket(`**${SERVER}/socket**`, () => {});
   await page.route(`**${SERVER}/**`, (route) => {
     // No artwork: the cards fall back to their placeholders.
     if (/\/Images\/|\/UserImage/.test(route.request().url())) return route.fulfill({ status: 404 });
-    const { status = 200, body } = answer(route);
+    const { status = 200, body } = answer(route, options);
     return route.fulfill({ status, contentType: 'application/json', body: body === undefined ? '' : JSON.stringify(body) });
   });
 }

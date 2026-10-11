@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/CharlieGolfX/jellyplex/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
+  - name: Jellyfin server problems
+    url: https://github.com/jellyfin/jellyfin/issues
+    about: Problems that also happen in the official Jellyfin web client belong to the Jellyfin project.

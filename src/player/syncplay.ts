@@ -72,9 +72,7 @@ export interface SyncPlayOpenRequest {
   queue: string[];
 }
 
-export type SyncPlayNotice =
-  | { type: 'joined' | 'left'; user: string }
-  | { type: 'info' | 'error'; message: string };
+export type SyncPlayNotice = { type: 'joined' | 'left'; user: string } | { type: 'info' | 'error'; message: string };
 
 const EMPTY: SyncPlaySnapshot = { group: null, hasQueue: false, following: false, playlistItemId: null };
 

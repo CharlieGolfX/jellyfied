@@ -1,19 +1,5 @@
 import clsx from 'clsx';
-import {
-  ListMusic,
-  Music,
-  Pause,
-  Play,
-  Repeat,
-  Repeat1,
-  Shuffle,
-  SkipBack,
-  SkipForward,
-  Volume1,
-  Volume2,
-  VolumeX,
-  X,
-} from 'lucide-react';
+import { ListMusic, Music, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '@/auth/AuthProvider';
@@ -37,12 +23,7 @@ function QueueRow({ item, index, active }: { item: BaseItemDto; index: number; a
   const player = useAudioPlayer();
   const art = useArt(item, 96);
   return (
-    <div
-      className={clsx(
-        'group flex items-center gap-3 rounded px-2 py-1.5',
-        active ? 'bg-white/10' : 'hover:bg-white/5',
-      )}
-    >
+    <div className={clsx('group flex items-center gap-3 rounded px-2 py-1.5', active ? 'bg-white/10' : 'hover:bg-white/5')}>
       <button onClick={() => player.jumpTo(index)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-base-800">
           <Img src={art} className="h-full w-full object-cover" fallback={<Music size={16} className="m-3 text-faint" />} />
@@ -121,18 +102,16 @@ export function AudioBar() {
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{item.Name}</div>
             <div className="truncate text-xs text-muted">
-              {item.ArtistItems?.length ? (
-                item.ArtistItems.map((a, i) => (
-                  <span key={a.Id}>
-                    {i > 0 && ', '}
-                    <Link to={`/item/${a.Id}`} className="hover:underline">
-                      {a.Name}
-                    </Link>
-                  </span>
-                ))
-              ) : (
-                item.AlbumArtist
-              )}
+              {item.ArtistItems?.length
+                ? item.ArtistItems.map((a, i) => (
+                    <span key={a.Id}>
+                      {i > 0 && ', '}
+                      <Link to={`/item/${a.Id}`} className="hover:underline">
+                        {a.Name}
+                      </Link>
+                    </span>
+                  ))
+                : item.AlbumArtist}
               {item.Album && <span className="text-faint"> — {item.Album}</span>}
             </div>
           </div>
@@ -141,10 +120,7 @@ export function AudioBar() {
         <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={player.cycleRepeat}
-            className={clsx(
-              'hidden rounded-full p-2 sm:block',
-              player.repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-fg',
-            )}
+            className={clsx('hidden rounded-full p-2 sm:block', player.repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-fg')}
             title={`Repeat: ${player.repeat}`}
           >
             {player.repeat === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}

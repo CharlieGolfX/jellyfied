@@ -152,7 +152,12 @@ export function SubtitlesMenu({
                 <PanelSection title="Text size">
                   <div className="flex flex-wrap gap-1 px-4 pt-1 pb-2">
                     {SUBTITLE_SIZES.map((sz) => (
-                      <PanelChip key={sz.value} selected={subtitleStyle.size === sz.value} onClick={() => setSubtitleStyle({ size: sz.value })} title={sz.label}>
+                      <PanelChip
+                        key={sz.value}
+                        selected={subtitleStyle.size === sz.value}
+                        onClick={() => setSubtitleStyle({ size: sz.value })}
+                        title={sz.label}
+                      >
                         {sz.short}
                       </PanelChip>
                     ))}

@@ -101,7 +101,11 @@ function Channels() {
             >
               <span className="w-10 shrink-0 text-right text-sm text-muted tabular-nums">{channel.ChannelNumber}</span>
               <span className="relative flex h-12 w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-base-800 text-faint">
-                <Img src={imageSrc(api, cardImage(channel, 'landscape'), 240)} className="absolute inset-0 h-full w-full object-contain p-1" fallback={<Tv size={20} />} />
+                <Img
+                  src={imageSrc(api, cardImage(channel, 'landscape'), 240)}
+                  className="absolute inset-0 h-full w-full object-contain p-1"
+                  fallback={<Tv size={20} />}
+                />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{channel.Name}</span>
@@ -168,12 +172,20 @@ function OnNow() {
       {programs.map((program) => {
         const progress = programProgress(program, now);
         return (
-          <button key={program.Id} onClick={() => void playChannel(program.ChannelId!, program.ChannelName)} className="group min-w-0 text-left">
+          <button
+            key={program.Id}
+            onClick={() => void playChannel(program.ChannelId!, program.ChannelName)}
+            className="group min-w-0 text-left"
+          >
             <span className="relative block aspect-video overflow-hidden rounded-md bg-base-800 shadow-md ring-white/0 transition-[box-shadow] group-hover:ring-2 group-hover:ring-accent">
               <Img
                 src={imageSrc(api, cardImage(program, 'landscape'), 560)}
                 className="absolute inset-0 h-full w-full object-cover"
-                fallback={<span className="absolute inset-0 flex items-center justify-center text-faint"><Tv size={36} strokeWidth={1.25} /></span>}
+                fallback={
+                  <span className="absolute inset-0 flex items-center justify-center text-faint">
+                    <Tv size={36} strokeWidth={1.25} />
+                  </span>
+                }
               />
               <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
                 <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-ink shadow-lg">

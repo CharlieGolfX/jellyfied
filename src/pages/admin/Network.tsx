@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { NetworkConfiguration } from '@/api/types';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Switch, TextArea } from '@/components/ui/Form';
@@ -12,8 +12,10 @@ export default function NetworkPage() {
   const [draft, setDraft] = useState<NetworkConfiguration | null>(null);
   const [lists, setLists] = useState({ subnets: '', addresses: '', proxies: '', filter: '' });
 
-  useEffect(() => {
-    if (!query.data) return;
+  // The form starts over from whatever the server has, each time that is loaded.
+  const [loaded, setLoaded] = useState<NetworkConfiguration | undefined>(undefined);
+  if (query.data && query.data !== loaded) {
+    setLoaded(query.data);
     setDraft(query.data);
     setLists({
       subnets: (query.data.LocalNetworkSubnets ?? []).join('\n'),
@@ -21,7 +23,7 @@ export default function NetworkPage() {
       proxies: (query.data.KnownProxies ?? []).join('\n'),
       filter: (query.data.RemoteIPFilter ?? []).join('\n'),
     });
-  }, [query.data]);
+  }
 
   if (query.error) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
   if (!draft) return <PageSpinner />;
@@ -58,16 +60,32 @@ export default function NetworkPage() {
           </Field>
           <div />
           <Field label="Local HTTP port">
-            <Input type="number" value={draft.InternalHttpPort} onChange={(e) => set('InternalHttpPort', port(e.target.value, draft.InternalHttpPort))} />
+            <Input
+              type="number"
+              value={draft.InternalHttpPort}
+              onChange={(e) => set('InternalHttpPort', port(e.target.value, draft.InternalHttpPort))}
+            />
           </Field>
           <Field label="Local HTTPS port">
-            <Input type="number" value={draft.InternalHttpsPort} onChange={(e) => set('InternalHttpsPort', port(e.target.value, draft.InternalHttpsPort))} />
+            <Input
+              type="number"
+              value={draft.InternalHttpsPort}
+              onChange={(e) => set('InternalHttpsPort', port(e.target.value, draft.InternalHttpsPort))}
+            />
           </Field>
           <Field label="Public HTTP port">
-            <Input type="number" value={draft.PublicHttpPort} onChange={(e) => set('PublicHttpPort', port(e.target.value, draft.PublicHttpPort))} />
+            <Input
+              type="number"
+              value={draft.PublicHttpPort}
+              onChange={(e) => set('PublicHttpPort', port(e.target.value, draft.PublicHttpPort))}
+            />
           </Field>
           <Field label="Public HTTPS port">
-            <Input type="number" value={draft.PublicHttpsPort} onChange={(e) => set('PublicHttpsPort', port(e.target.value, draft.PublicHttpsPort))} />
+            <Input
+              type="number"
+              value={draft.PublicHttpsPort}
+              onChange={(e) => set('PublicHttpsPort', port(e.target.value, draft.PublicHttpsPort))}
+            />
           </Field>
         </div>
         <div className="mt-3 divide-y divide-white/5">
@@ -91,7 +109,11 @@ export default function NetworkPage() {
             <TextArea className="font-mono" value={lists.subnets} onChange={(e) => setLists((l) => ({ ...l, subnets: e.target.value }))} />
           </Field>
           <Field label="Bind to local addresses" hint="One per line. Empty = all interfaces.">
-            <TextArea className="font-mono" value={lists.addresses} onChange={(e) => setLists((l) => ({ ...l, addresses: e.target.value }))} />
+            <TextArea
+              className="font-mono"
+              value={lists.addresses}
+              onChange={(e) => setLists((l) => ({ ...l, addresses: e.target.value }))}
+            />
           </Field>
           <Field label="Known proxies" hint="Reverse proxies whose X-Forwarded-For header is trusted.">
             <TextArea className="font-mono" value={lists.proxies} onChange={(e) => setLists((l) => ({ ...l, proxies: e.target.value }))} />

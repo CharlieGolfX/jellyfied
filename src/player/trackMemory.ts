@@ -108,11 +108,19 @@ export function recallTracks(
   if (!memory) return {};
   const result: { audioIndex?: number; subtitleIndex?: number } = {};
   if (enabled.audio && memory.audio) {
-    result.audioIndex = match(streams.filter((s) => s.Type === 'Audio'), memory.audio)?.Index;
+    result.audioIndex = match(
+      streams.filter((s) => s.Type === 'Audio'),
+      memory.audio,
+    )?.Index;
   }
   if (enabled.subtitle && memory.subtitle) {
     result.subtitleIndex =
-      memory.subtitle === 'off' ? -1 : match(streams.filter((s) => s.Type === 'Subtitle'), memory.subtitle)?.Index;
+      memory.subtitle === 'off'
+        ? -1
+        : match(
+            streams.filter((s) => s.Type === 'Subtitle'),
+            memory.subtitle,
+          )?.Index;
   }
   return result;
 }

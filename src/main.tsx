@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ApiError } from '@/api/client';
+import { appPath, BASE_PATH, stripBasePath } from '@/lib/basePath';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AudioPlayerProvider } from '@/player/AudioPlayerProvider';
@@ -27,10 +28,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// Served under a path, but opened outside it (e.g. the bare host name): go to the app.
+if (BASE_PATH && stripBasePath(window.location.pathname) === window.location.pathname) {
+  window.location.replace(appPath('/'));
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={BASE_PATH || undefined}>
         <ToastProvider>
           <AuthProvider>
             <RealtimeProvider>

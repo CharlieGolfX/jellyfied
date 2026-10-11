@@ -85,7 +85,12 @@ export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: 
                 },
               ]}
               trigger={({ toggle, open }) => (
-                <button onClick={toggle} aria-expanded={open} className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg" aria-label="More">
+                <button
+                  onClick={toggle}
+                  aria-expanded={open}
+                  className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg"
+                  aria-label="More"
+                >
                   <MoreHorizontal size={18} />
                 </button>
               )}

@@ -7,12 +7,7 @@ export function CardSizeSlider({ className }: { className?: string }) {
   const [scale, setScale] = useCardScale();
   return (
     <div className={clsx('flex items-center gap-2 text-muted', className)} title="Poster size">
-      <button
-        type="button"
-        onClick={() => setScale(scale - 0.1)}
-        className="rounded p-0.5 hover:text-fg"
-        aria-label="Smaller posters"
-      >
+      <button type="button" onClick={() => setScale(scale - 0.1)} className="rounded p-0.5 hover:text-fg" aria-label="Smaller posters">
         <RectangleVertical size={11} />
       </button>
       <input
@@ -26,12 +21,7 @@ export function CardSizeSlider({ className }: { className?: string }) {
         className="w-28"
         aria-label="Poster size"
       />
-      <button
-        type="button"
-        onClick={() => setScale(scale + 0.1)}
-        className="rounded p-0.5 hover:text-fg"
-        aria-label="Larger posters"
-      >
+      <button type="button" onClick={() => setScale(scale + 0.1)} className="rounded p-0.5 hover:text-fg" aria-label="Larger posters">
         <RectangleVertical size={17} />
       </button>
     </div>

@@ -24,10 +24,7 @@ export function Field({
 const inputClass =
   'w-full rounded-md bg-base-950/60 px-3 py-2 text-sm text-fg ring-1 ring-white/10 placeholder:text-faint focus:ring-2 focus:ring-accent focus:outline-none disabled:opacity-60';
 
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
-  { className, ...rest },
-  ref,
-) {
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
   return <input ref={ref} className={clsx(inputClass, 'h-10', className)} {...rest} />;
 });
 
@@ -74,10 +71,7 @@ export function Switch({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={clsx(
-          'relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-accent' : 'bg-base-600',
-        )}
+        className={clsx('relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-accent' : 'bg-base-600')}
       >
         <span
           className={clsx(

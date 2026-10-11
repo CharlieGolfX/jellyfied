@@ -11,3 +11,4 @@ dist
 # Test output
 test-results
 playwright-report
+coverage

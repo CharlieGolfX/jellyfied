@@ -18,6 +18,9 @@ describe('mergePrefs', () => {
   });
 
   it('ignores preferences of other apps stored next to ours', () => {
-    expect(mergePrefs({ skipForwardLength: '30000', theme: 'remote' }, { theme: 'remote', home: null }, keys)).toEqual({ apply: {}, push: false });
+    expect(mergePrefs({ skipForwardLength: '30000', theme: 'remote' }, { theme: 'remote', home: null }, keys)).toEqual({
+      apply: {},
+      push: false,
+    });
   });
 });

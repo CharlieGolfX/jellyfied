@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in Jellyplex does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: jellyplex
+    attributes:
+      label: Jellyplex version
+      description: Shown at the bottom of the account menu and on the sign-in screen.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: jellyfin
+    attributes:
+      label: Jellyfin server version
+      placeholder: 10.11.0
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Firefox 143 on Windows 11
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run Jellyplex?
+      options:
+        - Prebuilt image (ghcr.io)
+        - Docker Compose, built from source
+        - Static hosting, without Docker
+        - Development server (npm run dev)
+    validations:
+      required: true
+  - type: textarea
+    id: playback
+    attributes:
+      label: For playback problems
+      description: >
+        Whether the player showed Direct Play, Direct Stream or Transcode, the text of the
+        "Playback info" overlay (press I in the player), and the media info of the file if you can.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Browser console or container log
+      description: Remove access tokens (api_key=…) and addresses you do not want to share.
+      render: text

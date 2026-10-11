@@ -4,17 +4,25 @@ A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a l
 Jellyfin's own colour scheme and logo, and a full server dashboard for administrators. It runs as a
 small nginx container. Your Jellyfin server is not modified: Jellyplex is just another client.
 
-![Movies library, Recommended tab](docs/screenshots/movies-recommended.jpg)
+![Home page with the featured title and Continue Watching](docs/screenshots/home.jpg)
 
 ## Screenshots
 
-| Library view | Movie details |
+| Player | Library, Recommended tab |
 | --- | --- |
-| ![Movies library grid with sorting and filters](docs/screenshots/movies-library.jpg) | ![Movie detail page with cast and media info](docs/screenshots/movie-details.jpg) |
+| ![Video player with its controls and the settings menu](docs/screenshots/player.jpg) | ![Movies library, Recommended tab](docs/screenshots/movies-recommended.jpg) |
 
-| Show details | Account settings |
+| Library grid | Library list, with items selected |
 | --- | --- |
-| ![Show detail page with seasons](docs/screenshots/show-details.jpg) | ![Account and playback settings](docs/screenshots/account-settings.png) |
+| ![Movies library grid with sorting, filters and the A–Z bar](docs/screenshots/movies-library.jpg) | ![Movies library as a list, with three items selected and the bulk actions](docs/screenshots/library-list.jpg) |
+
+| Movie details | Show details |
+| --- | --- |
+| ![Movie detail page with cast and media info](docs/screenshots/movie-details.jpg) | ![Show detail page with seasons](docs/screenshots/show-details.jpg) |
+
+| Account settings |  |
+| --- | --- |
+| ![Account and playback settings](docs/screenshots/account-settings.png) |  |
 
 ## Features
 
@@ -231,6 +239,7 @@ with plain `docker run`, pass them with `-e`. Changes take effect when the conta
 | `JELLYFIN_URL`          | _(empty)_ ¹                | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyplex (no CORS or mixed-content problems, one URL to expose). |
 | `JELLYFIN_PUBLIC_URL`   | _(empty)_                  | Address the browser should use to reach Jellyfin directly, e.g. `https://jellyfin.example.com`. Overrides the proxy for API and media requests. |
 | `JELLYPLEX_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
+| `JELLYPLEX_BASE_PATH`   | _(empty)_                  | Serve Jellyplex under a path, e.g. `/jellyplex`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyplex/jellyfin`). |
 | `JELLYPLEX_PORT`        | `80`                       | Port nginx listens on inside the container. |
 
 ¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
@@ -254,6 +263,12 @@ Docker Compose additionally understands these:
 - HTTPS: put Jellyplex behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
   you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
 - The container serves a health check at `/healthz`.
+- nginx runs as an unprivileged user (uid 101), not as root. Docker lets it listen on port 80
+  anyway; on runtimes that don't (some Kubernetes and rootless setups), set `JELLYPLEX_PORT=8080`
+  and publish that port instead.
+- The container sends a strict Content-Security-Policy: scripts and styles only from Jellyplex
+  itself, plus WebAssembly (for styled subtitles) and Google's Cast script when Chromecast is used.
+- Under a base path, a reverse proxy in front has to pass the path on unchanged (no stripping).
 - Jellyplex stores only the session tokens of the signed-in accounts and UI preferences in the
   browser's local storage.
 
@@ -289,8 +304,10 @@ npm install
 cp .env.example .env          # set JELLYFIN_URL to your Jellyfin server
 npm run dev                   # http://localhost:5173
 npm run build                 # type-check and production build into dist/
-npm run check                 # lint, type-check and unit tests
-npm run test:e2e              # browser tests (first run: npx playwright install chromium)
+npm run check                 # lint, formatting, type-check and unit tests
+npm run format                # format everything with Prettier
+npm run test:e2e              # browser tests (first run: npx playwright install)
+npm run test:container        # build the image and test what it serves (needs Docker)
 ```
 
 The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
@@ -304,8 +321,11 @@ The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
 
 - **Unit tests** ([Vitest](https://vitest.dev)) live next to the code as `*.test.ts(x)`. `npm test`
   runs them once, `npm run test:watch` re-runs them as you edit.
+- `npm run test:coverage` also writes a coverage report to `coverage/`.
 - **Browser tests** ([Playwright](https://playwright.dev)) are in `e2e/`. `npm run test:e2e` builds
-  the site and runs `smoke.spec.ts` against a mocked Jellyfin API, so no server is needed.
+  the site and runs `smoke.spec.ts` and `pages.spec.ts` against a mocked Jellyfin API, so no server
+  is needed. They run in Chromium, Firefox and WebKit (Safari's engine); `E2E_BROWSERS=chromium`
+  limits a run to one of them.
 - **Playback tests** (`e2e/live.spec.ts`) play real media and are skipped unless you give them a
   test account. They change the watched state of what they play, so use a throwaway user:
 
@@ -314,10 +334,19 @@ The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
   ```
 
   Add `E2E_BASE_URL=http://localhost:8080` to test a running container instead of a fresh build.
+- **Container tests** (`docker/test-container.mjs`) start the image against a stand-in server and
+  check the site, the security headers, the reverse proxy including WebSockets, and serving under
+  a base path.
 - **Linting** uses [oxlint](https://oxc.rs/docs/guide/usage/linter) (`npm run lint`), including the
-  React hooks rules. Errors fail the build; warnings mark code that is worth a second look.
+  React hooks and React compiler rules, all as errors. **Formatting** is
+  [Prettier](https://prettier.io) (`npm run format`).
+- **API types**: `src/api/types.ts` is written by hand. `npm run generate:api` regenerates
+  `src/api/generated.ts` from a Jellyfin server's OpenAPI document, and `src/api/types.check.ts`
+  makes the type check fail when a hand-written type names a field the server does not have.
+- **Screenshots**: `scripts/screenshots.mjs` retakes the pictures in this README from a real library.
 
-GitHub Actions runs all of this, and a build of the container, on every push and pull request.
+GitHub Actions runs all of this except the playback tests on every push and pull request, and
+scans the container image for known vulnerabilities.
 
 ### Releasing
 
@@ -326,7 +355,8 @@ GitHub Actions runs all of this, and a build of the container, on every push and
 2. Commit, then tag the commit `v1.2.3` and push the tag. The tag has to match `package.json`.
 
 The "Container image" workflow then publishes `ghcr.io/charliegolfx/jellyplex` with that version
-and `latest`. Every push to `main` publishes `edge`.
+and `latest`, with a build provenance attestation and a bill of materials attached, and creates
+the GitHub release from that version's changelog section. Every push to `main` publishes `edge`.
 
 ```
 src/
@@ -384,7 +414,8 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 ## Contributing
 
-Bug reports, feature requests and pull requests are welcome.
+Bug reports, feature requests and pull requests are welcome. Security problems are reported
+privately; see [SECURITY.md](SECURITY.md).
 
 - **Bugs:** open an issue and include your Jellyplex version (shown in the account menu), your
   Jellyfin server version, the browser you use, and the steps

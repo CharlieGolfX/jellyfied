@@ -1,0 +1,103 @@
+import { useMemo } from 'react';
+import type { Query } from '@/api/client';
+import { useItems, useLatest, useNextUp, useResume } from '@/api/queries';
+import type { BaseItemDto } from '@/api/types';
+import { Hub } from '@/components/media/Hub';
+import { EmptyState } from '@/components/ui/States';
+
+export function Recommended({ library }: { library: BaseItemDto }) {
+  const type = library.CollectionType;
+  const latest = useLatest(library.Id, { limit: 24 });
+  const resume = useResume(library.Id, type === 'music' ? ['Audio'] : ['Video']);
+  const nextUp = useNextUp({ parentId: library.Id, enabled: type === 'tvshows' });
+  const itemType = type === 'movies' ? 'Movie' : type === 'tvshows' ? 'Series' : 'MusicAlbum';
+
+  const base: Query = { parentId: library.Id, recursive: true, includeItemTypes: itemType, limit: 24 };
+  const released = useItems({ ...base, sortBy: 'PremiereDate,ProductionYear', sortOrder: 'Descending' }, { enabled: type !== 'music' });
+  const topRated = useItems(
+    {
+      ...base,
+      sortBy: 'CommunityRating',
+      sortOrder: 'Descending',
+      filters: type === 'music' ? undefined : 'IsUnplayed',
+      minCommunityRating: 1,
+    },
+    { enabled: type !== 'music' },
+  );
+  const recentlyPlayed = useItems(
+    {
+      parentId: library.Id,
+      recursive: true,
+      includeItemTypes: type === 'music' ? 'MusicAlbum' : itemType,
+      filters: 'IsPlayed',
+      sortBy: 'DatePlayed',
+      sortOrder: 'Descending',
+      limit: 24,
+    },
+    { key: ['recentlyPlayed'] },
+  );
+  const newEpisodes = useItems(
+    {
+      parentId: library.Id,
+      recursive: true,
+      includeItemTypes: 'Episode',
+      sortBy: 'PremiereDate',
+      sortOrder: 'Descending',
+      limit: 24,
+      filters: 'IsUnplayed',
+    },
+    { enabled: type === 'tvshows' },
+  );
+  const random = useItems({ ...base, sortBy: 'Random' }, { key: ['random', library.Id] });
+  const mostPlayed = useItems(
+    {
+      parentId: library.Id,
+      recursive: true,
+      includeItemTypes: 'Audio',
+      sortBy: 'PlayCount',
+      sortOrder: 'Descending',
+      filters: 'IsPlayed',
+      limit: 24,
+    },
+    { enabled: type === 'music' },
+  );
+
+  const continueItems = useMemo(() => {
+    const items = [...(resume.data?.Items ?? [])];
+    const seen = new Set(items.map((i) => i.SeriesId).filter(Boolean));
+    for (const ep of nextUp.data?.Items ?? []) {
+      if (ep.SeriesId && seen.has(ep.SeriesId)) continue;
+      seen.add(ep.SeriesId);
+      items.push(ep);
+    }
+    return items;
+  }, [resume.data, nextUp.data]);
+
+  const square = type === 'music';
+  const noContent = !latest.isLoading && (latest.data?.length ?? 0) === 0 && !random.isLoading && (random.data?.Items.length ?? 0) === 0;
+
+  if (noContent) {
+    return (
+      <EmptyState title="This library is empty">Add media to the library folders and run a library scan from the dashboard.</EmptyState>
+    );
+  }
+
+  return (
+    <div className="space-y-9 pt-6">
+      <Hub title={square ? 'Continue Listening' : 'Continue Watching'} items={continueItems} shape={square ? 'square' : 'landscape'} />
+      <Hub
+        title={type === 'tvshows' ? 'Recently Added Episodes' : 'Recently Added'}
+        items={latest.data}
+        loading={latest.isLoading}
+        shape={square ? 'square' : 'poster'}
+      />
+      {type === 'tvshows' && <Hub title="New Episodes" items={newEpisodes.data?.Items} shape="landscape" />}
+      {type !== 'music' && <Hub title="Recently Released" items={released.data?.Items} shape="poster" />}
+      {type === 'music' && <Hub title="Recently Played" items={recentlyPlayed.data?.Items} shape="square" />}
+      {type === 'music' && <Hub title="Most Played" items={mostPlayed.data?.Items} shape="square" />}
+      {type !== 'music' && <Hub title="Top Rated Unwatched" items={topRated.data?.Items} shape="poster" />}
+      {type !== 'music' && <Hub title="Recently Watched" items={recentlyPlayed.data?.Items} shape="poster" />}
+      <Hub title={type === 'music' ? 'Rediscover' : 'Random Picks'} items={random.data?.Items} shape={square ? 'square' : 'poster'} />
+    </div>
+  );
+}

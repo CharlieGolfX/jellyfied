@@ -1,0 +1,15 @@
+dist
+coverage
+node_modules
+playwright-report
+test-results
+package-lock.json
+src/api/generated.ts
+SUGGESTIONS.md
+CHANGELOG.md
+README.md
+docs
+
+.github/ISSUE_TEMPLATE
+.remember
+.claude

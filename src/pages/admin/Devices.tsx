@@ -35,7 +35,7 @@ export default function DevicesPage() {
   });
 
   const items = [...(devices.data?.Items ?? [])].sort(
-    (a, b) => new Date(b.DateLastActivated ?? 0).getTime() - new Date(a.DateLastActivated ?? 0).getTime(),
+    (a, b) => new Date(b.DateLastActivity ?? 0).getTime() - new Date(a.DateLastActivity ?? 0).getTime(),
   );
 
   return (
@@ -70,7 +70,7 @@ export default function DevicesPage() {
                     {d.LastUserName ? ` · ${d.LastUserName}` : ''}
                   </div>
                 </div>
-                <span className="hidden shrink-0 text-xs text-faint sm:block">{formatRelative(d.DateLastActivated)}</span>
+                <span className="hidden shrink-0 text-xs text-faint sm:block">{formatRelative(d.DateLastActivity)}</span>
                 <Button
                   size="icon-sm"
                   variant="ghost"

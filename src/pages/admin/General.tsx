@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { CountryInfo, CultureDto, ServerConfiguration } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
@@ -8,17 +7,22 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { Card } from '@/pages/Settings';
 import { AdminPage, useConfigEditor } from './shared';
+import { useDraft } from '@/lib/useDraft';
 
 export default function GeneralPage() {
   const api = useApi();
   const { query, save } = useConfigEditor<ServerConfiguration>('/System/Configuration', 'Server settings');
-  const cultures = useQuery({ queryKey: ['cultures'], queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'), staleTime: Infinity });
-  const countries = useQuery({ queryKey: ['countries'], queryFn: () => api.get<CountryInfo[]>('/Localization/Countries'), staleTime: Infinity });
-  const [draft, setDraft] = useState<ServerConfiguration | null>(null);
-
-  useEffect(() => {
-    if (query.data) setDraft(query.data);
-  }, [query.data]);
+  const cultures = useQuery({
+    queryKey: ['cultures'],
+    queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'),
+    staleTime: Infinity,
+  });
+  const countries = useQuery({
+    queryKey: ['countries'],
+    queryFn: () => api.get<CountryInfo[]>('/Localization/Countries'),
+    staleTime: Infinity,
+  });
+  const [draft, setDraft] = useDraft(query.data);
 
   if (query.error) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
   if (!draft) return <PageSpinner />;

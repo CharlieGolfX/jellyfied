@@ -20,6 +20,7 @@ import {
   type CanvasSubtitles,
   type SubtitleKind,
 } from './subtitleRenderers';
+import { useLatest } from '@/lib/useLatest';
 
 /**
  * Everything between the video element and the server for one playback: asking for a stream,
@@ -36,7 +37,7 @@ export function usePlaybackStream({
   rememberSubtitles,
   assLayerRef,
   pgsLayerRef,
-  subtitleDelayRef,
+  subtitleDelay,
 }: {
   itemId: string;
   item: BaseItemDto | undefined;
@@ -50,8 +51,8 @@ export function usePlaybackStream({
   assLayerRef: RefObject<HTMLElement | null>;
   /** Covers exactly the video element; image subtitles are drawn in it. */
   pgsLayerRef: RefObject<HTMLElement | null>;
-  /** The subtitle delay currently set, for subtitles that are attached later. */
-  subtitleDelayRef: RefObject<number>;
+  /** Seconds the subtitles are shifted: positive = later. */
+  subtitleDelay: number;
 }) {
   const api = useApi();
   const { userId } = useSession();
@@ -68,6 +69,8 @@ export function usePlaybackStream({
   const subtitleTrackRef = useRef<HTMLTrackElement | null>(null);
   /** Styled or image subtitles that draw themselves on a canvas. */
   const canvasSubtitlesRef = useRef<CanvasSubtitles | null>(null);
+  /** The delay currently set, for subtitles that are attached later. */
+  const subtitleDelayRef = useLatest(subtitleDelay);
   /** Cleared when drawing styled or image subtitles failed here, so the server converts them from then on. */
   const richSubtitles = useRef(true);
 
@@ -196,6 +199,14 @@ export function usePlaybackStream({
 
   /** Set while AirPlay is in use: HLS then goes to the browser's own player (see LoadOptions.nativeHls). */
   const preferNativeHls = useRef(false);
+  const setPreferNativeHls = useCallback((prefer: boolean) => {
+    preferNativeHls.current = prefer;
+  }, []);
+  /** Has the browser draw the text track itself (true), or leaves that to SubtitleOverlay (false). */
+  const showNativeSubtitles = useCallback((show: boolean) => {
+    const track = subtitleTrackRef.current?.track;
+    if (track) track.mode = show ? 'showing' : 'hidden';
+  }, []);
   const loadRef = useRef<((opts: LoadOptions) => Promise<void>) | null>(null);
 
   const load = useCallback(
@@ -377,6 +388,13 @@ export function usePlaybackStream({
     loadRef.current = load;
   }, [load]);
 
+  // Subtitles drawn on a canvas (styled and image subtitles) take the delay themselves. The kind
+  // is listed so that a track attached later gets the delay too.
+  useEffect(() => {
+    canvasSubtitlesRef.current?.setDelay(subtitleDelay);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [subtitleDelay, subtitleKind]);
+
   // SyncPlay: hand the video element to the group manager for as long as this player is open.
   useEffect(() => {
     const video = videoRef.current;
@@ -416,6 +434,8 @@ export function usePlaybackStream({
     window.addEventListener('pagehide', onHide);
     return () => {
       window.removeEventListener('pagehide', onHide);
+      // The counter is meant to be read at this moment: it cancels whatever is still loading.
+      // oxlint-disable-next-line react-hooks/exhaustive-deps
       loadToken.current++;
       // Allow a fresh initial load if React re-mounts this component (StrictMode).
       initialised.current = false;
@@ -554,7 +574,11 @@ export function usePlaybackStream({
 
   const changeAudio = (index: number) => {
     if (!stream || index === stream.audioIndex) return;
-    if (seriesId && rememberAudio) rememberAudioTrack(seriesId, audioStreams.find((s) => s.Index === index));
+    if (seriesId && rememberAudio)
+      rememberAudioTrack(
+        seriesId,
+        audioStreams.find((s) => s.Index === index),
+      );
     void load({
       start: videoRef.current?.currentTime ?? 0,
       audioIndex: index,
@@ -650,7 +674,6 @@ export function usePlaybackStream({
     buffered,
     subtitleKind,
     textSubtitles: subtitleKind === 'text',
-    canvasSubtitlesRef,
     maxBitrate,
     audioStreams,
     subtitleStreams,
@@ -658,7 +681,8 @@ export function usePlaybackStream({
     streamRef,
     hlsRef,
     subtitleTrackRef,
-    preferNativeHls,
+    setPreferNativeHls,
+    showNativeSubtitles,
     changeAudio,
     changeSubtitle,
     changeQuality,

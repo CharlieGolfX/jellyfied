@@ -12,7 +12,19 @@ import { AddToCollectionDialog, supportsCollections, useCanManageCollections } f
 import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
 import { useSelectedItems, useSelection } from './selection';
 
-function BarButton({ label, onClick, disabled, danger, children }: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ReactNode }) {
+function BarButton({
+  label,
+  onClick,
+  disabled,
+  danger,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  children: ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
@@ -72,7 +84,8 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
   const setPlayed = (played: boolean) =>
     forEach(
       watchable,
-      (item) => (played ? api.post(`/UserPlayedItems/${item.Id}`, undefined, { userId }) : api.delete(`/UserPlayedItems/${item.Id}`, { userId })),
+      (item) =>
+        played ? api.post(`/UserPlayedItems/${item.Id}`, undefined, { userId }) : api.delete(`/UserPlayedItems/${item.Id}`, { userId }),
       played ? 'marked as watched' : 'marked as unwatched',
     );
 
@@ -114,23 +127,17 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
         <BarButton label="Select all" onClick={() => selection.add(allItems)} disabled={busy || items.length >= allItems.length}>
           <ListChecks size={17} />
         </BarButton>
-        <button onClick={() => selection.clear()} className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg" aria-label="Clear selection">
+        <button
+          onClick={() => selection.clear()}
+          className="rounded-full p-1.5 text-muted hover:bg-white/10 hover:text-fg"
+          aria-label="Clear selection"
+        >
           <X size={17} />
         </button>
       </div>
 
-      {dialog === 'playlist' && (
-        <AddToPlaylistDialog
-          item={items}
-onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog === 'collection' && (
-        <AddToCollectionDialog
-          item={items}
-onClose={() => setDialog(null)}
-        />
-      )}
+      {dialog === 'playlist' && <AddToPlaylistDialog item={items} onClose={() => setDialog(null)} />}
+      {dialog === 'collection' && <AddToCollectionDialog item={items} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'delete'}
         title={`Delete ${plural(items.length, 'item')}?`}

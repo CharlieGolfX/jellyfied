@@ -120,9 +120,11 @@ export function PlaybackInfo({
       [
         video.Width && video.Height ? `${video.Width}×${video.Height}` : '',
         [video.Codec?.toUpperCase(), video.Profile].filter(Boolean).join(' '),
-        video.VideoRangeType && video.VideoRangeType !== 'SDR' ? video.VideoRangeType : video.VideoRange ?? '',
+        video.VideoRangeType && video.VideoRangeType !== 'SDR' ? video.VideoRangeType : (video.VideoRange ?? ''),
         video.BitDepth ? `${video.BitDepth} bit` : '',
-        video.RealFrameRate || video.AverageFrameRate ? `${(video.RealFrameRate ?? video.AverageFrameRate)!.toFixed(3).replace(/\.?0+$/, '')} fps` : '',
+        video.RealFrameRate || video.AverageFrameRate
+          ? `${(video.RealFrameRate ?? video.AverageFrameRate)!.toFixed(3).replace(/\.?0+$/, '')} fps`
+          : '',
         video.BitRate ? formatBitrate(video.BitRate) : '',
       ]
         .filter(Boolean)
@@ -132,7 +134,13 @@ export function PlaybackInfo({
   if (audio) {
     rows.push([
       'Source audio',
-      [audio.Codec?.toUpperCase(), channels(audio), audio.SampleRate ? `${audio.SampleRate / 1000} kHz` : '', audio.BitRate ? formatBitrate(audio.BitRate) : '', audio.Language ?? '']
+      [
+        audio.Codec?.toUpperCase(),
+        channels(audio),
+        audio.SampleRate ? `${audio.SampleRate / 1000} kHz` : '',
+        audio.BitRate ? formatBitrate(audio.BitRate) : '',
+        audio.Language ?? '',
+      ]
         .filter(Boolean)
         .join(' · '),
     ]);
@@ -140,14 +148,20 @@ export function PlaybackInfo({
   if (subtitle) {
     rows.push([
       'Subtitles',
-      [subtitle.Codec?.toUpperCase(), subtitle.Language ?? '', subtitle.DeliveryMethod === 'Encode' ? 'burned in' : subtitle.IsExternal ? 'external file' : 'embedded']
+      [
+        subtitle.Codec?.toUpperCase(),
+        subtitle.Language ?? '',
+        subtitle.DeliveryMethod === 'Encode' ? 'burned in' : subtitle.IsExternal ? 'external file' : 'embedded',
+      ]
         .filter(Boolean)
         .join(' · '),
     ]);
   }
   rows.push([
     'Container',
-    [source.Container?.toUpperCase(), source.Bitrate ? formatBitrate(source.Bitrate) : '', source.Size ? formatBytes(source.Size) : ''].filter(Boolean).join(' · '),
+    [source.Container?.toUpperCase(), source.Bitrate ? formatBitrate(source.Bitrate) : '', source.Size ? formatBytes(source.Size) : '']
+      .filter(Boolean)
+      .join(' · '),
   ]);
   if (stats) {
     rows.push(['Buffer', `${stats.buffer.toFixed(1)} s`]);
@@ -163,7 +177,11 @@ export function PlaybackInfo({
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[11px] font-semibold tracking-wider text-white/50 uppercase">Playback info</span>
-        <button onClick={onClose} className="rounded-full p-1 text-white/60 hover:bg-white/15 hover:text-white" aria-label="Close playback info">
+        <button
+          onClick={onClose}
+          className="rounded-full p-1 text-white/60 hover:bg-white/15 hover:text-white"
+          aria-label="Close playback info"
+        >
           <X size={14} />
         </button>
       </div>

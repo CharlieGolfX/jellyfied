@@ -43,7 +43,11 @@ function subscribe(cb: () => void) {
 }
 
 export function useTimeFormat(): [TimeFormat, (v: TimeFormat) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => '24h' as TimeFormat);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => '24h' as TimeFormat,
+  );
   return [value, setTimeFormat];
 }
 

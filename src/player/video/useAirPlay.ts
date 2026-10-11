@@ -6,8 +6,7 @@ type AirPlayVideo = HTMLVideoElement & {
   webkitCurrentPlaybackTargetIsWireless?: boolean;
 };
 
-export const airPlaySupported =
-  typeof window !== 'undefined' && 'WebKitPlaybackTargetAvailabilityEvent' in window;
+export const airPlaySupported = typeof window !== 'undefined' && 'WebKitPlaybackTargetAvailabilityEvent' in window;
 
 /**
  * AirPlay for the video element (Safari on Mac, iPhone and iPad). `available` turns true once an

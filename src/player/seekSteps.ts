@@ -62,6 +62,10 @@ function subscribe(cb: () => void) {
 }
 
 export function useSeekSteps(): [SeekSteps, (patch: Partial<SeekSteps>) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => DEFAULT_SEEK_STEPS);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => DEFAULT_SEEK_STEPS,
+  );
   return [value, setSeekSteps];
 }

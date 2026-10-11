@@ -64,7 +64,14 @@ function TaskRow({ task }: { task: TaskInfo }) {
         )}
       </div>
       {runningNow ? (
-        <Button size="sm" variant="outline" icon={<Square size={14} />} loading={stop.isPending} disabled={task.State === 'Cancelling'} onClick={() => stop.mutate()}>
+        <Button
+          size="sm"
+          variant="outline"
+          icon={<Square size={14} />}
+          loading={stop.isPending}
+          disabled={task.State === 'Cancelling'}
+          onClick={() => stop.mutate()}
+        >
           Stop
         </Button>
       ) : (

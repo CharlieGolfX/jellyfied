@@ -86,11 +86,7 @@ export default function AdminRoutes() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading) return <PageSpinner />;
   if (!user?.Policy?.IsAdministrator) {
-    return (
-      <EmptyState title="Administrator access required">
-        Only Jellyfin administrators can open the server dashboard.
-      </EmptyState>
-    );
+    return <EmptyState title="Administrator access required">Only Jellyfin administrators can open the server dashboard.</EmptyState>;
   }
 
   return (

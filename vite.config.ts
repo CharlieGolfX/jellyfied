@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => {
   const port = Number(env.JELLYPLEX_DEV_PORT) || 5173;
 
   return {
-    base: '/',
+    // Relative, so the same build can be served at the root or under a path (see index.html's <base>).
+    base: './',
     define: { __APP_VERSION__: JSON.stringify(version) },
     plugins: [
       react(),
@@ -57,6 +58,13 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       include: ['src/**/*.test.{ts,tsx}'],
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/api/generated.ts'],
+        reporter: ['text-summary', 'html', 'json-summary'],
+        reportsDirectory: 'coverage',
+      },
     },
   };
 });

@@ -79,9 +79,7 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
         )}
       >
         <div className="absolute inset-y-0 left-0 rounded-full bg-white/25" style={{ width: `${bufPct}%` }} />
-        {hoverPct !== null && (
-          <div className="absolute inset-y-0 left-0 rounded-full bg-white/20" style={{ width: `${hoverPct}%` }} />
-        )}
+        {hoverPct !== null && <div className="absolute inset-y-0 left-0 rounded-full bg-white/20" style={{ width: `${hoverPct}%` }} />}
         <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${pct}%` }} />
         {markers?.map((m, i) =>
           valid && m > 0 ? (

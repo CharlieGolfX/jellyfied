@@ -1,16 +1,4 @@
-import {
-  BookOpen,
-  Clapperboard,
-  Film,
-  Folder,
-  Image as ImageIcon,
-  ListMusic,
-  MonitorPlay,
-  Music,
-  Radio,
-  Tv,
-  Video,
-} from 'lucide-react';
+import { BookOpen, Clapperboard, Film, Folder, Image as ImageIcon, ListMusic, MonitorPlay, Music, Radio, Tv, Video } from 'lucide-react';
 import type { CollectionType } from '@/api/types';
 
 export function LibraryIcon({ type, size = 20 }: { type?: CollectionType | null; size?: number }) {

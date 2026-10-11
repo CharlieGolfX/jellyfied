@@ -4,6 +4,7 @@ import type { BaseItemDto } from '@/api/types';
 import { Spinner } from '@/components/ui/Spinner';
 import { PosterCard, type PosterCardProps } from './PosterCard';
 import { SkeletonCard } from './Hub';
+import { useLatest } from '@/lib/useLatest';
 
 interface CardGridProps {
   items: BaseItemDto[];
@@ -17,19 +18,9 @@ interface CardGridProps {
   cardProps?: Partial<PosterCardProps>;
 }
 
-export function CardGrid({
-  items,
-  shape,
-  minWidth,
-  loading,
-  hasMore,
-  loadingMore,
-  onLoadMore,
-  cardProps,
-}: CardGridProps) {
+export function CardGrid({ items, shape, minWidth, loading, hasMore, loadingMore, onLoadMore, cardProps }: CardGridProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef(onLoadMore);
-  loadMoreRef.current = onLoadMore;
+  const loadMoreRef = useLatest(onLoadMore);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -42,7 +33,9 @@ export function CardGrid({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, items.length]);
+    // Observing again after more items arrived makes the next page load when the end is still in view.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [hasMore, items.length, loadMoreRef]);
 
   const width = minWidth ?? (shape === 'landscape' ? 260 : shape === 'square' ? 160 : 150);
   const style = {

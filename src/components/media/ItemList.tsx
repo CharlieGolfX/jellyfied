@@ -12,6 +12,7 @@ import { formatDate, formatRuntime } from '@/lib/format';
 import { defaultTitles, fallbackIcon, itemLink } from './PosterCard';
 import { useIsSelected, useSelection, useSelectionCount } from './selection';
 import { useItemActions } from './useItemActions';
+import { useLatest } from '@/lib/useLatest';
 
 const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDto; collectionId?: string }) {
   const api = useApi();
@@ -56,7 +57,11 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           shape === 'poster' ? 'w-[38px]' : shape === 'square' ? 'w-14' : 'w-24',
         )}
       >
-        <Img src={imageSrc(api, cardImage(item, shape), 200)} className="absolute inset-0 h-full w-full object-cover" fallback={fallbackIcon(item, 20)} />
+        <Img
+          src={imageSrc(api, cardImage(item, shape), 200)}
+          className="absolute inset-0 h-full w-full object-cover"
+          fallback={fallbackIcon(item, 20)}
+        />
         {pct > 0 && (
           <span className="absolute inset-x-0 bottom-0 h-0.5 bg-black/60">
             <span className="block h-full bg-accent" style={{ width: `${pct}%` }} />
@@ -91,7 +96,9 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
             title={played ? 'Mark as unwatched' : 'Mark as watched'}
           >
             {unplayedCount > 0 && !played ? (
-              <span className="block min-w-5 rounded bg-accent px-1 text-center text-[11px] font-bold text-accent-ink">{unplayedCount}</span>
+              <span className="block min-w-5 rounded bg-accent px-1 text-center text-[11px] font-bold text-accent-ink">
+                {unplayedCount}
+              </span>
             ) : (
               <CheckCircle size={18} />
             )}
@@ -100,7 +107,11 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
       </span>
       <span className="flex w-16 shrink-0 justify-end gap-0.5">
         {playable && (
-          <button onClick={() => play(item)} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-accent" aria-label={`Play ${title}`}>
+          <button
+            onClick={() => play(item)}
+            className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-accent"
+            aria-label={`Play ${title}`}
+          >
             <Play size={16} fill="currentColor" />
           </button>
         )}
@@ -108,7 +119,12 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           <Menu
             items={menuItems}
             trigger={({ open, toggle }) => (
-              <button onClick={toggle} aria-expanded={open} aria-label="More actions" className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
+              <button
+                onClick={toggle}
+                aria-expanded={open}
+                aria-label="More actions"
+                className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+              >
                 <MoreHorizontal size={16} />
               </button>
             )}
@@ -137,8 +153,7 @@ export function ItemList({
   collectionId?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef(onLoadMore);
-  loadMoreRef.current = onLoadMore;
+  const loadMoreRef = useLatest(onLoadMore);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -151,7 +166,9 @@ export function ItemList({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, items.length]);
+    // Observing again after more items arrived makes the next page load when the end is still in view.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [hasMore, items.length, loadMoreRef]);
 
   if (loading) {
     return (

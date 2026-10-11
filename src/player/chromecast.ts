@@ -65,8 +65,7 @@ export interface ChromecastState {
 }
 
 /** Chromecast only exists in Chromium browsers, and not in the ones on iPhone and iPad. */
-export const chromecastSupported =
-  typeof navigator !== 'undefined' && isChromium() && !/iPhone|iPad|iPod/.test(navigator.userAgent);
+export const chromecastSupported = typeof navigator !== 'undefined' && isChromium() && !/iPhone|iPad|iPod/.test(navigator.userAgent);
 
 let state: ChromecastState = { status: 'off', deviceName: '', item: null, playState: null, reportedAt: null };
 const listeners = new Set<() => void>();
@@ -87,7 +86,11 @@ export function getChromecast(): ChromecastState {
 }
 
 export function useChromecast(): ChromecastState {
-  return useSyncExternalStore(subscribe, () => state, () => state);
+  return useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => state,
+  );
 }
 
 /** Receives the errors the Chromecast reports (a file it can't play, a server it can't reach). */
@@ -146,7 +149,13 @@ function onSession(connected: boolean) {
   if (connected && session) {
     session.addMessageListener(NAMESPACE, onMessage);
     remember(true);
-    update({ status: 'connected', deviceName: session.getCastDevice().friendlyName || 'Chromecast', item: null, playState: null, reportedAt: null });
+    update({
+      status: 'connected',
+      deviceName: session.getCastDevice().friendlyName || 'Chromecast',
+      item: null,
+      playState: null,
+      reportedAt: null,
+    });
   } else {
     remember(false);
     update({ status: 'ready', deviceName: '', item: null, playState: null, reportedAt: null });
@@ -178,7 +187,8 @@ export function loadChromecast(): Promise<boolean> {
       const context = fw.CastContext.getInstance();
       context.setOptions({ receiverApplicationId: RECEIVER_APP_ID, autoJoinPolicy: w.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED });
       context.addEventListener(fw.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
-        if (event.sessionState === fw.SessionState.SESSION_STARTED || event.sessionState === fw.SessionState.SESSION_RESUMED) onSession(true);
+        if (event.sessionState === fw.SessionState.SESSION_STARTED || event.sessionState === fw.SessionState.SESSION_RESUMED)
+          onSession(true);
         else if (event.sessionState === fw.SessionState.SESSION_ENDED) onSession(false);
       });
       update({ status: 'ready' });
@@ -297,12 +307,21 @@ export interface CastPlayOptions {
 export function castPlay(auth: CastAuth, items: BaseItemDto[], opts: CastPlayOptions = {}): Promise<unknown> {
   if (isLocalOnlyAddress(castServerAddress(auth.api.serverUrl))) {
     return Promise.reject(
-      new Error('A Chromecast can’t reach a server at “localhost”. Open Jellyplex through an address other devices on your network can use.'),
+      new Error(
+        'A Chromecast can’t reach a server at “localhost”. Open Jellyplex through an address other devices on your network can use.',
+      ),
     );
   }
   return send(auth, opts.queue ?? (opts.shuffle ? 'Shuffle' : 'PlayNow'), {
     // The receiver looks the items up itself, so it only needs to know which ones.
-    items: items.map((i) => ({ Id: i.Id, ServerId: i.ServerId ?? auth.serverId, Name: i.Name, Type: i.Type, MediaType: i.MediaType, IsFolder: i.IsFolder })),
+    items: items.map((i) => ({
+      Id: i.Id,
+      ServerId: i.ServerId ?? auth.serverId,
+      Name: i.Name,
+      Type: i.Type,
+      MediaType: i.MediaType,
+      IsFolder: i.IsFolder,
+    })),
     startIndex: opts.startIndex,
     startPositionTicks: opts.startPositionTicks,
     mediaSourceId: opts.mediaSourceId,
@@ -325,7 +344,9 @@ export function castSeek(auth: CastAuth, seconds: number): Promise<unknown> {
 export function castSetVolume(volume: number): Promise<unknown> {
   const session = win().cast?.framework.CastContext.getInstance().getCurrentSession();
   if (!session) return Promise.resolve();
-  return session.setVolume(Math.min(1, Math.max(0, volume / 100))).then(() => update({ playState: { ...state.playState, VolumeLevel: volume, IsMuted: false } }));
+  return session
+    .setVolume(Math.min(1, Math.max(0, volume / 100)))
+    .then(() => update({ playState: { ...state.playState, VolumeLevel: volume, IsMuted: false } }));
 }
 
 export function castToggleMute(): Promise<unknown> {

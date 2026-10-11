@@ -62,7 +62,11 @@ function subscribe(cb: () => void) {
 }
 
 export function useSleepTimer(): SleepTimerState {
-  return useSyncExternalStore(subscribe, () => state, () => OFF);
+  return useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => OFF,
+  );
 }
 
 export const SLEEP_TIMER_MINUTES = [15, 30, 45, 60, 90, 120];

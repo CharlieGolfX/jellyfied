@@ -26,8 +26,7 @@ function send(api: JellyfinApi, path: string, body: PlaybackReport, keepalive = 
     });
 }
 
-export const reportPlaybackStart = (api: JellyfinApi, body: PlaybackReport) =>
-  send(api, '/Sessions/Playing', { CanSeek: true, ...body });
+export const reportPlaybackStart = (api: JellyfinApi, body: PlaybackReport) => send(api, '/Sessions/Playing', { CanSeek: true, ...body });
 
 export const reportPlaybackProgress = (api: JellyfinApi, body: PlaybackReport) =>
   send(api, '/Sessions/Playing/Progress', { CanSeek: true, ...body });

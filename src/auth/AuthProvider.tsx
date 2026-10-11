@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, UserDto } from '@/api/types';
+import { appPath } from '@/lib/basePath';
 
 const SESSION_KEY = 'jellyplex.session';
 /** Every account signed in on this browser, the current one included, so users can switch without a password. */
@@ -93,10 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const api = useMemo(
-    () => (session ? new JellyfinApi(session.serverUrl, session.accessToken, session.userId) : null),
-    [session],
-  );
+  /** What to do when the server rejects the token; set further down, once `clear` exists. */
+  const unauthorized = useRef<() => void>(() => {});
+  const api = useMemo(() => {
+    if (!session) return null;
+    const client = new JellyfinApi(session.serverUrl, session.accessToken, session.userId);
+    client.onUnauthorized = () => unauthorized.current();
+    return client;
+  }, [session]);
 
   const clear = useCallback(() => {
     try {
@@ -111,8 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient, session, updateAccounts]);
 
   useEffect(() => {
-    if (api) api.onUnauthorized = clear;
-  }, [api, clear]);
+    unauthorized.current = clear;
+  }, [clear]);
 
   const completeLogin = useCallback(
     (serverUrl: string, serverName: string, result: AuthenticationResult) => {
@@ -155,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return;
     }
-    window.location.assign('/');
+    window.location.assign(appPath('/'));
   }, []);
 
   const addAccount = useCallback(() => {
@@ -164,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return;
     }
-    window.location.assign('/login');
+    window.location.assign(appPath('/login'));
   }, []);
 
   const forgetAccount = useCallback(

@@ -41,6 +41,8 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
     ro.observe(el);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
     return () => ro.disconnect();
+    // Other cards mean another width, so measure again when the children change.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [update, children]);
 
   const page = (dir: 1 | -1) => {

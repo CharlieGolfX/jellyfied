@@ -80,6 +80,10 @@ function subscribe(cb: () => void) {
 }
 
 export function useHomeLayout(): [HomeLayout, (patch: Partial<HomeLayout>) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => DEFAULT_HOME_LAYOUT);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => DEFAULT_HOME_LAYOUT,
+  );
   return [value, setHomeLayout];
 }

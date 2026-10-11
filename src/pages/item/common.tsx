@@ -20,14 +20,7 @@ import {
 import { lazy, Suspense, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { backdropSrc, cardImage, imageSrc, type CardShape } from '@/api/images';
-import {
-  useClearProgress,
-  useDeleteItem,
-  useLocalTrailers,
-  useRefreshItem,
-  useSetFavorite,
-  useSetPlayed,
-} from '@/api/queries';
+import { useClearProgress, useDeleteItem, useLocalTrailers, useRefreshItem, useSetFavorite, useSetPlayed } from '@/api/queries';
 import type { BaseItemDto, BaseItemPerson } from '@/api/types';
 import { useApi, useIsAdmin } from '@/auth/AuthProvider';
 import { HubRow } from '@/components/media/Hub';
@@ -105,10 +98,7 @@ export function RatingBadges({ item }: { item: BaseItemDto }) {
       ) : null}
       {item.CriticRating ? (
         <span
-          className={clsx(
-            'inline-flex items-center gap-1 font-medium',
-            item.CriticRating >= 60 ? 'text-[#fa320a]' : 'text-success',
-          )}
+          className={clsx('inline-flex items-center gap-1 font-medium', item.CriticRating >= 60 ? 'text-[#fa320a]' : 'text-success')}
           title="Critic rating"
         >
           <span className="inline-block h-3 w-3 rounded-full bg-current" />
@@ -146,7 +136,11 @@ export function ExpandableText({ text, lines = 4, className }: { text?: string |
     <div className={className}>
       <p
         className="text-[15px] leading-relaxed whitespace-pre-line text-fg/90"
-        style={expanded || !long ? undefined : { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        style={
+          expanded || !long
+            ? undefined
+            : { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical', overflow: 'hidden' }
+        }
       >
         {text.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')}
       </p>
@@ -277,10 +271,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
         label: 'Refresh metadata',
         icon: <RefreshCw size={16} />,
         onSelect: () =>
-          refresh.mutate(
-            { id: item.Id },
-            { onSuccess: () => toast.success('Metadata refresh queued'), onError: (e) => toast.error(e) },
-          ),
+          refresh.mutate({ id: item.Id }, { onSuccess: () => toast.success('Metadata refresh queued'), onError: (e) => toast.error(e) }),
       },
       {
         label: 'Replace all metadata',
@@ -294,7 +285,10 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
     );
   }
   if (item.CanDelete) {
-    menu.push({ divider: true, label: '' }, { label: 'Delete', danger: true, icon: <Trash2 size={16} />, onSelect: () => setConfirmDelete(true) });
+    menu.push(
+      { divider: true, label: '' },
+      { label: 'Delete', danger: true, icon: <Trash2 size={16} />, onSelect: () => setConfirmDelete(true) },
+    );
   }
 
   return (

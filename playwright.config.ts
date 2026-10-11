@@ -15,7 +15,12 @@ export default defineConfig({
     baseURL: externalUrl ?? `http://localhost:${port}`,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // E2E_BROWSERS=chromium (or a comma-separated list) limits a run to some of them.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ].filter((p) => !process.env.E2E_BROWSERS || process.env.E2E_BROWSERS.split(',').includes(p.name)),
   webServer: externalUrl
     ? undefined
     : {

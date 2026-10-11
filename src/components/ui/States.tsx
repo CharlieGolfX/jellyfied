@@ -39,13 +39,7 @@ export function EmptyState({
 }
 
 /** Image that fades in on load and renders a fallback on error or when src is missing. */
-export function Img({
-  src,
-  fallback,
-  className,
-  alt = '',
-  ...rest
-}: ImgHTMLAttributes<HTMLImageElement> & { fallback?: ReactNode }) {
+export function Img({ src, fallback, className, alt = '', ...rest }: ImgHTMLAttributes<HTMLImageElement> & { fallback?: ReactNode }) {
   const [state, setState] = useState<{ src?: string; loaded: boolean; failed: boolean }>({
     src: src as string | undefined,
     loaded: false,

@@ -211,7 +211,13 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
         <>
           <MetaLine
             item={{ ...item, RunTimeTicks: null, ProductionYear: null }}
-            extra={list.length ? <span>{plural(list.length, 'item')} · {formatRuntime(totalTicks)}</span> : undefined}
+            extra={
+              list.length ? (
+                <span>
+                  {plural(list.length, 'item')} · {formatRuntime(totalTicks)}
+                </span>
+              ) : undefined
+            }
           />
           <div className="pt-2">
             <ActionBar

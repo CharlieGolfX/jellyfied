@@ -161,11 +161,8 @@ export function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       />
 
       <div className="my-2 h-px bg-white/10" />
-      {!collapsed && (
-        <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">Libraries</div>
-      )}
-      {isLoading &&
-        Array.from({ length: 4 }, (_, i) => <div key={i} className="mx-1 my-1 h-8 animate-pulse rounded bg-white/5" />)}
+      {!collapsed && <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">Libraries</div>}
+      {isLoading && Array.from({ length: 4 }, (_, i) => <div key={i} className="mx-1 my-1 h-8 animate-pulse rounded bg-white/5" />)}
       <div className="flex flex-col gap-1" {...containerProps}>
         {items.map((view) => (
           <div

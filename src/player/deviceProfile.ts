@@ -146,9 +146,7 @@ export function profileFor(c: Capabilities, maxBitrate: number = MAX_BITRATE, op
     c.safari && 'alac',
   ]);
 
-  const directPlay: Record<string, unknown>[] = [
-    { Container: 'mp4,m4v', Type: 'Video', VideoCodec: videoCodecs, AudioCodec: mp4Audio },
-  ];
+  const directPlay: Record<string, unknown>[] = [{ Container: 'mp4,m4v', Type: 'Video', VideoCodec: videoCodecs, AudioCodec: mp4Audio }];
   if (c.chromium) {
     // Chromium plays Matroska even though canPlayType() reports otherwise.
     directPlay.push({

@@ -3,7 +3,8 @@ import { ApiError, buildQuery, JellyfinApi } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
 
-const respond = (status: number, body = '', statusText = '') => vi.fn(async () => new Response(status === 204 ? null : body, { status, statusText }));
+const respond = (status: number, body = '', statusText = '') =>
+  vi.fn(async () => new Response(status === 204 ? null : body, { status, statusText }));
 
 describe('buildQuery', () => {
   it('leaves out empty values and joins lists', () => {
@@ -55,7 +56,10 @@ describe('JellyfinApi', () => {
     const api = new JellyfinApi('/jellyfin', 'tok');
     api.onUnauthorized = vi.fn();
     vi.stubGlobal('fetch', respond(401));
-    await expect(api.get('/Users/Me')).rejects.toMatchObject({ status: 401, message: 'Your session has expired or the credentials are invalid.' });
+    await expect(api.get('/Users/Me')).rejects.toMatchObject({
+      status: 401,
+      message: 'Your session has expired or the credentials are invalid.',
+    });
     expect(api.onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
@@ -73,7 +77,10 @@ describe('JellyfinApi', () => {
   });
 
   it('reports an unreachable server as status 0', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))),
+    );
     await expect(new JellyfinApi('', 'tok').get('/System/Info')).rejects.toMatchObject({ status: 0 });
   });
 });

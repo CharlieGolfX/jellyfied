@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { LogOut, Play, Plus, Users } from 'lucide-react';
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
@@ -27,8 +27,12 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
   const [manager, setManager] = useState<SyncPlayManager | null>(null);
 
   const ctx = useRef({ navigate, toast });
-  ctx.current = { navigate, toast };
+  useLayoutEffect(() => {
+    ctx.current = { navigate, toast };
+  });
 
+  // The manager lives as long as the connection does, and reaches the rest of the app through state.
+  // oxlint-disable react/set-state-in-effect
   useEffect(() => {
     if (!api || !socket) {
       setManager(null);
@@ -56,6 +60,7 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
     setManager(m);
     return () => m.dispose();
   }, [api, socket]);
+  // oxlint-enable react/set-state-in-effect
 
   return <SyncPlayContext.Provider value={manager}>{children}</SyncPlayContext.Provider>;
 }
@@ -138,7 +143,10 @@ export function SyncPlayButton() {
         <Users size={20} />
       </button>
       {open && (
-        <div className="animate-pop-in absolute top-12 right-0 z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg bg-base-750 py-2 shadow-2xl ring-1 ring-black/40" data-testid="syncplay-menu">
+        <div
+          className="animate-pop-in absolute top-12 right-0 z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg bg-base-750 py-2 shadow-2xl ring-1 ring-black/40"
+          data-testid="syncplay-menu"
+        >
           <div className="px-4 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-faint uppercase">SyncPlay</div>
           {sync.group ? (
             <>
@@ -207,7 +215,13 @@ export function SyncPlayButton() {
                 </p>
               ) : (
                 groups.data!.map((g) => (
-                  <button key={g.GroupId} className={row} disabled={busy} data-testid="syncplay-group" onClick={() => void run(() => manager.joinGroup(g.GroupId))}>
+                  <button
+                    key={g.GroupId}
+                    className={row}
+                    disabled={busy}
+                    data-testid="syncplay-group"
+                    onClick={() => void run(() => manager.joinGroup(g.GroupId))}
+                  >
                     <Users size={16} className="shrink-0 text-muted" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{g.GroupName}</span>

@@ -7,23 +7,31 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+RUN npm run build && node scripts/precompress.mjs dist
 
 # ---- Runtime ----------------------------------------------------------------
-FROM nginx:1.28-alpine
+# nginx without root: the image's own entrypoint and nginx itself run as the "nginx" user (101).
+FROM nginxinc/nginx-unprivileged:1.30-alpine
 
 LABEL org.opencontainers.image.title="Jellyplex" \
       org.opencontainers.image.description="A Plex-style web frontend for Jellyfin"
 
-# The nginx image runs every script in /docker-entrypoint.d before starting.
+# The nginx image runs every script in /docker-entrypoint.d before starting. That script writes the
+# site's nginx config, config.js and index.html, so those places belong to the nginx user.
+USER root
 COPY docker/40-jellyplex.sh /docker-entrypoint.d/40-jellyplex.sh
-RUN chmod +x /docker-entrypoint.d/40-jellyplex.sh \
-    && rm -f /etc/nginx/conf.d/default.conf
+# The base image's packages are brought up to date, so fixes published after it was built are in.
+RUN apk upgrade --no-cache \
+    && chmod +x /docker-entrypoint.d/40-jellyplex.sh \
+    && rm -f /etc/nginx/conf.d/default.conf \
+    && chown -R 101:101 /etc/nginx/conf.d
 
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
+USER 101
 
 ENV JELLYFIN_URL="" \
     JELLYFIN_PUBLIC_URL="" \
+    JELLYPLEX_BASE_PATH="" \
     JELLYPLEX_PORT=80
 
 EXPOSE 80

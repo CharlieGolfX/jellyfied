@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
+import { useLatest } from '@/lib/useLatest';
 
 interface ModalProps {
   open: boolean;
@@ -17,8 +18,7 @@ const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl
 
 export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const onCloseRef = useLatest(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
       window.removeEventListener('keydown', onKey, true);
       prev?.focus?.();
     };
-  }, [open]);
+  }, [open, onCloseRef]);
 
   if (!open) return null;
 

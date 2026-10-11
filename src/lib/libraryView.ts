@@ -32,6 +32,10 @@ function subscribe(cb: () => void) {
 }
 
 export function useLibraryView(): [LibraryView, (view: LibraryView) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => 'grid' as LibraryView);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => 'grid' as LibraryView,
+  );
   return [value, setLibraryView];
 }

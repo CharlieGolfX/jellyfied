@@ -37,7 +37,14 @@ describe('streamName', () => {
 });
 
 describe('pickTrickplay', () => {
-  const info = (Width: number): TrickplayInfo => ({ Width, Height: Width / 2, TileWidth: 10, TileHeight: 10, ThumbnailCount: 100, Interval: 10_000 });
+  const info = (Width: number): TrickplayInfo => ({
+    Width,
+    Height: Width / 2,
+    TileWidth: 10,
+    TileHeight: 10,
+    ThumbnailCount: 100,
+    Interval: 10_000,
+  });
   const item = { Trickplay: { 'AB12-cd34': { '160': info(160), '300': info(300), '640': info(640) } } } as unknown as BaseItemDto;
 
   it('picks the size closest to the preview, whatever way the source id is written', () => {

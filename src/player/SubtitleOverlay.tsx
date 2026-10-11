@@ -76,7 +76,12 @@ export function SubtitleOverlay({
       }}
     >
       {lines.map((html, i) => (
-        <div key={i} className="max-w-full rounded-sm px-[0.35em] whitespace-pre-line" style={subtitleLineCss(style)} dangerouslySetInnerHTML={{ __html: html }} />
+        <div
+          key={i}
+          className="max-w-full rounded-sm px-[0.35em] whitespace-pre-line"
+          style={subtitleLineCss(style)}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
       ))}
     </div>
   );

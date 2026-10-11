@@ -91,7 +91,6 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
 
   const discs = new Set(tracks.map((t) => t.ParentIndexNumber ?? 1));
   const multiDisc = discs.size > 1 && numbered === 'index';
-  let lastDisc: number | null = null;
 
   const audioTracks = tracks.filter((t) => t.MediaType === 'Audio');
 
@@ -109,8 +108,9 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
     <div className="divide-y divide-white/5">
       {tracks.map((t, i) => {
         const disc = t.ParentIndexNumber ?? 1;
-        const header = multiDisc && disc !== lastDisc ? <div className="px-3 pt-5 pb-2 text-sm font-semibold text-muted">Disc {disc}</div> : null;
-        lastDisc = disc;
+        const previousDisc = i > 0 ? (tracks[i - 1].ParentIndexNumber ?? 1) : undefined;
+        const header =
+          multiDisc && disc !== previousDisc ? <div className="px-3 pt-5 pb-2 text-sm font-semibold text-muted">Disc {disc}</div> : null;
         const isCurrent = player.current?.Id === t.Id;
         const artists = t.ArtistItems?.length ? t.ArtistItems : [];
         const showArtists = artists.length > 0 && artists.map((a) => a.Name).join(', ') !== albumArtist;
@@ -153,7 +153,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
                       <span className="w-0.5 animate-pulse bg-accent [animation-delay:300ms]" style={{ height: '80%' }} />
                     </span>
                   ) : numbered === 'index' ? (
-                    t.IndexNumber ?? i + 1
+                    (t.IndexNumber ?? i + 1)
                   ) : (
                     i + 1
                   )}
@@ -193,9 +193,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() =>
-                    setFavorite.mutate({ id: t.Id, favorite: !t.UserData?.IsFavorite }, { onError: (e) => toast.error(e) })
-                  }
+                  onClick={() => setFavorite.mutate({ id: t.Id, favorite: !t.UserData?.IsFavorite }, { onError: (e) => toast.error(e) })}
                   className={clsx(
                     'rounded-full p-1.5 transition',
                     t.UserData?.IsFavorite ? 'text-accent' : 'text-muted opacity-0 group-hover:opacity-100 hover:text-fg',
@@ -212,8 +210,16 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
                     { label: 'Play', icon: <Play size={16} />, onSelect: () => playAt(t) },
                     ...(t.MediaType === 'Audio'
                       ? [
-                          { label: 'Play next', icon: <ListPlus size={16} />, onSelect: () => (player.current ? player.playNext([t]) : player.play([t])) },
-                          { label: 'Add to queue', icon: <ListEnd size={16} />, onSelect: () => (player.current ? player.enqueue([t]) : player.play([t])) },
+                          {
+                            label: 'Play next',
+                            icon: <ListPlus size={16} />,
+                            onSelect: () => (player.current ? player.playNext([t]) : player.play([t])),
+                          },
+                          {
+                            label: 'Add to queue',
+                            icon: <ListEnd size={16} />,
+                            onSelect: () => (player.current ? player.enqueue([t]) : player.play([t])),
+                          },
                           { label: 'Instant Mix', icon: <Radio size={16} />, onSelect: () => void instantMix(t) },
                         ]
                       : []),

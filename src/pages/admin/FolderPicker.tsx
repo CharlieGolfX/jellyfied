@@ -1,5 +1,5 @@
 import { ArrowUp, Folder, HardDrive } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { FileSystemEntryInfo } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
@@ -10,25 +10,20 @@ import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage } from '@/components/ui/Toast';
 
 /** Browses the server's filesystem to pick a media folder. */
-export function FolderPicker({
-  open,
-  onClose,
-  onPick,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onPick: (path: string) => void;
-}) {
+export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (path: string) => void }) {
   const api = useApi();
   const [path, setPath] = useState('');
   const [typed, setTyped] = useState('');
 
-  useEffect(() => {
+  // Every time the picker opens it starts at the top again.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) {
       setPath('');
       setTyped('');
     }
-  }, [open]);
+  }
 
   const listing = useQuery({
     queryKey: ['admin', 'fs', path],
@@ -97,9 +92,7 @@ export function FolderPicker({
           </Button>
           <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="/media/movies" className="font-mono" />
         </form>
-        <p className="text-xs text-faint">
-          Paths are on the Jellyfin server (inside its container, if it runs in Docker).
-        </p>
+        <p className="text-xs text-faint">Paths are on the Jellyfin server (inside its container, if it runs in Docker).</p>
         <div className="h-72 overflow-y-auto rounded-md bg-black/25 p-1 ring-1 ring-white/5">
           {listing.isLoading ? (
             <div className="flex h-full items-center justify-center text-accent">

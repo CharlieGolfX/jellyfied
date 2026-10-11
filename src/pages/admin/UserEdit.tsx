@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BaseItemDto, ItemsResult, UserDto, UserPolicy } from '@/api/types';
@@ -35,12 +35,13 @@ export default function UserEditPage() {
 
   const [name, setName] = useState('');
   const [policy, setPolicy] = useState<UserPolicy | null>(null);
-  useEffect(() => {
-    if (user.data) {
-      setName(user.data.Name);
-      setPolicy(user.data.Policy);
-    }
-  }, [user.data]);
+  // The form starts over from the saved user, each time that is loaded.
+  const [loaded, setLoaded] = useState<typeof user.data>(undefined);
+  if (user.data && user.data !== loaded) {
+    setLoaded(user.data);
+    setName(user.data.Name);
+    setPolicy(user.data.Policy);
+  }
 
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -154,16 +155,8 @@ export default function UserEditPage() {
                 disabled={isSelf}
                 onChange={(v) => p('IsDisabled', v)}
               />
-              <Switch
-                label="Hide from login screen"
-                checked={policy.IsHidden}
-                onChange={(v) => p('IsHidden', v)}
-              />
-              <Switch
-                label="Allow remote connections"
-                checked={policy.EnableRemoteAccess}
-                onChange={(v) => p('EnableRemoteAccess', v)}
-              />
+              <Switch label="Hide from login screen" checked={policy.IsHidden} onChange={(v) => p('IsHidden', v)} />
+              <Switch label="Allow remote connections" checked={policy.EnableRemoteAccess} onChange={(v) => p('EnableRemoteAccess', v)} />
             </div>
           </Card>
 
@@ -282,11 +275,7 @@ export default function UserEditPage() {
 
       {tab === 'access' && (
         <Card title="Library access">
-          <Switch
-            label="Access to all libraries"
-            checked={policy.EnableAllFolders}
-            onChange={(v) => p('EnableAllFolders', v)}
-          />
+          <Switch label="Access to all libraries" checked={policy.EnableAllFolders} onChange={(v) => p('EnableAllFolders', v)} />
           {!policy.EnableAllFolders && (
             <div className="mt-2 rounded-md bg-black/20 p-3">
               {folders.isLoading && <p className="text-sm text-muted">Loading libraries…</p>}
@@ -301,11 +290,7 @@ export default function UserEditPage() {
             </div>
           )}
           <div className="mt-3 border-t border-white/5 pt-1">
-            <Switch
-              label="Access from all devices"
-              checked={policy.EnableAllDevices}
-              onChange={(v) => p('EnableAllDevices', v)}
-            />
+            <Switch label="Access from all devices" checked={policy.EnableAllDevices} onChange={(v) => p('EnableAllDevices', v)} />
           </div>
         </Card>
       )}

@@ -43,12 +43,7 @@ export function SeriesDetails({ item }: { item: BaseItemDto }) {
         </>
       }
     >
-      <Hub
-        title={seasonCount === 1 ? 'Season' : 'Seasons'}
-        items={seasons.data?.Items}
-        loading={seasons.isLoading}
-        shape="poster"
-      />
+      <Hub title={seasonCount === 1 ? 'Season' : 'Seasons'} items={seasons.data?.Items} loading={seasons.isLoading} shape="poster" />
       <CastHub people={item.People} />
       <Hub title="More Like This" items={similar.data?.Items} shape="poster" />
     </DetailFrame>

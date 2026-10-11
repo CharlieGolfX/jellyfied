@@ -22,7 +22,12 @@ describe('pictureStyle', () => {
   });
 
   it('stretches to exactly the player', () => {
-    expect(pictureStyle({ fit: 'stretch', aspect: '4:3', zoom: 1, box, video: wide })).toMatchObject({ width: 1600, height: 900, left: 0, top: 0 });
+    expect(pictureStyle({ fit: 'stretch', aspect: '4:3', zoom: 1, box, video: wide })).toMatchObject({
+      width: 1600,
+      height: 900,
+      left: 0,
+      top: 0,
+    });
   });
 
   it('forces an aspect ratio inside the player', () => {

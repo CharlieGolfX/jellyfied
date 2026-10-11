@@ -121,6 +121,10 @@ function subscribe(cb: () => void) {
 }
 
 export function useTheme(): [Theme, (patch: Partial<Theme>) => void] {
-  const value = useSyncExternalStore(subscribe, () => current, () => DEFAULT_THEME);
+  const value = useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => DEFAULT_THEME,
+  );
   return [value, setTheme];
 }

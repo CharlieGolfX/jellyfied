@@ -25,9 +25,8 @@ export default function LogsPage() {
     [files.data],
   );
 
-  useEffect(() => {
-    if (!selected && sorted[0]) setSelected(sorted[0].Name);
-  }, [sorted, selected]);
+  // The newest log is shown until another one is picked.
+  if (!selected && sorted[0]) setSelected(sorted[0].Name);
 
   const content = useQuery({
     queryKey: ['admin', 'log', selected],
@@ -45,6 +44,8 @@ export default function LogsPage() {
   useEffect(() => {
     const el = viewerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    // Runs for every new set of lines, to keep the newest ones in view.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [lines]);
 
   const download = () => {
@@ -104,13 +105,7 @@ export default function LogsPage() {
               {content.error
                 ? String((content.error as Error).message)
                 : lines.map((l, i) => (
-                    <div
-                      key={i}
-                      className={clsx(
-                        /\[(ERR|FTL)\]|\bError\b/.test(l) && 'text-danger',
-                        /\[WRN\]/.test(l) && 'text-star',
-                      )}
-                    >
+                    <div key={i} className={clsx(/\[(ERR|FTL)\]|\bError\b/.test(l) && 'text-danger', /\[WRN\]/.test(l) && 'text-star')}>
                       {l || ' '}
                     </div>
                   ))}

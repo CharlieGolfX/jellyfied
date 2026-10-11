@@ -29,7 +29,17 @@ export function ControlButton({
   );
 }
 
-export function PanelChip({ selected, onClick, children, title }: { selected: boolean; onClick: () => void; children: ReactNode; title?: string }) {
+export function PanelChip({
+  selected,
+  onClick,
+  children,
+  title,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  title?: string;
+}) {
   return (
     <button
       onClick={onClick}
