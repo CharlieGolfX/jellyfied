@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { useT } from '@/i18n';
 import { Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -56,6 +57,7 @@ function describe(item: BaseItemDto): string {
 }
 
 export function SearchBox() {
+  const t = useT();
   const api = useApi();
   const { userId } = useSession();
   const navigate = useNavigate();
@@ -105,8 +107,8 @@ export function SearchBox() {
   // "/" focuses search, like Plex.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) && !t.isContentEditable) {
+      const el = e.target as HTMLElement;
+      if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) && !el.isContentEditable) {
         e.preventDefault();
         inputRef.current?.focus();
       }
@@ -146,8 +148,8 @@ export function SearchBox() {
           ref={inputRef}
           type="search"
           value={term}
-          placeholder="Search"
-          aria-label="Search"
+          placeholder={t('common.search')}
+          aria-label={t('common.search')}
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => {
@@ -180,7 +182,7 @@ export function SearchBox() {
               inputRef.current?.focus();
             }}
             className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-faint hover:text-fg"
-            aria-label="Clear search"
+            aria-label={t('search.clear')}
           >
             {isFetching ? <Spinner size={14} /> : <X size={16} />}
           </button>
@@ -190,7 +192,7 @@ export function SearchBox() {
       {open && debounced.length >= 2 && (
         <div className="animate-pop-in absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-lg bg-base-750 shadow-2xl ring-1 ring-black/40">
           {results.length === 0 && !isFetching && (
-            <div className="px-4 py-6 text-center text-sm text-muted">No results for “{debounced}”</div>
+            <div className="px-4 py-6 text-center text-sm text-muted">{t('search.noResults', { query: debounced })}</div>
           )}
           {results.map((item, i) => {
             const src = imageSrc(api, cardImage(item, 'poster'), 96);

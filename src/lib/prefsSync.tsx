@@ -15,6 +15,7 @@ export const SYNCED_KEYS = [
   'jellyplex.timeFormat',
   'jellyplex.home',
   'jellyplex.trackMemory',
+  'jellyplex.language',
 ];
 
 const ENABLED_KEY = 'jellyplex.syncPrefs';

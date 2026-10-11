@@ -117,7 +117,7 @@ test('a library can be jumped through by letter, shown as a list, and changed in
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
   await page.goto('/library/lib-movies?tab=library');
 
-  const byLetter = page.waitForRequest((r) => r.url().includes('nameStartsWith=M'));
+  const byLetter = page.waitForRequest((r) => r.url().includes('nameLessThan=M'));
   await page.getByTestId('alphabet-bar').getByRole('button', { name: 'M', exact: true }).click();
   await byLetter;
 

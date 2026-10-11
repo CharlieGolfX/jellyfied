@@ -1,15 +1,16 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, Filter, Shuffle } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Query } from '@/api/client';
-import { useFilters, useFilterValues, useInfiniteItems, useStudios } from '@/api/queries';
+import { useFilters, useFilterValues, useInfiniteItems, useLetterIndex, useStudios } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
 import { BulkBar } from '@/components/media/BulkBar';
 import { CardGrid } from '@/components/media/CardGrid';
 import { ItemList } from '@/components/media/ItemList';
-import { SelectionProvider } from '@/components/media/selection';
+import { SelectionProvider, useSelection } from '@/components/media/selection';
 import { CardSizeSlider } from '@/components/media/CardSizeSlider';
 import { Button } from '@/components/ui/Button';
+import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { usePlay } from '@/player/usePlay';
 import { plural } from '@/lib/format';
@@ -21,7 +22,7 @@ import {
   FILTERS,
   HAS_RESOLUTION,
   HAS_STUDIOS,
-  letterQuery,
+  MultiFilter,
   RESOLUTIONS,
   Toolbar,
   ViewToggle,
@@ -46,23 +47,26 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
   const sort = config.sorts.find((s) => s.value === params.get('sort')) ?? config.sorts[0];
   const order = (params.get('order') as 'Ascending' | 'Descending' | null) ?? sort.defaultOrder;
   const filter = params.get('filter') ?? '';
-  const genre = params.get('genre') ?? '';
-  const year = params.get('year') ?? '';
-  const rating = params.get('rating') ?? '';
-  const tag = params.get('tag') ?? '';
-  const studio = params.get('studio') ?? '';
+  // These take several values: the address carries one "genre=" for each.
+  const genre = params.getAll('genre');
+  const year = params.getAll('year');
+  const rating = params.getAll('rating');
+  const tag = params.getAll('tag');
+  const studio = params.getAll('studio');
   const resolution = RESOLUTIONS.find((r) => r.value === params.get('res'));
   // Jumping to a letter only makes sense in a list that is in alphabetical order.
   const byTitle = sort.value === 'SortName';
   const letter = byTitle ? (params.get('letter') ?? '') : '';
-  const filtered = Boolean(filter || genre || year || rating || tag || studio || resolution || letter);
+  const filtered = Boolean(filter || genre.length || year.length || rating.length || tag.length || studio.length || resolution);
 
-  const update = (patch: Record<string, string | null>) => {
+  const update = (patch: Record<string, string | string[] | null>) => {
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(patch)) {
-      if (v) next.set(k, v);
-      else next.delete(k);
+      next.delete(k);
+      for (const value of Array.isArray(v) ? v : v ? [v] : []) next.append(k, value);
     }
+    // A letter belongs to the list it was picked in; any other list starts at the top again.
+    if (!('letter' in patch)) next.delete('letter');
     setParams(next, { replace: true });
   };
 
@@ -73,18 +77,81 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
     sortBy: sort.value,
     sortOrder: order,
     filters: filter || undefined,
-    genreIds: genre || undefined,
-    years: year || undefined,
-    officialRatings: rating || undefined,
-    tags: tag || undefined,
-    studioIds: studio || undefined,
+    // Ids and years are separated by commas, names by "|" (a name can contain a comma).
+    genreIds: genre,
+    years: year,
+    officialRatings: rating.join('|'),
+    tags: tag.join('|'),
+    studioIds: studio,
     ...resolution?.query,
-    ...letterQuery(letter),
   };
-  const result = useInfiniteItems(query);
+  // Picking a letter keeps the whole list and starts it at that letter; earlier titles load on scrolling up.
+  const jump = useLetterIndex(query, letter, order);
+  // The list begins at the start of the row the letter is in, so that row is the same one as in
+  // the whole list and nothing shifts sideways when the titles above it arrive.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(0);
+  useLayoutEffect(() => {
+    const grid = listRef.current?.querySelector(':scope > .grid');
+    setColumns(grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 1);
+    // Measured again for each letter, as the window may have been resized since the last one.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [letter, view]);
+  const start = letter && jump.data !== undefined && columns ? jump.data - (jump.data % columns) : 0;
+  const result = useInfiniteItems(query, !letter || (jump.data !== undefined && columns > 0), '/Items', start, columns || 1);
+  const loading = result.isLoading || (Boolean(letter) && (jump.isLoading || !columns));
   const items = useMemo(() => result.data?.pages.flatMap((p) => p.Items) ?? [], [result.data]);
   const total = result.data?.pages[0]?.TotalRecordCount ?? 0;
-  const genreName = filters.data?.Genres?.find((g) => g.Id === genre)?.Name;
+
+  const selection = useSelection();
+  useEffect(() => selection?.setOrder(items), [selection, items]);
+
+  // Titles added above the ones on screen must not push those down, so the page is scrolled by
+  // the height that was added. (Browsers that do this themselves are told not to, below.)
+  const before = useRef<{ first?: string; height: number }>({ height: 0 });
+  const firstId = items[0]?.Id;
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const height = list.offsetHeight;
+    const prev = before.current;
+    const prepended = prev.first !== undefined && prev.first !== firstId && items.some((i) => i.Id === prev.first);
+    if (prepended) document.getElementById('main-scroll')?.scrollBy({ top: height - prev.height });
+    before.current = { first: firstId, height };
+  }, [firstId, items]);
+
+  // A letter puts the top of the list right under the A–Z bar; taking the letter away goes back to the start.
+  const jumped = letter ? jump.data : undefined;
+  const lastLetter = useRef<string | null>(null);
+  useEffect(() => {
+    const scroller = document.getElementById('main-scroll');
+    const list = listRef.current;
+    if (letter && jumped !== undefined && scroller && list) {
+      // Where the bar ends once it sticks under the library's header, which is where it will be.
+      const header =
+        scroller.querySelector('[data-library-header]')?.getBoundingClientRect().bottom ?? scroller.getBoundingClientRect().top;
+      const bar = scroller.querySelector<HTMLElement>('[data-testid="alphabet-bar"]')?.offsetHeight ?? 0;
+      scroller.scrollBy({ top: list.getBoundingClientRect().top - (header + bar + 8) });
+    } else if (!letter && lastLetter.current) {
+      scroller?.scrollTo({ top: 0 });
+    }
+    lastLetter.current = letter;
+    // Also for another letter that begins at the same position.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [letter, jumped]);
+
+  const earlierRef = useRef<HTMLDivElement>(null);
+  const { hasPreviousPage, isFetchingPreviousPage, fetchPreviousPage } = result;
+  useEffect(() => {
+    const el = earlierRef.current;
+    if (!el || !hasPreviousPage || isFetchingPreviousPage) return;
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && void fetchPreviousPage(), {
+      rootMargin: '300px 0px',
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasPreviousPage, isFetchingPreviousPage, fetchPreviousPage]);
+
   const years = [...(values.data?.Years ?? [])].sort((a, b) => b - a);
   const ratings = values.data?.OfficialRatings ?? [];
   const tags = values.data?.Tags ?? filters.data?.Tags ?? [];
@@ -104,7 +171,7 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
     <div className="px-4 pt-5 sm:px-8 lg:px-10">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <Toolbar>
-          <span className="mr-2 text-sm text-muted">{result.isLoading ? '…' : plural(total, kind)}</span>
+          <span className="mr-2 text-sm text-muted">{loading ? '…' : plural(total, kind)}</span>
           <DropdownButton
             label={sort.label}
             icon={order === 'Ascending' ? <ArrowUpNarrowWide size={15} /> : <ArrowDownWideNarrow size={15} />}
@@ -135,40 +202,30 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
             />
           )}
           {(filters.data?.Genres?.length ?? 0) > 0 && (
-            <DropdownButton
-              label={genreName ?? 'Genre'}
-              active={Boolean(genre)}
-              items={[
-                { label: 'All genres', checked: !genre, onSelect: () => update({ genre: null }) },
-                { divider: true, label: '' },
-                ...(filters.data?.Genres ?? []).map((g) => ({
-                  label: g.Name,
-                  checked: g.Id === genre,
-                  onSelect: () => update({ genre: g.Id }),
-                })),
-              ]}
+            <MultiFilter
+              name="Genre"
+              plural="genres"
+              options={(filters.data?.Genres ?? []).map((g) => ({ value: g.Id, label: g.Name }))}
+              selected={genre}
+              onChange={(v) => update({ genre: v })}
             />
           )}
           {years.length > 1 && (
-            <DropdownButton
-              label={year || 'Year'}
-              active={Boolean(year)}
-              items={[
-                { label: 'All years', checked: !year, onSelect: () => update({ year: null }) },
-                { divider: true, label: '' },
-                ...years.map((y) => ({ label: String(y), checked: String(y) === year, onSelect: () => update({ year: String(y) }) })),
-              ]}
+            <MultiFilter
+              name="Year"
+              plural="years"
+              options={years.map((y) => ({ value: String(y), label: String(y) }))}
+              selected={year}
+              onChange={(v) => update({ year: v })}
             />
           )}
           {ratings.length > 1 && (
-            <DropdownButton
-              label={rating || 'Rating'}
-              active={Boolean(rating)}
-              items={[
-                { label: 'All ratings', checked: !rating, onSelect: () => update({ rating: null }) },
-                { divider: true, label: '' },
-                ...ratings.map((r) => ({ label: r, checked: r === rating, onSelect: () => update({ rating: r }) })),
-              ]}
+            <MultiFilter
+              name="Rating"
+              plural="ratings"
+              options={ratings.map((r) => ({ value: r, label: r }))}
+              selected={rating}
+              onChange={(v) => update({ rating: v })}
             />
           )}
           {hasResolution && (
@@ -187,32 +244,26 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
             />
           )}
           {tags.length > 0 && (
-            <DropdownButton
-              label={tag || 'Tag'}
-              active={Boolean(tag)}
-              items={[
-                { label: 'All tags', checked: !tag, onSelect: () => update({ tag: null }) },
-                { divider: true, label: '' },
-                ...tags.map((t) => ({ label: t, checked: t === tag, onSelect: () => update({ tag: t }) })),
-              ]}
+            <MultiFilter
+              name="Tag"
+              plural="tags"
+              options={tags.map((t) => ({ value: t, label: t }))}
+              selected={tag}
+              onChange={(v) => update({ tag: v })}
             />
           )}
           {studioList.length > 1 && (
-            <DropdownButton
-              label={studioList.find((s) => s.Id === studio)?.Name ?? 'Studio'}
-              active={Boolean(studio)}
-              items={[
-                { label: 'All studios', checked: !studio, onSelect: () => update({ studio: null }) },
-                { divider: true, label: '' },
-                ...studioList.map((s) => ({ label: s.Name ?? '', checked: s.Id === studio, onSelect: () => update({ studio: s.Id }) })),
-              ]}
+            <MultiFilter
+              name="Studio"
+              plural="studios"
+              options={studioList.map((st) => ({ value: st.Id, label: st.Name ?? '' }))}
+              selected={studio}
+              onChange={(v) => update({ studio: v })}
             />
           )}
           {filtered && (
             <button
-              onClick={() =>
-                update({ filter: null, genre: null, year: null, rating: null, tag: null, studio: null, res: null, letter: null })
-              }
+              onClick={() => update({ filter: null, genre: null, year: null, rating: null, tag: null, studio: null, res: null })}
               className="text-sm text-accent hover:underline"
             >
               Clear
@@ -234,28 +285,37 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
 
       {result.error ? (
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
-      ) : !result.isLoading && items.length === 0 ? (
+      ) : !loading && items.length === 0 ? (
         <EmptyState title="Nothing here">
           {filtered ? 'No items match the current filters.' : 'This library doesn’t contain any items yet.'}
         </EmptyState>
-      ) : view === 'list' ? (
-        <ItemList
-          items={items}
-          loading={result.isLoading}
-          hasMore={result.hasNextPage}
-          loadingMore={result.isFetchingNextPage}
-          onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
-        />
       ) : (
-        <CardGrid
-          items={items}
-          shape={config.shape}
-          minWidth={baseWidth}
-          loading={result.isLoading}
-          hasMore={result.hasNextPage}
-          loadingMore={result.isFetchingNextPage}
-          onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
-        />
+        <div ref={listRef} className="[overflow-anchor:none]">
+          {result.hasPreviousPage && (
+            <div ref={earlierRef} className="flex h-10 items-center justify-center text-accent" data-testid="earlier-titles">
+              {result.isFetchingPreviousPage && <Spinner size={22} />}
+            </div>
+          )}
+          {view === 'list' ? (
+            <ItemList
+              items={items}
+              loading={loading}
+              hasMore={result.hasNextPage}
+              loadingMore={result.isFetchingNextPage}
+              onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
+            />
+          ) : (
+            <CardGrid
+              items={items}
+              shape={config.shape}
+              minWidth={baseWidth}
+              loading={loading}
+              hasMore={result.hasNextPage}
+              loadingMore={result.isFetchingNextPage}
+              onLoadMore={() => !result.isFetchingNextPage && result.fetchNextPage()}
+            />
+          )}
+        </div>
       )}
       <BulkBar allItems={items} />
     </div>

@@ -1,15 +1,17 @@
 import clsx from 'clsx';
-import { Download, ExternalLink, Power, Puzzle, Search, Trash2 } from 'lucide-react';
+import { Download, ExternalLink, Plus, Power, Puzzle, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { RepositoryInfo } from '@/api/generated';
 import type { ConfigurationPageInfo, PackageInfo, PluginInfo } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Form';
+import { Field, Input, Switch } from '@/components/ui/Form';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState, Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
+import { useDraft } from '@/lib/useDraft';
 import { AdminPage, StatusPill } from './shared';
 
 const STATUS_TONE: Record<PluginInfo['Status'], 'green' | 'amber' | 'red' | 'gray'> = {
@@ -211,15 +213,91 @@ function Catalog() {
   );
 }
 
+/** The addresses the catalogue is read from. */
+function Repositories() {
+  const api = useApi();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const query = useQuery({ queryKey: ['admin', 'repositories'], queryFn: () => api.get<RepositoryInfo[]>('/Repositories') });
+  const [draft, setDraft] = useDraft(query.data);
+  const save = useMutation({
+    mutationFn: (list: RepositoryInfo[]) => api.post('/Repositories', list),
+    onSuccess: () => {
+      toast.success('Repositories saved');
+      void qc.invalidateQueries({ queryKey: ['admin', 'repositories'] });
+      void qc.invalidateQueries({ queryKey: ['admin', 'packages'] });
+    },
+    onError: (e) => toast.error(e),
+  });
+
+  if (query.error) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
+  if (!draft) return <PageSpinner />;
+
+  const change = (i: number, patch: Partial<RepositoryInfo>) => setDraft(draft.map((r, n) => (n === i ? { ...r, ...patch } : r)));
+  const complete = draft.every((r) => r.Name?.trim() && /^https?:\/\/\S+$/.test(r.Url?.trim() ?? ''));
+
+  return (
+    <div className="space-y-3">
+      <p className="max-w-2xl text-sm text-muted">
+        The catalogue lists the plugins of every repository that is switched on. Only add repositories you trust: a plugin runs with the
+        server's full rights.
+      </p>
+      {draft.map((r, i) => (
+        <div
+          key={i}
+          className="grid items-end gap-3 rounded-lg bg-base-800/70 p-4 ring-1 ring-white/5 sm:grid-cols-[1fr_2fr_auto_auto]"
+          data-testid="repository"
+        >
+          <Field label="Name">
+            <Input value={r.Name ?? ''} onChange={(e) => change(i, { Name: e.target.value })} />
+          </Field>
+          <Field label="Address of its manifest">
+            <Input
+              value={r.Url ?? ''}
+              onChange={(e) => change(i, { Url: e.target.value })}
+              placeholder="https://…/manifest.json"
+              className="font-mono text-xs"
+            />
+          </Field>
+          <Switch label="On" checked={r.Enabled !== false} onChange={(v) => change(i, { Enabled: v })} />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Remove ${r.Name || 'repository'}`}
+            onClick={() => setDraft(draft.filter((_, n) => n !== i))}
+          >
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      ))}
+      {draft.length === 0 && <p className="text-sm text-muted">No repositories. The catalogue is empty without one.</p>}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setDraft([...draft, { Name: '', Url: '', Enabled: true }])}>
+          Add repository
+        </Button>
+        <Button
+          variant="primary"
+          loading={save.isPending}
+          disabled={!complete}
+          title={complete ? undefined : 'Every repository needs a name and an http(s) address'}
+          onClick={() => save.mutate(draft.map((r) => ({ ...r, Name: r.Name?.trim(), Url: r.Url?.trim() })))}
+        >
+          Save repositories
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function PluginsPage() {
-  const [tab, setTab] = useState<'installed' | 'catalog'>('installed');
+  const [tab, setTab] = useState<'installed' | 'catalog' | 'repositories'>('installed');
   return (
     <AdminPage
       title="Plugins"
       description="Extend Jellyfin with metadata providers, authentication and more. Most changes need a server restart."
       actions={
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['installed', 'catalog'] as const).map((t) => (
+          {(['installed', 'catalog', 'repositories'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -234,7 +312,7 @@ export default function PluginsPage() {
         </div>
       }
     >
-      {tab === 'installed' ? <Installed /> : <Catalog />}
+      {tab === 'installed' ? <Installed /> : tab === 'catalog' ? <Catalog /> : <Repositories />}
     </AdminPage>
   );
 }

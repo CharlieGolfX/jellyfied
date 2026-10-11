@@ -87,6 +87,8 @@ test.describe('as an administrator', () => {
     const name = page.getByLabel('Server name');
     await expect(name).toHaveValue('Mock Server');
     await name.fill('Renamed Server');
+    // Only the languages the server has text for, not every language it knows of.
+    await expect(page.getByLabel('Display language (server UI)').getByRole('option')).toHaveText(['Deutsch', 'English']);
 
     const saved = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/System/Configuration'));
     await page.getByRole('button', { name: 'Save changes' }).click();

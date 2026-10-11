@@ -6,6 +6,9 @@ export class SelectionStore {
   private items = new Map<string, BaseItemDto>();
   private list: BaseItemDto[] = [];
   private listeners = new Set<() => void>();
+  /** The items in the order they are shown, and the one last ticked: what a range is measured against. */
+  private order: BaseItemDto[] = [];
+  private anchor: string | null = null;
 
   private changed() {
     this.list = Array.from(this.items.values());
@@ -22,8 +25,21 @@ export class SelectionStore {
   /** The same array until the selection changes. */
   selected = () => this.list;
 
-  toggle(item: BaseItemDto) {
-    if (!this.items.delete(item.Id)) this.items.set(item.Id, item);
+  /** Tells the selection what is on screen, so a range can be selected. */
+  setOrder(items: BaseItemDto[]) {
+    this.order = items;
+  }
+
+  /** Ticks or unticks one item. With `range` (shift-click), ticks everything from the last ticked item to this one. */
+  toggle(item: BaseItemDto, range = false) {
+    const from = range && this.anchor ? this.order.findIndex((i) => i.Id === this.anchor) : -1;
+    const to = from < 0 ? -1 : this.order.findIndex((i) => i.Id === item.Id);
+    if (from >= 0 && to >= 0) {
+      for (const i of this.order.slice(Math.min(from, to), Math.max(from, to) + 1)) this.items.set(i.Id, i);
+    } else {
+      if (!this.items.delete(item.Id)) this.items.set(item.Id, item);
+      this.anchor = item.Id;
+    }
     this.changed();
   }
 
@@ -33,6 +49,7 @@ export class SelectionStore {
   }
 
   clear() {
+    this.anchor = null;
     if (this.items.size === 0) return;
     this.items.clear();
     this.changed();

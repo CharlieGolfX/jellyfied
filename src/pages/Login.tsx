@@ -5,6 +5,8 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, PublicSystemInfo, QuickConnectResult, UserDto } from '@/api/types';
 import { LAST_SERVER_KEY, useAuth } from '@/auth/AuthProvider';
+import { useGuardedSwitch } from '@/auth/PinPrompt';
+import { useT } from '@/i18n';
 import { APP_VERSION, normalizeServerUrl, runtimeConfig } from '@/config';
 import { Logo } from '@/components/layout/Logo';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +31,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
-  usePageTitle('Sign in');
+  const t = useT();
+  usePageTitle(t('login.title'));
 
   const [serverUrl, setServerUrl] = useState(initialServer);
   const [serverInput, setServerInput] = useState(serverUrl);
@@ -39,25 +42,28 @@ export default function LoginPage() {
 
   const api = useMemo(() => (serverUrl ? new JellyfinApi(serverUrl) : null), [serverUrl]);
 
-  const connect = useCallback(async (url: string) => {
-    setChecking(true);
-    setServerError(null);
-    try {
-      const normalized = normalizeServerUrl(url);
-      const probe = new JellyfinApi(normalized);
-      const result = await probe.get<PublicSystemInfo>('/System/Info/Public');
-      if (!result || typeof result !== 'object' || !result.Id) {
-        throw new Error('That address did not respond like a Jellyfin server.');
+  const connect = useCallback(
+    async (url: string) => {
+      setChecking(true);
+      setServerError(null);
+      try {
+        const normalized = normalizeServerUrl(url);
+        const probe = new JellyfinApi(normalized);
+        const result = await probe.get<PublicSystemInfo>('/System/Info/Public');
+        if (!result || typeof result !== 'object' || !result.Id) {
+          throw new Error(t('login.notJellyfin'));
+        }
+        setServerUrl(normalized);
+        setInfo(result);
+      } catch (err) {
+        setInfo(null);
+        setServerError(err instanceof TypeError ? t('login.invalidAddress') : errorMessage(err));
+      } finally {
+        setChecking(false);
       }
-      setServerUrl(normalized);
-      setInfo(result);
-    } catch (err) {
-      setInfo(null);
-      setServerError(err instanceof TypeError ? 'Please enter a valid server address.' : errorMessage(err));
-    } finally {
-      setChecking(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   // Only on first mount: check the server that is already known (configured, or used last time).
   // oxlint-disable react/set-state-in-effect, react/exhaustive-effect-dependencies, react-hooks/exhaustive-deps
@@ -90,7 +96,7 @@ export default function LoginPage() {
           {checking && !info ? (
             <div className="flex flex-col items-center gap-3 py-10 text-muted">
               <Spinner size={32} className="text-accent" />
-              <span className="text-sm">Connecting to server…</span>
+              <span className="text-sm">{t('login.connecting')}</span>
             </div>
           ) : !info || !api ? (
             <ServerStep
@@ -116,7 +122,7 @@ export default function LoginPage() {
             />
           )}
         </div>
-        <p className="mt-6 text-center text-xs text-faint">A Plex-style client for Jellyfin · v{APP_VERSION}</p>
+        <p className="mt-6 text-center text-xs text-faint">{t('login.tagline', { version: APP_VERSION })}</p>
       </div>
     </div>
   );
@@ -135,6 +141,7 @@ function ServerStep({
   loading: boolean;
   onSubmit: () => void;
 }) {
+  const t = useT();
   return (
     <form
       onSubmit={(e) => {
@@ -144,10 +151,10 @@ function ServerStep({
       className="space-y-5"
     >
       <div>
-        <h1 className="text-xl font-semibold">Connect to Jellyfin</h1>
-        <p className="mt-1 text-sm text-muted">Enter the address of your Jellyfin server.</p>
+        <h1 className="text-xl font-semibold">{t('login.connectTitle')}</h1>
+        <p className="mt-1 text-sm text-muted">{t('login.connectHelp')}</p>
       </div>
-      <Field label="Server address" hint="For example http://192.168.1.10:8096 or https://jellyfin.example.com">
+      <Field label={t('login.serverAddress')} hint={t('login.serverAddressHint')}>
         <div className="relative">
           <Server size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint" />
           <Input
@@ -165,7 +172,7 @@ function ServerStep({
       </Field>
       {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       <Button type="submit" variant="primary" size="lg" className="w-full justify-center" loading={loading} disabled={!value.trim()}>
-        Connect
+        {t('login.connect')}
       </Button>
     </form>
   );
@@ -182,11 +189,14 @@ function LoginStep({
   onBack?: () => void;
   onAuthenticated: (r: AuthenticationResult) => void;
 }) {
-  const { otherAccounts, switchAccount, forgetAccount } = useAuth();
+  const t = useT();
+  const { otherAccounts, forgetAccount } = useAuth();
+  const { switchTo, dialog: pinDialog } = useGuardedSwitch();
   // Accounts that are still signed in on this browser can be continued without a password.
   const saved = otherAccounts.filter((a) => a.serverUrl === api.serverUrl);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [quickConnect, setQuickConnect] = useState(false);
+  const [disclaimer, setDisclaimer] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +216,10 @@ function LoginStep({
       .get<boolean>('/QuickConnect/Enabled')
       .then((v) => !cancelled && setQuickConnect(v === true))
       .catch(() => {});
+    api
+      .get<{ LoginDisclaimer?: string | null }>('/Branding/Configuration')
+      .then((b) => !cancelled && setDisclaimer(disclaimerText(b?.LoginDisclaimer)))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -218,7 +232,7 @@ function LoginStep({
       const result = await api.post<AuthenticationResult>('/Users/AuthenticateByName', { Username: name, Pw: pw });
       onAuthenticated(result);
     } catch (err) {
-      setError((err as { status?: number }).status === 401 ? 'Invalid username or password.' : errorMessage(err));
+      setError((err as { status?: number }).status === 401 ? t('login.invalidCredentials') : errorMessage(err));
       setLoading(false);
     }
   };
@@ -279,16 +293,14 @@ function LoginStep({
   if (qc) {
     return (
       <div className="space-y-5 text-center">
-        <h1 className="text-xl font-semibold">Quick Connect</h1>
-        <p className="text-sm text-muted">
-          On a device where you are already signed in, open Quick Connect in your user settings and enter this code:
-        </p>
+        <h1 className="text-xl font-semibold">{t('login.quickConnect')}</h1>
+        <p className="text-sm text-muted">{t('login.quickConnectHelp')}</p>
         <div className="rounded-lg bg-base-950 py-5 font-mono text-4xl font-bold tracking-[0.3em] text-accent">{qc.Code}</div>
         <div className="flex items-center justify-center gap-2 text-sm text-muted">
-          <Spinner size={14} /> Waiting for authorization…
+          <Spinner size={14} /> {t('login.waitingForAuthorization')}
         </div>
         <Button variant="ghost" onClick={() => setQc(null)}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </div>
     );
@@ -303,33 +315,32 @@ function LoginStep({
           <button
             onClick={onBack}
             className="mt-0.5 rounded-full p-1 text-muted hover:bg-white/10 hover:text-fg"
-            aria-label="Change server"
+            aria-label={t('login.changeServer')}
           >
             <ArrowLeft size={18} />
           </button>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold">{showPicker ? 'Who’s watching?' : 'Sign in'}</h1>
+          <h1 className="text-xl font-semibold">{showPicker ? t('login.whoIsWatching') : t('login.title')}</h1>
           <p className="mt-0.5 truncate text-sm text-muted">
-            {info.ServerName} · Jellyfin {info.Version}
+            {t('login.serverInfo', { name: info.ServerName ?? '', version: info.Version ?? '' })}
           </p>
         </div>
       </div>
 
       {info.StartupWizardCompleted === false && (
-        <p className="rounded-md bg-star/10 px-3 py-2 text-sm text-star">
-          This server has not finished its initial setup. Complete the setup wizard in the Jellyfin web interface first.
-        </p>
+        <p className="rounded-md bg-star/10 px-3 py-2 text-sm text-star">{t('login.setupIncomplete')}</p>
       )}
 
+      {pinDialog}
       {saved.length > 0 && (
         <div data-testid="saved-accounts">
-          <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">Signed in on this device</div>
+          <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">{t('login.signedInHere')}</div>
           <ul className="space-y-1">
             {saved.map((a) => (
               <li key={a.userId} className="flex items-center gap-1">
                 <button
-                  onClick={() => switchAccount(a)}
+                  onClick={() => switchTo(a)}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left transition hover:bg-white/10"
                 >
                   <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent font-bold text-accent-ink">
@@ -339,13 +350,13 @@ function LoginStep({
                       fallback={a.userName.charAt(0).toUpperCase()}
                     />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">Continue as {a.userName}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('login.continueAs', { name: a.userName })}</span>
                 </button>
                 <button
                   onClick={() => void forgetAccount(a)}
                   className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg"
-                  aria-label={`Sign ${a.userName} out`}
-                  title={`Sign ${a.userName} out`}
+                  aria-label={t('login.signOutAccount', { name: a.userName })}
+                  title={t('login.signOutAccount', { name: a.userName })}
                 >
                   <X size={16} />
                 </button>
@@ -383,18 +394,18 @@ function LoginStep({
           {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
           <div className="flex flex-col gap-2">
             <Button variant="outline" className="justify-center" icon={<UserIcon size={16} />} onClick={() => setManual(true)}>
-              Sign in manually
+              {t('login.signInManually')}
             </Button>
             {quickConnect && (
               <Button variant="ghost" className="justify-center" icon={<KeyRound size={16} />} onClick={startQuickConnect}>
-                Use Quick Connect
+                {t('login.useQuickConnect')}
               </Button>
             )}
           </div>
         </>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
-          <Field label="Username">
+          <Field label={t('login.username')}>
             <Input
               autoFocus={!username}
               value={username}
@@ -405,7 +416,7 @@ function LoginStep({
               spellCheck={false}
             />
           </Field>
-          <Field label="Password">
+          <Field label={t('login.password')}>
             <Input
               ref={passwordRef}
               type="password"
@@ -417,22 +428,37 @@ function LoginStep({
           </Field>
           {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
           <Button type="submit" variant="primary" size="lg" className="w-full justify-center" loading={loading} disabled={!username.trim()}>
-            Sign in
+            {t('login.signIn')}
           </Button>
           <div className={clsx('flex gap-2', users.length > 0 ? 'justify-between' : 'justify-center')}>
             {users.length > 0 && (
               <Button variant="ghost" size="sm" onClick={() => setManual(false)}>
-                Back to users
+                {t('login.backToUsers')}
               </Button>
             )}
             {quickConnect && (
               <Button variant="ghost" size="sm" icon={<KeyRound size={14} />} onClick={startQuickConnect}>
-                Quick Connect
+                {t('login.quickConnect')}
               </Button>
             )}
           </div>
         </form>
       )}
+
+      {disclaimer && (
+        <p className="border-t border-white/10 pt-4 text-center text-xs whitespace-pre-wrap text-muted" data-testid="login-disclaimer">
+          {disclaimer}
+        </p>
+      )}
     </div>
   );
+}
+
+/**
+ * The server's login disclaimer as plain text. Jellyfin's web interface accepts HTML there; the
+ * tags are dropped here rather than shown, and nothing in it is ever run.
+ */
+export function disclaimerText(value: string | null | undefined): string {
+  if (!value) return '';
+  return (new DOMParser().parseFromString(value, 'text/html').body.textContent ?? '').trim();
 }

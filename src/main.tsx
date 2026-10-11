@@ -10,6 +10,7 @@ import { AudioPlayerProvider } from '@/player/AudioPlayerProvider';
 import { SyncPlayProvider } from '@/player/SyncPlayProvider';
 import { RealtimeProvider } from '@/realtime/RealtimeProvider';
 import { VideoSessionProvider } from '@/player/VideoSession';
+import { ready as i18nReady } from '@/i18n';
 import App from './App';
 import './index.css';
 // Applies the saved interface colours before the first render.
@@ -32,6 +33,9 @@ const queryClient = new QueryClient({
 if (BASE_PATH && stripBasePath(window.location.pathname) === window.location.pathname) {
   window.location.replace(appPath('/'));
 }
+
+// The chosen language's text is loaded first, so the page does not start in English and then change.
+await i18nReady;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

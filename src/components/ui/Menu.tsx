@@ -10,6 +10,8 @@ export interface MenuItem {
   danger?: boolean;
   disabled?: boolean;
   checked?: boolean;
+  /** Leave the menu open after this item is picked, for lists where several can be ticked. */
+  keepOpen?: boolean;
   divider?: boolean;
   header?: boolean;
 }
@@ -37,8 +39,8 @@ export function Menu({ trigger, items, align = 'right', width = 224, className }
     setOpen((o) => !o);
   }, []);
 
-  useLayoutEffect(() => {
-    if (!open || !anchorRef.current) return;
+  const place = useCallback(() => {
+    if (!anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
     const menuHeight = menuRef.current?.offsetHeight ?? 0;
     let left = align === 'right' ? rect.right - width : rect.left;
@@ -49,7 +51,11 @@ export function Menu({ trigger, items, align = 'right', width = 224, className }
       top = Math.max(8, rect.top - 6 - Math.min(menuHeight, rect.top - 14));
     }
     setPos({ top, left, maxHeight: Math.max(160, window.innerHeight - top - 8) });
-  }, [open, align, width]);
+  }, [align, width]);
+
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,9 +70,12 @@ export function Menu({ trigger, items, align = 'right', width = 224, className }
         close();
       }
     };
+    // The menu follows its button while the page scrolls, and closes once the button is out of sight.
     const onScroll = (e: Event) => {
       if (menuRef.current?.contains(e.target as Node)) return;
-      close();
+      const rect = anchorRef.current?.getBoundingClientRect();
+      if (!rect || rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) close();
+      else place();
     };
     document.addEventListener('mousedown', onDown);
     window.addEventListener('keydown', onKey, true);
@@ -78,7 +87,7 @@ export function Menu({ trigger, items, align = 'right', width = 224, className }
       window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', close);
     };
-  }, [open, close]);
+  }, [open, close, place]);
 
   return (
     <span ref={anchorRef} className={clsx('inline-flex', className)}>
@@ -108,11 +117,12 @@ export function Menu({ trigger, items, align = 'right', width = 224, className }
               return (
                 <button
                   key={i}
-                  role="menuitem"
+                  role={item.keepOpen ? 'menuitemcheckbox' : 'menuitem'}
+                  aria-checked={item.keepOpen ? Boolean(item.checked) : undefined}
                   disabled={item.disabled}
                   onClick={(e) => {
                     e.preventDefault();
-                    close();
+                    if (!item.keepOpen) close();
                     item.onSelect?.();
                   }}
                   className={clsx(

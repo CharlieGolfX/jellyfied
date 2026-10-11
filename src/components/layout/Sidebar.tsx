@@ -7,6 +7,7 @@ import { MEDIA, useUserViews } from '@/api/queries';
 import type { ItemsResult, UserDto } from '@/api/types';
 import { useApi, useIsAdmin, useSession } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ui/Toast';
+import { useT } from '@/i18n';
 import { LibraryIcon } from './libraryIcon';
 
 function SideLink({
@@ -145,23 +146,33 @@ function useLibraryOrder(views: ItemsResult | undefined) {
 }
 
 export function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const t = useT();
   const { data: views, isLoading } = useUserViews();
   const isAdmin = useIsAdmin();
   const { items, dragId, dragProps, containerProps } = useLibraryOrder(views);
 
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto px-2 py-3">
-      <SideLink to="/" end icon={<Home size={20} strokeWidth={1.75} />} label="Home" collapsed={collapsed} onNavigate={onNavigate} />
+      <SideLink
+        to="/"
+        end
+        icon={<Home size={20} strokeWidth={1.75} />}
+        label={t('common.home')}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+      />
       <SideLink
         to="/favorites"
         icon={<Heart size={20} strokeWidth={1.75} />}
-        label="Favorites"
+        label={t('nav.favorites')}
         collapsed={collapsed}
         onNavigate={onNavigate}
       />
 
       <div className="my-2 h-px bg-white/10" />
-      {!collapsed && <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">Libraries</div>}
+      {!collapsed && (
+        <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">{t('nav.libraries')}</div>
+      )}
       {isLoading && Array.from({ length: 4 }, (_, i) => <div key={i} className="mx-1 my-1 h-8 animate-pulse rounded bg-white/5" />)}
       <div className="flex flex-col gap-1" {...containerProps}>
         {items.map((view) => (
@@ -169,12 +180,12 @@ export function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavig
             key={view.Id}
             {...dragProps(view.Id)}
             className={clsx('group/lib rounded-md', dragId === view.Id && 'opacity-40')}
-            title={collapsed ? undefined : 'Drag to reorder'}
+            title={collapsed ? undefined : t('nav.dragToReorder')}
           >
             <SideLink
               to={`/library/${view.Id}`}
               icon={<LibraryIcon type={view.CollectionType} />}
-              label={view.Name ?? 'Library'}
+              label={view.Name ?? t('nav.library')}
               collapsed={collapsed}
               onNavigate={onNavigate}
               trailing={
@@ -195,7 +206,7 @@ export function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavig
           <SideLink
             to="/admin"
             icon={<LayoutDashboard size={20} strokeWidth={1.75} />}
-            label="Dashboard"
+            label={t('nav.dashboard')}
             collapsed={collapsed}
             onNavigate={onNavigate}
           />

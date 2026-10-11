@@ -55,23 +55,59 @@ export function useItems(query: Query, opts: { enabled?: boolean; key?: QueryKey
 
 export const PAGE_SIZE = 100;
 
-export function useInfiniteItems(query: Query, enabled = true, path = '/Items') {
+/**
+ * A list loaded a page at a time. It normally starts at the top; with `start` it starts at that
+ * position instead and can be extended in both directions. Pages loaded above the start hold a
+ * multiple of `columns` items, so a grid with that many columns keeps its rows as they are.
+ */
+export function useInfiniteItems(query: Query, enabled = true, path = '/Items', start = 0, columns = 1) {
   const api = useApi();
   const { userId } = useSession();
   return useInfiniteQuery({
-    queryKey: [MEDIA, 'infinite', path, query],
+    queryKey: [MEDIA, 'infinite', path, query, start, start ? columns : 1],
     queryFn: ({ pageParam, signal }) =>
       api.get<ItemsResult>(
         path,
-        { ...CARD_QUERY, userId, ...query, startIndex: pageParam, limit: PAGE_SIZE, enableTotalRecordCount: true },
+        { ...CARD_QUERY, userId, ...query, startIndex: pageParam.index, limit: pageParam.limit, enableTotalRecordCount: true },
         signal,
       ),
-    initialPageParam: 0,
-    getNextPageParam: (last, pages) => {
-      const loaded = pages.reduce((n, p) => n + p.Items.length, 0);
-      return loaded < last.TotalRecordCount && last.Items.length > 0 ? loaded : undefined;
+    initialPageParam: { index: start, limit: PAGE_SIZE },
+    getNextPageParam: (last, _pages, param) => {
+      const next = param.index + last.Items.length;
+      return next < last.TotalRecordCount && last.Items.length > 0 ? { index: next, limit: PAGE_SIZE } : undefined;
+    },
+    getPreviousPageParam: (_first, _pages, param) => {
+      if (param.index <= 0) return undefined;
+      const index = Math.max(0, param.index - Math.max(columns, PAGE_SIZE - (PAGE_SIZE % columns)));
+      return { index, limit: param.index - index };
     },
     enabled,
+  });
+}
+
+/** Where the titles under a letter begin in a list sorted by title ('#' = before A). */
+export function letterIndex(order: 'Ascending' | 'Descending', total: number, before: number, inLetter: number): number {
+  return order === 'Ascending' ? before : Math.max(0, total - before - inLetter);
+}
+
+/** Position of the first title under `letter` in the list `query` describes, or undefined while it is being counted. */
+export function useLetterIndex(query: Query, letter: string, order: 'Ascending' | 'Descending', path = '/Items') {
+  const api = useApi();
+  const { userId } = useSession();
+  return useQuery({
+    queryKey: [MEDIA, 'letter-index', path, query, letter, order],
+    queryFn: async ({ signal }) => {
+      const count = (extra: Query) =>
+        api
+          .get<ItemsResult>(path, { userId, ...query, ...extra, limit: 0, enableTotalRecordCount: true, enableImages: false }, signal)
+          .then((r) => r.TotalRecordCount);
+      const before = letter === '#' ? Promise.resolve(0) : count({ nameLessThan: letter });
+      if (order === 'Ascending') return before;
+      const inLetter = count(letter === '#' ? { nameLessThan: 'A' } : { nameStartsWith: letter });
+      return letterIndex(order, await count({}), await before, await inLetter);
+    },
+    enabled: Boolean(letter),
+    staleTime: 60_000,
   });
 }
 

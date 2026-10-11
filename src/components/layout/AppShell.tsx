@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { useT } from '@/i18n';
 import { LayoutDashboard, Menu as MenuIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
@@ -19,6 +20,7 @@ import { UserMenu } from './UserMenu';
 const COLLAPSE_KEY = 'jellyplex.sidebarCollapsed';
 
 export function AppShell() {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -62,13 +64,17 @@ export function AppShell() {
   return (
     <div className="flex h-full flex-col bg-base-900">
       <header className="z-40 flex h-14 shrink-0 items-center gap-3 bg-base-850 px-3 shadow-[0_1px_0_rgba(0,0,0,0.5)] sm:px-4">
-        <button onClick={toggleSidebar} className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg" aria-label="Toggle sidebar">
+        <button
+          onClick={toggleSidebar}
+          className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg"
+          aria-label={t('nav.toggleSidebar')}
+        >
           <MenuIcon size={22} />
         </button>
-        <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label="Home">
+        <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label={t('common.home')}>
           <Logo className="h-8" />
         </Link>
-        <Link to="/" className="shrink-0 sm:hidden" aria-label="Home">
+        <Link to="/" className="shrink-0 sm:hidden" aria-label={t('common.home')}>
           <JellyfinIcon className="h-7 w-7" />
         </Link>
         <div className="flex min-w-0 flex-1 justify-center">
@@ -82,7 +88,7 @@ export function AppShell() {
             <Link
               to="/admin"
               className="hidden rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg sm:block"
-              title="Server dashboard"
+              title={t('nav.serverDashboard')}
             >
               <LayoutDashboard size={20} />
             </Link>

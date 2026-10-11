@@ -35,7 +35,8 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
     >
       {selection && (
         <button
-          onClick={() => selection.toggle(item)}
+          onClick={(e) => selection.toggle(item, e.shiftKey)}
+          onMouseDown={(e) => e.shiftKey && e.preventDefault()}
           role="checkbox"
           aria-checked={selected}
           aria-label={`Select ${title}`}

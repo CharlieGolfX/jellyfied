@@ -47,6 +47,16 @@ export function moveRow(ids: string[], id: string, direction: -1 | 1): string[] 
   return next;
 }
 
+/** The order after dragging one row to position `index` among the rows that exist. */
+export function moveRowTo(ids: string[], id: string, index: number): string[] {
+  const from = ids.indexOf(id);
+  const to = Math.max(0, Math.min(index, ids.length - 1));
+  if (from < 0 || from === to) return ids;
+  const next = ids.filter((x) => x !== id);
+  next.splice(to, 0, id);
+  return next;
+}
+
 function read(): HomeLayout {
   try {
     return parseHomeLayout(localStorage.getItem(KEY));

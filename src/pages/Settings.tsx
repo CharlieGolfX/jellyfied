@@ -3,7 +3,10 @@ import { Camera, Check, KeyRound, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CultureDto, QuickConnectResult, UserConfiguration } from '@/api/types';
+import { checkPin, clearPin, hasPin, setPin, validPin } from '@/auth/accountPin';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import { PinInput } from '@/auth/PinPrompt';
+import { browserLanguage, chosenLanguage, languageName, LANGUAGES, setLanguage, useLanguage, useT } from '@/i18n';
 import { Avatar } from '@/components/layout/UserMenu';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select, Switch } from '@/components/ui/Form';
@@ -322,10 +325,12 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <LanguageCard />
       <InterfaceColorsCard />
       <SubtitleAppearanceCard />
 
       <PasswordCard hasPassword={user.HasPassword} />
+      <AccountPinCard />
       <QuickConnectCard />
     </div>
   );
@@ -553,6 +558,99 @@ function QuickConnectCard() {
           Authorize
         </Button>
       </form>
+    </Card>
+  );
+}
+
+/** Sets, changes or removes the PIN that is asked for before switching to this account on this device. */
+function AccountPinCard() {
+  const session = useSession();
+  const toast = useToast();
+  const [protectedNow, setProtectedNow] = useState(() => hasPin(session));
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const mismatch = confirm.length > 0 && next !== confirm;
+
+  const reset = () => {
+    setCurrent('');
+    setNext('');
+    setConfirm('');
+    setProtectedNow(hasPin(session));
+  };
+  /** Changing or removing a PIN takes the PIN, or anyone at the keyboard could do it. */
+  const currentIsRight = () => {
+    const result = checkPin(session, current);
+    if (result.ok) return true;
+    toast.error(
+      result.lockedFor ? `Too many wrong tries. Try again in ${Math.ceil(result.lockedFor / 1000)} seconds.` : 'The current PIN is wrong.',
+    );
+    setCurrent('');
+    return false;
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (mismatch || !validPin(next) || !currentIsRight()) return;
+    setPin(session, next);
+    toast.success(protectedNow ? 'PIN changed' : 'PIN set');
+    reset();
+  };
+  const remove = () => {
+    if (!currentIsRight()) return;
+    clearPin(session);
+    toast.success('PIN removed');
+    reset();
+  };
+
+  return (
+    <Card
+      title="Account PIN"
+      description="Asked for before someone switches to this account on this device. It keeps others in the household out of your account; it does not replace your password, and it only applies to this browser."
+    >
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3" data-testid="account-pin">
+        {protectedNow && (
+          <Field label="Current PIN">
+            <PinInput value={current} onChange={setCurrent} />
+          </Field>
+        )}
+        <Field label={protectedNow ? 'New PIN' : 'PIN'} hint="4 to 12 digits">
+          <PinInput value={next} onChange={setNext} />
+        </Field>
+        <Field label="Repeat the PIN" hint={mismatch ? <span className="text-danger">The PINs don’t match</span> : undefined}>
+          <PinInput value={confirm} onChange={setConfirm} />
+        </Field>
+        <div className="flex flex-wrap gap-2 sm:col-span-3">
+          <Button type="submit" variant="primary" disabled={mismatch || !validPin(next) || next !== confirm || (protectedNow && !current)}>
+            {protectedNow ? 'Change PIN' : 'Set PIN'}
+          </Button>
+          {protectedNow && (
+            <Button variant="outline" disabled={!current} onClick={remove}>
+              Remove PIN
+            </Button>
+          )}
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+/** Picks the language of Jellyplex's own text, from the languages it has been translated to. */
+function LanguageCard() {
+  const t = useT();
+  // Read again whenever the language in use changes.
+  useLanguage();
+  return (
+    <Card title={t('settings.language.title')} description={t('settings.language.description')}>
+      <Field label={t('settings.language.label')} hint={t('settings.language.count', { count: LANGUAGES.length })} className="max-w-sm">
+        <Select value={chosenLanguage() ?? ''} onChange={(e) => setLanguage(e.target.value || null)}>
+          <option value="">{t('settings.language.auto', { language: languageName(browserLanguage()) })}</option>
+          {LANGUAGES.map((code) => (
+            <option key={code} value={code}>
+              {languageName(code)}
+            </option>
+          ))}
+        </Select>
+      </Field>
     </Card>
   );
 }

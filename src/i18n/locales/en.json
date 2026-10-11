@@ -1,0 +1,68 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "home": "Home",
+    "search": "Search"
+  },
+  "nav": {
+    "favorites": "Favorites",
+    "libraries": "Libraries",
+    "library": "Library",
+    "dashboard": "Dashboard",
+    "serverDashboard": "Server dashboard",
+    "dragToReorder": "Drag to reorder",
+    "toggleSidebar": "Toggle sidebar"
+  },
+  "search": {
+    "clear": "Clear search",
+    "noResults": "No results for “{query}”"
+  },
+  "userMenu": {
+    "open": "Account menu",
+    "accountSettings": "Account settings",
+    "switchTo": "Switch to {name}",
+    "addAccount": "Add another account",
+    "signOut": "Sign out"
+  },
+  "login": {
+    "title": "Sign in",
+    "tagline": "A Plex-style client for Jellyfin · v{version}",
+    "connecting": "Connecting to server…",
+    "connectTitle": "Connect to Jellyfin",
+    "connectHelp": "Enter the address of your Jellyfin server.",
+    "serverAddress": "Server address",
+    "serverAddressHint": "For example http://192.168.1.10:8096 or https://jellyfin.example.com",
+    "connect": "Connect",
+    "notJellyfin": "That address did not respond like a Jellyfin server.",
+    "invalidAddress": "Please enter a valid server address.",
+    "invalidCredentials": "Invalid username or password.",
+    "changeServer": "Change server",
+    "whoIsWatching": "Who’s watching?",
+    "serverInfo": "{name} · Jellyfin {version}",
+    "setupIncomplete": "This server has not finished its initial setup. Complete the setup wizard in the Jellyfin web interface first.",
+    "signedInHere": "Signed in on this device",
+    "continueAs": "Continue as {name}",
+    "signOutAccount": "Sign {name} out",
+    "signInManually": "Sign in manually",
+    "useQuickConnect": "Use Quick Connect",
+    "quickConnect": "Quick Connect",
+    "quickConnectHelp": "On a device where you are already signed in, open Quick Connect in your user settings and enter this code:",
+    "waitingForAuthorization": "Waiting for authorization…",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "backToUsers": "Back to users"
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "description": "The language of Jellyplex itself. Titles and descriptions of your media come from the server.",
+      "label": "Interface language",
+      "auto": "Same as the browser ({language})",
+      "count": {
+        "one": "{count} language is available.",
+        "other": "{count} languages are available."
+      }
+    }
+  }
+}

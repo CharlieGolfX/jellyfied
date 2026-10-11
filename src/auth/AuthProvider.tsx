@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, UserDto } from '@/api/types';
 import { appPath } from '@/lib/basePath';
+import { clearPin } from './accountPin';
 
 const SESSION_KEY = 'jellyplex.session';
-/** Every account signed in on this browser, the current one included, so users can switch without a password. */
+/** Every account signed in on this browser, the current one included, so users can switch without a password (see accountPin). */
 const ACCOUNTS_KEY = 'jellyplex.accounts';
 export const LAST_SERVER_KEY = 'jellyplex.lastServer';
 
@@ -110,7 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     // The token is gone or no longer valid, so the account can't be switched to any more either.
-    if (session) updateAccounts((list) => withAccount(list, session, true));
+    if (session) {
+      updateAccounts((list) => withAccount(list, session, true));
+      clearPin(session);
+    }
     setSession(null);
     queryClient.clear();
   }, [queryClient, session, updateAccounts]);
@@ -180,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* token may already be invalid */
       }
       updateAccounts((list) => withAccount(list, account, true));
+      clearPin(account);
     },
     [updateAccounts],
   );

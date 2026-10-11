@@ -1,7 +1,6 @@
 import clsx from 'clsx';
 import { ChevronDown, LayoutGrid, List } from 'lucide-react';
-import { type ReactNode } from 'react';
-import type { Query } from '@/api/client';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useLibraryView } from '@/lib/libraryView';
 
@@ -25,17 +24,24 @@ export const HAS_STUDIOS = new Set(['Movie', 'Series']);
 
 const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 
-/** The part of an items query that picks titles by their first letter ('#' = everything before A). */
-export function letterQuery(letter: string): Query {
-  if (!letter) return {};
-  return letter === '#' ? { nameLessThan: 'A' } : { nameStartsWith: letter };
-}
-
-/** A–Z strip to jump to a letter in a list sorted by title. */
+/** A–Z strip that moves a list sorted by title to a letter; the rest of the list stays above and below. */
 export function AlphabetBar({ value, onChange }: { value: string; onChange: (letter: string | null) => void }) {
+  // The bar stays in reach under the library's header, however far the list has been scrolled.
+  const [top, setTop] = useState(0);
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('[data-library-header]');
+    if (!header) return;
+    const measure = () => setTop(header.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
-      className="scrollbar-none -mx-1 mb-4 flex gap-0.5 overflow-x-auto"
+      className="scrollbar-none sticky z-10 -mx-4 mb-3 flex gap-0.5 overflow-x-auto bg-base-900/90 px-3 py-1.5 backdrop-blur-md sm:-mx-8 sm:px-7 lg:-mx-10 lg:px-9"
+      style={{ top }}
       role="group"
       aria-label="Jump to a letter"
       data-testid="alphabet-bar"
@@ -45,7 +51,7 @@ export function AlphabetBar({ value, onChange }: { value: string; onChange: (let
           key={l}
           onClick={() => onChange(value === l ? null : l)}
           aria-pressed={value === l}
-          title={l === '#' ? 'Titles that start with a number or symbol' : `Titles that start with ${l}`}
+          title={l === '#' ? 'Go to titles that start with a number or symbol' : `Go to titles that start with ${l}`}
           className={clsx(
             'h-7 min-w-7 shrink-0 rounded px-1.5 text-xs font-semibold transition-colors',
             value === l ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-white/10 hover:text-fg',
@@ -120,6 +126,41 @@ export function DropdownButton({
           <ChevronDown size={14} />
         </button>
       )}
+    />
+  );
+}
+
+/** A filter menu where several values can be ticked; titles matching any of them are shown. */
+export function MultiFilter({
+  name,
+  plural,
+  options,
+  selected,
+  onChange,
+}: {
+  /** "Genre" */
+  name: string;
+  /** "genres" */
+  plural: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const first = options.find((o) => o.value === selected[0])?.label ?? selected[0];
+  return (
+    <DropdownButton
+      label={selected.length === 0 ? name : selected.length === 1 ? first : `${selected.length} ${plural}`}
+      active={selected.length > 0}
+      items={[
+        { label: `All ${plural}`, checked: selected.length === 0, onSelect: () => onChange([]) },
+        { divider: true, label: '' },
+        ...options.map((o) => ({
+          label: o.label,
+          checked: selected.includes(o.value),
+          keepOpen: true,
+          onSelect: () => onChange(selected.includes(o.value) ? selected.filter((v) => v !== o.value) : [...selected, o.value]),
+        })),
+      ]}
     />
   );
 }

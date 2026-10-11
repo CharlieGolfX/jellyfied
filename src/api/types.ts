@@ -290,8 +290,11 @@ export interface UserPolicy {
   PasswordResetProviderId: string;
   SyncPlayAccess?: 'CreateAndJoinGroups' | 'JoinGroups' | 'None';
   MaxParentalRating?: number | null;
+  MaxParentalSubRating?: number | null;
   BlockedTags?: string[];
   AllowedTags?: string[];
+  BlockUnratedItems?: string[];
+  AccessSchedules?: { Id?: number; UserId?: string; DayOfWeek?: string; StartHour?: number; EndHour?: number }[];
   [key: string]: unknown;
 }
 

@@ -2,12 +2,15 @@ import clsx from 'clsx';
 import {
   Activity,
   CalendarClock,
+  DatabaseBackup,
   FileText,
+  FileCog,
   Gauge,
   KeyRound,
   Library,
   MonitorSmartphone,
   Network,
+  Paintbrush,
   Puzzle,
   Settings,
   Users,
@@ -20,11 +23,14 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/States';
 import ActivityPage from './Activity';
 import ApiKeysPage from './ApiKeys';
+import BackupsPage from './Backups';
+import BrandingPage from './Branding';
 import DashboardPage from './Dashboard';
 import DevicesPage from './Devices';
 import GeneralPage from './General';
 import LibrariesPage from './Libraries';
 import LogsPage from './Logs';
+import MetadataPage from './Metadata';
 import NetworkPage from './Network';
 import PlaybackPage from './Playback';
 import PluginsPage from './Plugins';
@@ -38,12 +44,15 @@ const NAV: { to: string; label: string; icon: ReactNode; end?: boolean; group: s
   { to: '/admin/general', label: 'General', icon: <Settings size={18} />, group: 'Server' },
   { to: '/admin/users', label: 'Users', icon: <Users size={18} />, group: 'Server' },
   { to: '/admin/libraries', label: 'Libraries', icon: <Library size={18} />, group: 'Server' },
+  { to: '/admin/metadata', label: 'Metadata', icon: <FileCog size={18} />, group: 'Server' },
   { to: '/admin/playback', label: 'Transcoding', icon: <Zap size={18} />, group: 'Server' },
   { to: '/admin/network', label: 'Networking', icon: <Network size={18} />, group: 'Server' },
+  { to: '/admin/branding', label: 'Branding', icon: <Paintbrush size={18} />, group: 'Server' },
   { to: '/admin/tasks', label: 'Scheduled Tasks', icon: <CalendarClock size={18} />, group: 'Manage' },
   { to: '/admin/activity', label: 'Activity', icon: <Activity size={18} />, group: 'Manage' },
   { to: '/admin/devices', label: 'Devices', icon: <MonitorSmartphone size={18} />, group: 'Manage' },
   { to: '/admin/plugins', label: 'Plugins', icon: <Puzzle size={18} />, group: 'Manage' },
+  { to: '/admin/backups', label: 'Backups', icon: <DatabaseBackup size={18} />, group: 'Manage' },
   { to: '/admin/apikeys', label: 'API Keys', icon: <KeyRound size={18} />, group: 'Manage' },
   { to: '/admin/logs', label: 'Logs', icon: <FileText size={18} />, group: 'Manage' },
 ];
@@ -103,6 +112,9 @@ export default function AdminRoutes() {
           <Route path="users" element={<UsersPage />} />
           <Route path="users/:userId" element={<UserEditPage />} />
           <Route path="libraries" element={<LibrariesPage />} />
+          <Route path="metadata" element={<MetadataPage />} />
+          <Route path="branding" element={<BrandingPage />} />
+          <Route path="backups" element={<BackupsPage />} />
           <Route path="playback" element={<PlaybackPage />} />
           <Route path="network" element={<NetworkPage />} />
           <Route path="tasks" element={<TasksPage />} />

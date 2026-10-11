@@ -32,15 +32,16 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   also applies to the home page and other Jellyfin apps.
 - Home: a featured title at the top, Continue Watching (in-progress plus next-up episodes merged,
   like Plex's On Deck), Continue Listening, and Recently Added per library. "Customise home" at the
-  bottom of the page reorders or hides the rows and the featured title.
+  bottom of the page reorders (drag, or the arrow buttons) or hides the rows and the featured title.
 - Libraries with Plex-style tabs: Recommended / Library / Collections / Categories for movies and TV,
   Albums / Artists / Genres for music, and folder browsing for home videos, photos, books and mixed libraries.
   Sorting, infinite scroll, and filters for watched state, favorites, genre, year, age rating,
-  resolution (4K / HD / SD), tag and studio.
-- An A–Z bar to jump to a letter in libraries sorted by title, and a list view as a denser
-  alternative to the poster grid.
-- Select several items (the tick on a card or row) to mark them watched or unwatched, add them to
-  a playlist or collection, or delete them in one go.
+  resolution (4K / HD / SD), tag and studio. Genre, year, rating, tag and studio take several
+  values at once (any of them matches).
+- An A–Z bar in libraries sorted by title: a letter moves the list there, with the rest of the
+  library still above and below it. A list view as a denser alternative to the poster grid.
+- Select several items (the tick on a card or row; shift-click for everything in between) to mark
+  them watched or unwatched, add them to a playlist or collection, or delete them in one go.
 - Pages update on their own: new media after a library scan, and watched state, favorites and
   resume positions changed on your other devices, appear without a reload.
 - Live TV: the channels with what is on, what is airing now, and your recordings.
@@ -116,11 +117,14 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 **Server dashboard (administrators)**
 - Dashboard: active streams with transcode details and remote pause/stop/message, active devices,
   library counts, storage, running tasks, recent activity, scan/restart/shutdown.
-- General settings, Users (create, delete, permissions, library access, passwords),
+- General settings, Users (create, delete, permissions, library access, passwords, and parental
+  controls: highest allowed rating, unrated items, allowed and blocked tags, access schedule),
   Libraries (add with a server-side folder browser, rename, add/remove folders, scan, refresh metadata, remove),
   Transcoding (hardware acceleration, encoder settings, throttling, resume thresholds),
-  Networking, Scheduled Tasks, Activity log, Devices, Plugins (installed and catalog, with a
-  Configure link that opens the plugin's settings page in the Jellyfin web UI),
+  Metadata (date added, NFO files, chapter images, trickplay), Networking, Branding (login
+  disclaimer, and custom CSS and splash screen for Jellyfin's own web interface), Scheduled Tasks,
+  Activity log, Devices, Plugins (installed, catalog and repositories, with a Configure link that
+  opens the plugin's settings page in the Jellyfin web UI), Backups (create, list, restore),
   API keys and a Log viewer.
 - Metadata editor ("Edit metadata" in an item's menu): titles, overview, dates, ratings, genres,
   tags, studios and external IDs; upload, delete or find artwork online; and Identify to match an
@@ -133,7 +137,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   and background tone).
 - Several accounts on one device: "Add another account" in the account menu keeps the current one
   signed in, and you switch between them from the same menu or the sign-in screen without typing
-  a password again.
+  a password again. An account can be given a PIN (Account settings) that is asked for before
+  anyone switches to it on that device.
 - Your preferences follow your account: colours, subtitle appearance, skip lengths, time display,
   the home page layout and the tracks remembered per show are the same in every browser you sign
   in to. This can be switched off under Account settings.
@@ -327,6 +332,27 @@ and `JELLYPLEX_DEV_PORT` to use a port other than 5173.
 Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
 The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
 
+### Translations
+
+Interface text is being moved out of the components into one file per language under
+`src/i18n/locales/`. English (`en.json`) is the reference and the fallback. So far it holds the
+sign-in screen, the sidebar, the top bar and the account menu; the other pages still have their
+English text in the code and are moved over the same way:
+
+```tsx
+const t = useT();                       // import { useT } from '@/i18n'
+<Button>{t('login.signIn')}</Button>
+t('userMenu.switchTo', { name })        // "Switch to {name}"
+t('settings.language.count', { count }) // { "one": "…", "other": "…" } picks the plural form
+```
+
+Keys are checked by TypeScript against `en.json`, so a misspelt key fails the type check. To add
+a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`) with the
+keys you have translated; missing ones fall back to English. It then appears under Account
+settings → Language by itself, is loaded only when chosen, and is picked automatically for
+browsers set to that language. A unit test checks that no language file has keys or
+placeholders that English lacks.
+
 ### Tests
 
 - **Unit tests** ([Vitest](https://vitest.dev)) live next to the code as `*.test.ts(x)`. `npm test`
@@ -392,8 +418,11 @@ docker/         container entrypoint that writes config.js and the nginx site
 - Live TV covers watching channels and recordings. The programme guide grid, and scheduling or
   cancelling recordings (DVR), are not implemented; use the regular Jellyfin web UI for those.
 - Every account signed in on a device can be switched to from that device without a password,
-  like in other apps with an account switcher. On a shared device, sign out of accounts others
-  should not use.
+  like in other apps with an account switcher. An account PIN stops that from the menu, but it is
+  a lock on the interface, not encryption: the sign-in stays stored in the browser, so someone
+  who can use the browser's developer tools can get past it. On a shared device with people you
+  don't trust, sign out instead.
+- The login disclaimer is shown as plain text; HTML in it is not rendered.
 - "Play on another device" works with apps that are signed in to your Jellyfin server and accept
   remote control.
 - Chromecast uses Jellyfin's own receiver app, which fetches the media from your server itself.

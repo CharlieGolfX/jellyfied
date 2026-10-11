@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { letterQuery } from './library/toolbar';
+import { letterIndex } from '@/api/queries';
 import { programProgress } from './LiveTv';
 
 describe('programProgress', () => {
@@ -21,16 +21,17 @@ describe('programProgress', () => {
   });
 });
 
-describe('letterQuery', () => {
-  it('asks for titles that start with the letter', () => {
-    expect(letterQuery('M')).toEqual({ nameStartsWith: 'M' });
+describe('letterIndex', () => {
+  // 600 titles, 339 of them before M and 39 under M.
+  it('is the number of titles before the letter in an A to Z list', () => {
+    expect(letterIndex('Ascending', 600, 339, 39)).toBe(339);
   });
 
-  it('asks for everything before A for the number sign', () => {
-    expect(letterQuery('#')).toEqual({ nameLessThan: 'A' });
+  it('is the number of titles after the letter in a Z to A list', () => {
+    expect(letterIndex('Descending', 600, 339, 39)).toBe(222);
   });
 
-  it('asks for nothing without a letter', () => {
-    expect(letterQuery('')).toEqual({});
+  it('never points before the start', () => {
+    expect(letterIndex('Descending', 10, 8, 5)).toBe(0);
   });
 });

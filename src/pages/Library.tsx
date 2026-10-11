@@ -43,7 +43,7 @@ export default function LibraryPage() {
 
   return (
     <div className="pb-10">
-      <div className="sticky top-0 z-20 border-b border-white/5 bg-base-900/90 backdrop-blur-md">
+      <div data-library-header className="sticky top-0 z-20 border-b border-white/5 bg-base-900/90 backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-8 lg:px-10">
           <div className="flex items-center gap-2.5 text-lg font-semibold">
             <span className="text-accent">

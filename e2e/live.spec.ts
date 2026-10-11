@@ -280,16 +280,49 @@ test.describe('playback on a real server', () => {
     await expect(count).toBeVisible();
     const all = await count.textContent();
 
-    await page.getByTestId('alphabet-bar').getByRole('button', { name: 'S', exact: true }).click();
-    await expect(count).not.toHaveText(all!);
+    // A letter moves the list to it; the list stays whole, so the count does not change.
+    const [firstS] = await items(page, '/Items', {
+      parentId: library.Id,
+      recursive: 'true',
+      includeItemTypes: 'Movie',
+      sortBy: 'SortName',
+      nameStartsWith: 'S',
+      limit: '1',
+    });
+    const [lastBeforeS] = await items(page, '/Items', {
+      parentId: library.Id,
+      recursive: 'true',
+      includeItemTypes: 'Movie',
+      sortBy: 'SortName',
+      sortOrder: 'Descending',
+      nameLessThan: 'S',
+      limit: '1',
+    });
+    test.skip(!firstS || !lastBeforeS, 'the library has no movie under S, or none before it');
+    const bar = page.getByTestId('alphabet-bar');
+    await bar.getByRole('button', { name: 'S', exact: true }).click();
     await expect(page).toHaveURL(/letter=S/);
-    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByLabel(firstS.Name, { exact: true }).first()).toBeInViewport();
     await expect(count).toHaveText(all!);
+    // The titles before it are loaded above, and the bar stays in reach.
+    await expect(page.getByLabel(lastBeforeS.Name, { exact: true }).first()).toBeAttached();
+    await expect(page.getByLabel(firstS.Name, { exact: true }).first()).toBeInViewport();
+    await expect(bar).toBeInViewport();
+    await bar.getByRole('button', { name: 'S', exact: true }).click();
+    await expect(page).not.toHaveURL(/letter=/);
 
+    // Two years together match more than the first alone.
     await page.getByRole('button', { name: 'Year', exact: true }).click();
-    await page.getByRole('menuitem').or(page.locator('[role="menu"] button')).nth(2).click();
+    const years = page.getByRole('menuitemcheckbox');
+    await years.nth(0).click();
     await expect(page).toHaveURL(/year=\d{4}/);
     await expect(count).not.toHaveText(all!);
+    const one = await count.textContent();
+    await years.nth(1).click();
+    await expect(page).toHaveURL(/year=\d{4}&year=\d{4}/);
+    await expect(count).not.toHaveText(one!);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: '2 years' })).toBeVisible();
 
     await page.getByRole('button', { name: 'List view' }).click();
     await expect(page.getByTestId('item-list').getByRole('listitem').first()).toBeVisible();

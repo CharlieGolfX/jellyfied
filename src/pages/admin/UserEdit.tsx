@@ -13,9 +13,10 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { Card } from '@/pages/Settings';
+import { ParentalControls } from './ParentalControls';
 import { AdminPage } from './shared';
 
-type Tab = 'profile' | 'access' | 'password';
+type Tab = 'profile' | 'access' | 'parental' | 'password';
 
 export default function UserEditPage() {
   const { userId = '' } = useParams();
@@ -119,7 +120,7 @@ export default function UserEditPage() {
       <div className="flex items-center gap-4">
         <Avatar userId={user.data.Id} tag={user.data.PrimaryImageTag} name={user.data.Name} size={56} />
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['profile', 'access', 'password'] as Tab[]).map((t) => (
+          {(['profile', 'access', 'parental', 'password'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -294,6 +295,8 @@ export default function UserEditPage() {
           </div>
         </Card>
       )}
+
+      {tab === 'parental' && <ParentalControls policy={policy} onChange={p} />}
 
       {tab === 'password' && <PasswordForm user={user.data} isSelf={isSelf} onDone={invalidate} />}
 

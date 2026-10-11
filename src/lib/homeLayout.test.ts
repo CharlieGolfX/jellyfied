@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrangeRows, DEFAULT_HOME_LAYOUT, moveRow, parseHomeLayout } from './homeLayout';
+import { arrangeRows, DEFAULT_HOME_LAYOUT, moveRow, moveRowTo, parseHomeLayout } from './homeLayout';
 
 describe('parseHomeLayout', () => {
   it('shows everything, banner included, by default', () => {
@@ -50,5 +50,23 @@ describe('moveRow', () => {
     expect(moveRow(['a', 'b'], 'a', -1)).toEqual(['a', 'b']);
     expect(moveRow(['a', 'b'], 'b', 1)).toEqual(['a', 'b']);
     expect(moveRow(['a', 'b'], 'x', 1)).toEqual(['a', 'b']);
+  });
+});
+
+describe('moveRowTo', () => {
+  it('puts a dragged row at the position it was dropped on', () => {
+    expect(moveRowTo(['a', 'b', 'c', 'd'], 'a', 2)).toEqual(['b', 'c', 'a', 'd']);
+    expect(moveRowTo(['a', 'b', 'c', 'd'], 'd', 0)).toEqual(['d', 'a', 'b', 'c']);
+  });
+
+  it('keeps the same list when nothing moves', () => {
+    const ids = ['a', 'b', 'c'];
+    expect(moveRowTo(ids, 'b', 1)).toBe(ids);
+    expect(moveRowTo(ids, 'x', 0)).toBe(ids);
+  });
+
+  it('stops at the ends', () => {
+    expect(moveRowTo(['a', 'b', 'c'], 'a', 9)).toEqual(['b', 'c', 'a']);
+    expect(moveRowTo(['a', 'b', 'c'], 'c', -4)).toEqual(['c', 'a', 'b']);
   });
 });

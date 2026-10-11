@@ -26,13 +26,21 @@ shown in the account menu and on the login screen.
 
 - Pages update on their own when the library changes or when something is watched, favourited or
   paused on another device.
-- Library filters for year, age rating, resolution, tag and studio, an A–Z bar to jump to a
-  letter, and a list view next to the poster grid.
+- Library filters for year, age rating, resolution, tag and studio, and a list view next to the
+  poster grid. Genre, year, rating, tag and studio take several values at once.
+- An A–Z bar in libraries sorted by title. A letter moves the list there and keeps the rest of
+  the library above and below it; the bar stays in reach while scrolling.
 - Selecting several items to mark them watched or unwatched, add them to a playlist or
-  collection, or delete them.
-- The home page has a featured title at the top, and "Customise home" to reorder or hide its rows.
+  collection, or delete them. Shift-click selects everything in between.
+- The home page has a featured title at the top, and "Customise home" to reorder (by dragging or
+  with buttons) or hide its rows.
 - Browser tabs and history entries are named after the page.
-- Several accounts can be signed in on one device and switched between without a password.
+- Several accounts can be signed in on one device and switched between without a password. An
+  account can be given a PIN that is asked for before switching to it on that device.
+- Server dashboard: Backups (create, list, restore), parental controls in the user editor
+  (highest rating, unrated items, tags, access schedule), Branding, Metadata (date added, NFO
+  files, chapter images, trickplay) and plugin repositories.
+- The server's login disclaimer is shown on the sign-in screen.
 - Preferences (colours, subtitle appearance, skip lengths, time display, home layout, remembered
   tracks) are saved with the Jellyfin account and follow you to other browsers.
 - Live TV: channels with what is on, programmes airing now, and recordings.
@@ -41,6 +49,7 @@ shown in the account menu and on the login screen.
 - `JELLYPLEX_BASE_PATH` serves Jellyplex under a path such as `/jellyplex`.
 
 ### Changed
+- Menus follow their button while the page scrolls instead of closing.
 - The container's nginx no longer runs as root, and is based on nginx 1.30. The default port is
   still 80; set `JELLYPLEX_PORT=8080` on runtimes that do not let an unprivileged process use it.
 - The container's Content-Security-Policy now allows WebAssembly (for styled subtitles) and
@@ -49,6 +58,8 @@ shown in the account menu and on the login screen.
 - Build assets are compressed once at build time instead of on every request.
 
 ### Fixed
+- "Display language (server UI)" in the dashboard's General settings listed every language the
+  server knows of. It now lists the languages the server's text has actually been translated to.
 - Behind a reverse proxy or tunnel, Jellyfin was told the proxy's address instead of the
   visitor's, so the dashboard and activity log showed the same address for everyone. The
   container now works out the visitor's address from `X-Forwarded-For` and passes that on.
@@ -57,6 +68,9 @@ shown in the account menu and on the login screen.
 - Files without a date no longer show "Jan 1, 1970" in the library list.
 
 ### Development
+- A structure for translations: interface text in one file per language (`src/i18n/locales/`),
+  with typed keys, placeholders, plural forms and a language setting. The sign-in screen,
+  sidebar, top bar and account menu use it; the rest of the interface is still to be moved.
 - Lint is free of warnings, with every rule an error; Prettier formats the code.
 - Unit tests for the WebSocket client, SyncPlay, signing in and out, and what "Play" does; browser
   tests for search, settings, the dashboard and the metadata editor; all browser tests also run in

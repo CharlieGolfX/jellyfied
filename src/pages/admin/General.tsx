@@ -17,6 +17,12 @@ export default function GeneralPage() {
     queryFn: () => api.get<CultureDto[]>('/Localization/Cultures'),
     staleTime: Infinity,
   });
+  // The languages the server's own text has been translated to, as opposed to every language it knows of.
+  const uiLanguages = useQuery({
+    queryKey: ['localization-options'],
+    queryFn: () => api.get<{ Name?: string | null; Value?: string | null }[]>('/Localization/Options'),
+    staleTime: Infinity,
+  });
   const countries = useQuery({
     queryKey: ['countries'],
     queryFn: () => api.get<CountryInfo[]>('/Localization/Countries'),
@@ -45,17 +51,20 @@ export default function GeneralPage() {
           <Field label="Server name" hint="Shown to clients and on the login screen.">
             <Input value={draft.ServerName ?? ''} onChange={(e) => set('ServerName', e.target.value)} />
           </Field>
-          <Field label="Display language (server UI)">
+          <Field label="Display language (server UI)" hint="Used for text the server writes, such as notifications and the activity log.">
             <Select value={draft.UICulture ?? ''} onChange={(e) => set('UICulture', e.target.value)}>
-              {(cultures.data ?? [])
-                .slice()
-                .sort((a, b) => a.DisplayName.localeCompare(b.DisplayName))
-                .map((c) => (
-                  <option key={c.Name} value={c.Name}>
-                    {c.DisplayName}
+              {(Array.isArray(uiLanguages.data) ? uiLanguages.data : [])
+                .filter((l) => l.Value)
+                .sort((a, b) => (a.Name ?? '').localeCompare(b.Name ?? ''))
+                .map((l) => (
+                  <option key={l.Value} value={l.Value ?? ''}>
+                    {l.Name ?? l.Value}
                   </option>
                 ))}
-              {!cultures.data && <option value={draft.UICulture}>{draft.UICulture}</option>}
+              {/* The saved value stays selectable while the list loads, or if the server no longer offers it. */}
+              {draft.UICulture && !(Array.isArray(uiLanguages.data) && uiLanguages.data.some((l) => l.Value === draft.UICulture)) && (
+                <option value={draft.UICulture}>{draft.UICulture}</option>
+              )}
             </Select>
           </Field>
         </div>

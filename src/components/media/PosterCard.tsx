@@ -148,7 +148,7 @@ export const PosterCard = memo(function PosterCard({
           selecting && selection
             ? (e) => {
                 e.preventDefault();
-                selection.toggle(item);
+                selection.toggle(item, e.shiftKey);
               }
             : undefined
         }
@@ -201,7 +201,9 @@ export const PosterCard = memo(function PosterCard({
       {/* Hover actions live outside the link so they don't trigger navigation. */}
       {selection && !round && (
         <button
-          onClick={() => selection.toggle(item)}
+          onClick={(e) => selection.toggle(item, e.shiftKey)}
+          // Shift-click would otherwise mark the text between two cards.
+          onMouseDown={(e) => e.shiftKey && e.preventDefault()}
           role="checkbox"
           aria-checked={selected}
           aria-label={`Select ${finalTitle}`}

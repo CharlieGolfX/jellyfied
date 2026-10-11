@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Home as HomeIcon, SlidersHorizontal } from 'lucide-react';
+import clsx from 'clsx';
+import { useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, GripVertical, Home as HomeIcon, SlidersHorizontal } from 'lucide-react';
 import { useLatest, useNextUp, useResume, useUserViews } from '@/api/queries';
 import type { BaseItemDto } from '@/api/types';
 import { FeaturedBanner } from '@/components/media/FeaturedBanner';
@@ -9,7 +10,7 @@ import { Switch } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { arrangeRows, DEFAULT_HOME_LAYOUT, moveRow, useHomeLayout } from '@/lib/homeLayout';
+import { arrangeRows, DEFAULT_HOME_LAYOUT, moveRow, moveRowTo, useHomeLayout } from '@/lib/homeLayout';
 import { usePageTitle } from '@/lib/usePageTitle';
 
 const LATEST_EXCLUDED = new Set(['livetv', 'playlists', 'boxsets', 'folders']);
@@ -30,6 +31,20 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
   const [layout, setLayout] = useHomeLayout();
   const ids = rows.map((r) => r.id);
   const changed = layout.order.length > 0 || layout.hidden.length > 0 || !layout.banner;
+  const listRef = useRef<HTMLUListElement>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+
+  // While a row is dragged by its handle it takes the place of whichever row the pointer is over:
+  // its new position is the number of other rows whose middle lies above the pointer.
+  const dragTo = (id: string, y: number) => {
+    const others = [...(listRef.current?.children ?? [])].filter((el) => (el as HTMLElement).dataset.row !== id);
+    const index = others.filter((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.top + rect.height / 2 < y;
+    }).length;
+    const next = moveRowTo(ids, id, index);
+    if (next !== ids) setLayout({ order: next });
+  };
   return (
     <Modal
       open
@@ -56,9 +71,31 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
         onChange={(banner) => setLayout({ banner })}
       />
       <div className="mt-3 border-t border-white/10 pt-3 text-[11px] font-semibold tracking-wider text-faint uppercase">Rows</div>
-      <ul className="mt-1">
+      <ul className="mt-1" ref={listRef}>
         {rows.map((row, i) => (
-          <li key={row.id} className="flex items-center gap-1" data-testid="home-row-setting">
+          <li
+            key={row.id}
+            data-row={row.id}
+            data-testid="home-row-setting"
+            className={clsx('flex items-center gap-1 rounded-md', dragging === row.id && 'bg-white/10')}
+          >
+            <span
+              // Keyboard users have the arrow buttons; the handle is for mouse and touch.
+              aria-hidden
+              title="Drag to reorder"
+              data-testid="home-row-handle"
+              className={clsx('-ml-1 touch-none p-1.5 text-faint hover:text-fg', dragging === row.id ? 'cursor-grabbing' : 'cursor-grab')}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setDragging(row.id);
+              }}
+              onPointerMove={(e) => dragging === row.id && dragTo(row.id, e.clientY)}
+              onPointerUp={() => setDragging(null)}
+              onPointerCancel={() => setDragging(null)}
+            >
+              <GripVertical size={16} />
+            </span>
             <div className="min-w-0 flex-1">
               <Switch
                 label={<span className="block truncate">{row.label}</span>}
