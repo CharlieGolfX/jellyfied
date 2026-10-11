@@ -241,6 +241,7 @@ with plain `docker run`, pass them with `-e`. Changes take effect when the conta
 | `JELLYPLEX_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
 | `JELLYPLEX_BASE_PATH`   | _(empty)_                  | Serve Jellyplex under a path, e.g. `/jellyplex`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyplex/jellyfin`). |
 | `JELLYPLEX_PORT`        | `80`                       | Port nginx listens on inside the container. |
+| `JELLYPLEX_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyplex. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
 
 ¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
 
@@ -256,10 +257,19 @@ Docker Compose additionally understands these:
 
 ### Notes
 
-- Real client IPs: in proxy mode Jellyfin sees requests coming from the Jellyplex container.
-  To make Jellyfin trust the forwarded client address (used for LAN/remote detection and remote
-  bitrate limits), add the Jellyplex container's IP or Docker subnet under
-  *Dashboard → Networking → Known proxies*.
+- Real client IPs: in proxy mode Jellyfin sees every request coming from Jellyplex, and shows
+  that address for all devices unless it is told to trust it. Two things make the dashboard show
+  where people really connect from:
+  1. In Jellyfin, add the address Jellyplex connects from under *Dashboard → Networking → Known
+     proxies* and restart Jellyfin: the container's IP or Docker subnet, or, when Jellyfin runs
+     on the Docker host, Docker's gateway (`127.0.0.1` with Docker Desktop). If the dashboard
+     shows one private address for every device, that is the address to add.
+  2. If a reverse proxy or tunnel sits in front of Jellyplex, it has to be trusted too. Proxies
+     on private addresses are by default; for others, set `JELLYPLEX_TRUSTED_PROXIES`.
+
+  Jellyplex then passes on one address: the last one in `X-Forwarded-For` that is not a trusted
+  proxy. With Docker Desktop (macOS, Windows), visitors who reach the published port directly
+  still all appear as Docker's gateway, because Docker hides their addresses from the container.
 - HTTPS: put Jellyplex behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
   you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
 - The container serves a health check at `/healthz`.

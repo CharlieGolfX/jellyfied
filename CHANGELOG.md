@@ -49,6 +49,10 @@ shown in the account menu and on the login screen.
 - Build assets are compressed once at build time instead of on every request.
 
 ### Fixed
+- Behind a reverse proxy or tunnel, Jellyfin was told the proxy's address instead of the
+  visitor's, so the dashboard and activity log showed the same address for everyone. The
+  container now works out the visitor's address from `X-Forwarded-For` and passes that on.
+  `JELLYPLEX_TRUSTED_PROXIES` chooses which proxies are believed (default: private addresses).
 - The device list in the server dashboard shows when each device was last active, and sorts by it.
 - Files without a date no longer show "Jan 1, 1970" in the library list.
 

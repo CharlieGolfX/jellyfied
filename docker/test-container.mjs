@@ -120,6 +120,15 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   );
   check('the proxy forwards to the server, under its base path', proxied?.url === '/base/System/Info/Public?x=1', JSON.stringify(proxied));
   check('the proxy passes the client address on', Boolean(proxied?.forwardedFor));
+  const forwardedFor = (header) =>
+    fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': header } }).then(
+      (r) => r.json().then((j) => j.forwardedFor),
+      () => null,
+    );
+  const viaTunnel = await forwardedFor('203.0.113.7');
+  check("behind a proxy, the server is told the visitor's address, not the proxy's", viaTunnel === '203.0.113.7', viaTunnel);
+  const viaTwo = await forwardedFor('198.51.100.4, 203.0.113.7, 10.0.0.3');
+  check('an address the visitor made up is not believed', viaTwo === '203.0.113.7', viaTwo);
   const encoded = await fetch(`${origin}/jellyfin/Items/a%20b%2Fc`).then(
     (r) => r.json(),
     () => null,
@@ -135,6 +144,15 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   const logs = spawnSync('docker', ['logs', name], { encoding: 'utf8' });
   const log = logs.stdout + logs.stderr;
   check('access tokens are kept out of the access log', log.includes('api_key=***') && !log.includes('secret-token'));
+});
+
+console.log(`\n${image}: trusting no proxies`);
+await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYPLEX_TRUSTED_PROXIES: 'none' }, async () => {
+  const seen = await fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': '203.0.113.7' } }).then(
+    (r) => r.json().then((j) => j.forwardedFor),
+    () => null,
+  );
+  check('X-Forwarded-For from the peer is ignored', Boolean(seen) && seen !== '203.0.113.7', seen);
 });
 
 console.log(`\n${image}: under /jellyplex`);

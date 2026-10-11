@@ -27,6 +27,9 @@ services:
       JELLYPLEX_LOCK_SERVER: '${JELLYPLEX_LOCK_SERVER:-}'
       # Optional: serve Jellyplex under a path, e.g. /jellyplex, behind a reverse proxy.
       JELLYPLEX_BASE_PATH: '${JELLYPLEX_BASE_PATH:-}'
+      # Optional: whose X-Forwarded-For header to believe, so Jellyfin sees visitors' own addresses
+      # behind a reverse proxy or tunnel. Addresses or networks, or "none". Default: private ranges.
+      JELLYPLEX_TRUSTED_PROXIES: '${JELLYPLEX_TRUSTED_PROXIES:-private}'
     extra_hosts:
       # Makes host.docker.internal work on Linux too.
       - 'host.docker.internal:host-gateway'

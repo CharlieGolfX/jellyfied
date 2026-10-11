@@ -11,6 +11,10 @@
 #   JELLYPLEX_PORT         Port nginx listens on inside the container (default 80).
 #   JELLYPLEX_BASE_PATH    Optional. Serve Jellyplex under this path, e.g. /jellyplex, for reverse
 #                          proxies that give every app a path instead of a host name.
+#   JELLYPLEX_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
+#                          X-Forwarded-For header is believed: a reverse proxy or tunnel in front
+#                          of Jellyplex, and Docker's own gateway. Default "private" (loopback
+#                          and the private ranges); "none" trusts nobody.
 #
 # nginx runs as an unprivileged user, so everything written here lives in places that user owns.
 set -eu
@@ -35,6 +39,32 @@ case "$BASE" in
     BASE=""
     ;;
 esac
+
+# Who may say where a request really came from. Behind a reverse proxy, a tunnel or Docker's port
+# forwarding, the peer nginx sees is that middleman; the visitor's address is in X-Forwarded-For.
+# nginx takes the last address in that header that is not itself a trusted proxy, and that is the
+# address it logs and hands to Jellyfin.
+TRUSTED=$(printf '%s' "${JELLYPLEX_TRUSTED_PROXIES:-private}" | tr ',' ' ')
+case "$TRUSTED" in
+  private) TRUSTED="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ::1 fc00::/7 fe80::/10" ;;
+  none | off | false) TRUSTED="" ;;
+esac
+REAL_IP=""
+for NET in $TRUSTED; do
+  case "$NET" in
+    *[!0-9A-Fa-f:./]*) log "JELLYPLEX_TRUSTED_PROXIES: ignoring \"$NET\", not an address or network" ;;
+    *) REAL_IP="${REAL_IP}
+    set_real_ip_from ${NET};" ;;
+  esac
+done
+if [ -n "$REAL_IP" ]; then
+  REAL_IP="${REAL_IP}
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;"
+  log "trusting X-Forwarded-For from: $(echo $TRUSTED)"
+else
+  log "not trusting X-Forwarded-For from anyone"
+fi
 
 # Strip trailing slashes.
 JELLYFIN_URL=$(printf '%s' "$JELLYFIN_URL" | sed 's:/*$::')
@@ -175,8 +205,10 @@ if [ -n "$JELLYFIN_URL" ]; then
         proxy_set_header Host ${HOSTPORT};
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection \$connection_upgrade;
+        # The visitor's address as worked out above, and nothing else: Jellyfin stops at the first
+        # address in a longer list that it does not know as a proxy, which would be a middleman.
         proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For \$remote_addr;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$http_host;
         ${SSL_DIRECTIVES}
@@ -240,6 +272,7 @@ server {
     server_tokens off;
     absolute_redirect off;
     access_log /var/log/nginx/access.log jellyplex;
+${REAL_IP}
 
     gzip on;
     gzip_comp_level 5;
