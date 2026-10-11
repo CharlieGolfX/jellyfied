@@ -239,7 +239,8 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const resumable = position > 0 && !item.IsFolder;
   const played = Boolean(item.UserData?.Played);
   const favorite = Boolean(item.UserData?.IsFavorite);
-  const remoteTrailer = item.RemoteTrailers?.find((t) => t.Url)?.Url;
+  // Trailer links come from metadata, so only ever open plain web addresses.
+  const remoteTrailer = item.RemoteTrailers?.find((t) => t.Url && /^https?:\/\//i.test(t.Url))?.Url;
   const localTrailer = trailers.data?.[0];
 
   const menu: MenuItem[] = [...extraMenu];
