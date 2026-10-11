@@ -1,5 +1,11 @@
 # Jellyplex
 
+> [!NOTE]
+> **This project is built entirely by AI.** All of the code, tests and documentation were written
+> by an AI coding assistant, directed by the maintainer.
+> No part of it was written by hand. Keep that in mind when you decide whether to run it, and
+> please report anything that looks wrong.
+
 A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a layout modelled on Plex,
 Jellyfin's own colour scheme and logo, and a full server dashboard for administrators. It runs as a
 small nginx container. Your Jellyfin server is not modified: Jellyplex is just another client.
