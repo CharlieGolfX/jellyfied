@@ -11,7 +11,7 @@ RUN npm run build && node scripts/precompress.mjs dist
 
 # ---- Runtime ----------------------------------------------------------------
 # nginx without root: the image's own entrypoint and nginx itself run as the "nginx" user (101).
-FROM nginxinc/nginx-unprivileged:1.30-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 
 LABEL org.opencontainers.image.title="Jellyplex" \
       org.opencontainers.image.description="A Plex-style web frontend for Jellyfin"
