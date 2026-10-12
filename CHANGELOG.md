@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-12
+
 ### Added
 - VobSub (DVD) subtitles are drawn in the browser instead of being burned in by the server, so
   they no longer force a transcode and can be shifted with the subtitle delay. They are read out
@@ -161,6 +163,7 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/CharlieGolfX/jellyplex/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CharlieGolfX/jellyplex/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CharlieGolfX/jellyplex/releases/tag/v1.0.0
