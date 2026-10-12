@@ -218,18 +218,19 @@ test.describe('playback on a real server', () => {
     await page.getByRole('button', { name: 'Stop playback' }).click();
     await expect(video(page)).toHaveCount(0);
   });
-  /** Starts a video and switches on one of its subtitle tracks from the player's menu. */
-  async function playWithSubtitle(page: Page, codec: string) {
+  /** Starts a video and switches on one of its subtitle tracks (the first with one of the codecs) from the player's menu. */
+  async function playWithSubtitle(page: Page, ...codecs: string[]) {
+    const wanted = (s: { Type: string; Codec?: string }) => s.Type === 'Subtitle' && codecs.includes(s.Codec?.toLowerCase() ?? '');
     const videos = await items(page, '/Items', {
       includeItemTypes: 'Movie,Episode',
       recursive: 'true',
       fields: 'MediaStreams',
       limit: '400',
     });
-    const item = videos.find((v) => v.MediaStreams?.some((s) => s.Type === 'Subtitle' && s.Codec?.toLowerCase() === codec));
-    test.skip(!item, `no video with ${codec} subtitles in the first 400`);
+    const item = videos.find((v) => v.MediaStreams?.some(wanted));
+    test.skip(!item, `no video with ${codecs.join(' or ')} subtitles in the first 400`);
     const subtitles = item!.MediaStreams!.filter((s) => s.Type === 'Subtitle');
-    const position = subtitles.findIndex((s) => s.Codec?.toLowerCase() === codec);
+    const position = subtitles.findIndex(wanted);
 
     await page.goto(`/item/${item!.Id}`);
     await page
@@ -266,6 +267,63 @@ test.describe('playback on a real server', () => {
     await expect(page.locator('canvas')).toHaveCount(1);
     await page.getByRole('button', { name: 'Show subtitles later' }).click();
     await expect(page.getByTestId('subtitle-delay')).toHaveText('+0.1 s');
+    await expectPlaying(page);
+  });
+
+  // Needs a Matroska file whose index covers its DVD subtitles (mkvmerge and ffmpeg write that).
+  test('draws DVD (VobSub) subtitles in the browser, read out of the video file', async ({ page }) => {
+    await playWithSubtitle(page, 'dvdsub');
+    await showControls(page);
+    await page.getByRole('button', { name: 'Subtitles' }).click();
+    await expect(page.getByText('These subtitles are pictures, so their size and colour are fixed.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('canvas')).toHaveCount(1);
+    await expect(page.getByTestId('subtitle-delay')).toBeVisible();
+    await expectPlaying(page);
+  });
+
+  test('shows styled subtitles as plain text when their styling is switched off', async ({ page }) => {
+    // Kept to this browser: the other tests, which may be running on the same account, want the styling.
+    await page.addInitScript(() => localStorage.setItem('jellyplex.syncPrefs', 'off'));
+    await page.goto('/settings');
+    const styling = page.getByRole('switch', { name: 'Keep the styling of styled subtitles' });
+    if ((await styling.getAttribute('aria-checked')) === 'true') await styling.click();
+    await expect(styling).toHaveAttribute('aria-checked', 'false');
+
+    await playWithSubtitle(page, 'ass');
+    await showControls(page);
+    await page.getByRole('button', { name: 'Subtitles' }).click();
+    // Plain text has a size to choose; nothing is drawn on a canvas, and nothing is burned in.
+    await expect(page.getByText('Text size')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('These subtitles bring their own fonts, colours and positions.')).toHaveCount(0);
+    await expect(page.getByTestId('subtitle-delay')).toBeVisible();
+    await expect(page.locator('canvas')).toHaveCount(0);
+  });
+
+  test('has image subtitles burned into the picture while it is in picture-in-picture', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'picture-in-picture can only be opened by a test in Chromium');
+    await playWithSubtitle(page, 'pgssub', 'dvdsub');
+    const profiles: unknown[] = [];
+    page.on('request', (request) => {
+      if (!/\/PlaybackInfo/.test(request.url()) || request.method() !== 'POST') return;
+      profiles.push((request.postDataJSON() as { DeviceProfile: { SubtitleProfiles: unknown[] } }).DeviceProfile.SubtitleProfiles);
+    });
+    await showControls(page);
+    await page.getByRole('button', { name: 'Subtitles' }).click();
+    await expect(page.getByText('These subtitles are pictures, so their size and colour are fixed.')).toBeVisible({ timeout: 30_000 });
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'Picture-in-picture', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Exit picture-in-picture' })).toBeVisible();
+    // The stream is asked for again with no subtitle formats on offer, so the server burns them in.
+    await expect.poll(() => profiles.at(-1)).toEqual([]);
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await expectPlaying(page);
+
+    // Back in the page, they are drawn here again.
+    await showControls(page);
+    await page.getByRole('button', { name: 'Exit picture-in-picture' }).click();
+    await expect(page.locator('canvas')).toHaveCount(1, { timeout: 30_000 });
+    expect(profiles.at(-1)).not.toEqual([]);
     await expectPlaying(page);
   });
 

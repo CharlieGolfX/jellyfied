@@ -205,6 +205,48 @@ describe('usePlay on another device', () => {
     expect(m.toast.info).toHaveBeenCalledWith('Playing on TV');
   });
 
+  it('continues a show on a Chromecast at the next episode to watch, from where that was left', async () => {
+    m.chromecast = { status: 'connected', deviceName: 'TV' };
+    m.castPlay.mockResolvedValue(undefined);
+    const episodes = ['e1', 'e2', 'e3'].map((Id) => item({ Id, Type: 'Episode' }));
+    episodes[1].UserData = { PlaybackPositionTicks: 4200 } as BaseItemDto['UserData'];
+    m.api.get.mockImplementation((path: string) => Promise.resolve(path === '/Shows/NextUp' ? list([episodes[1]]) : list(episodes)));
+    await play(item({ Id: 'show-1', Type: 'Series', MediaType: undefined, IsFolder: true }));
+    expect(m.castPlay).toHaveBeenCalledWith(
+      expect.anything(),
+      [episodes[1], episodes[2]],
+      expect.objectContaining({ startPositionTicks: 4200 }),
+    );
+  });
+
+  it('starts a season on a Chromecast at its first unwatched episode, or at the very start when asked to', async () => {
+    m.chromecast = { status: 'connected', deviceName: 'TV' };
+    m.castPlay.mockResolvedValue(undefined);
+    const episodes = [
+      item({ Id: 'e1', Type: 'Episode', UserData: { Played: true } as BaseItemDto['UserData'] }),
+      item({ Id: 'e2', Type: 'Episode', UserData: { Played: false, PlaybackPositionTicks: 90 } as BaseItemDto['UserData'] }),
+    ];
+    m.api.get.mockResolvedValue(list(episodes));
+    const season = item({ Id: 'season-1', Type: 'Season', MediaType: undefined, IsFolder: true, SeriesId: 'show-1' });
+    await play(season);
+    expect(m.castPlay).toHaveBeenLastCalledWith(expect.anything(), [episodes[1]], expect.objectContaining({ startPositionTicks: 90 }));
+    await play(season, { fromStart: true });
+    expect(m.castPlay).toHaveBeenLastCalledWith(expect.anything(), [episodes[1]], expect.objectContaining({ startPositionTicks: 0 }));
+  });
+
+  it('hands a show to the Chromecast as it is when shuffling, or when its episodes cannot be looked up', async () => {
+    m.chromecast = { status: 'connected', deviceName: 'TV' };
+    m.castPlay.mockResolvedValue(undefined);
+    const show = item({ Id: 'show-1', Type: 'Series', MediaType: undefined, IsFolder: true });
+    await play(show, { shuffle: true });
+    expect(m.api.get).not.toHaveBeenCalled();
+    expect(m.castPlay).toHaveBeenLastCalledWith(expect.anything(), [show], expect.objectContaining({ shuffle: true }));
+    m.api.get.mockRejectedValue(new Error('server down'));
+    await play(show);
+    expect(m.castPlay).toHaveBeenLastCalledWith(expect.anything(), [show], expect.objectContaining({ startPositionTicks: undefined }));
+    expect(m.toast.error).not.toHaveBeenCalled();
+  });
+
   it('reports it when the other device cannot be reached', async () => {
     m.castTarget = { sessionId: 's1', deviceName: 'Living room' };
     m.sendRemotePlay.mockRejectedValue(new Error('gone'));

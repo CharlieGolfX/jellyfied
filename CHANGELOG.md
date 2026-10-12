@@ -6,6 +6,23 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Added
+- VobSub (DVD) subtitles are drawn in the browser instead of being burned in by the server, so
+  they no longer force a transcode and can be shifted with the subtitle delay. They are read out
+  of the video file, which works for Matroska files whose index covers the subtitle track; the
+  server still burns them in for other files.
+- "Keep the styling of styled subtitles" under Account settings → Subtitle appearance. Switched
+  off, ASS/SSA subtitles are shown as plain text in the size and colour you chose.
+- Styled and image subtitles are shown in picture-in-picture and over AirPlay: while the picture
+  is there, the server burns them into the video (Safari's picture-in-picture shows styled
+  subtitles as plain text instead). Over AirPlay this goes for plain text subtitles too.
+- A show or season sent to a Chromecast continues at the next episode to watch, from where it was
+  left, instead of starting at the first episode.
+
+### Fixed
+- Styled subtitles that can't be drawn in a browser are shown as plain text. They used to be
+  burned into the video by the server, despite what the fallback was meant to do.
+
 ## [1.1.0] - 2026-10-12
 
 ### Added

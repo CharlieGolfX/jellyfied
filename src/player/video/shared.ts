@@ -1,5 +1,5 @@
 import type { BaseItemDto, MediaSourceInfo, MediaStream, TrickplayInfo } from '@/api/types';
-import { MAX_BITRATE } from '../deviceProfile';
+import { MAX_BITRATE, type SubtitleMode } from '../deviceProfile';
 import type { PlayMethod } from '../reporting';
 import { t } from '@/i18n';
 
@@ -31,6 +31,8 @@ export interface ActiveStream {
   audioIndex?: number;
   subIndex: number;
   burnedSub: boolean;
+  /** How subtitles were asked for when this stream was requested. */
+  subtitleMode: SubtitleMode;
   transcodeReasons: string[];
   /** Played by the browser's own HLS player, not hls.js. */
   nativeHls: boolean;

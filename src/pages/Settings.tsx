@@ -427,7 +427,11 @@ function InterfaceColorsCard() {
 
 function SubtitleAppearanceCard() {
   const [style, setStyle] = useSubtitleStyle();
-  const select = <K extends keyof SubtitleStyle>(key: K, label: string, options: { value: SubtitleStyle[K]; label: string }[]) => (
+  const select = <K extends 'size' | 'color' | 'background' | 'edge'>(
+    key: K,
+    label: string,
+    options: { value: SubtitleStyle[K]; label: string }[],
+  ) => (
     <Field label={label}>
       <Select value={style[key]} onChange={(e) => setStyle({ [key]: e.target.value } as Partial<SubtitleStyle>)}>
         {options.map((o) => (
@@ -457,6 +461,14 @@ function SubtitleAppearanceCard() {
         {select('color', t('settings.textColour'), SUBTITLE_COLORS)}
         {select('background', 'Background', SUBTITLE_BACKGROUNDS)}
         {select('edge', t('settings.textEdge'), SUBTITLE_EDGES)}
+      </div>
+      <div className="mt-3 border-t border-white/5 pt-2">
+        <Switch
+          label={t('settings.styledSubtitles')}
+          description={t('settings.styledSubtitlesHint')}
+          checked={style.styled}
+          onChange={(styled) => setStyle({ styled })}
+        />
       </div>
     </Card>
   );

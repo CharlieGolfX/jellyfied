@@ -105,13 +105,14 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 - Audio track, subtitle, quality and playback speed (0.5×–2×) switching. Text subtitles
   (SRT/ASS/VTT, embedded or sidecar) and image subtitles (PGS/VobSub) are both supported.
 - Styled subtitles (ASS/SSA) are drawn in the browser with their own fonts, colours, positions
-  and effects, and PGS image subtitles are drawn in the browser too, so neither makes the server
-  re-encode the video.
+  and effects, and PGS and VobSub (DVD) image subtitles are drawn in the browser too, so none of
+  them makes the server re-encode the video.
 - Resume, chapter markers and a chapter list to jump from, thumbnail previews on the seek bar
   (when the server has generated trickplay images), Skip Intro / Credits (when the server has
   media segments), Up Next with auto-play (honours the user's preference), keyboard shortcuts.
 - Subtitle delay (earlier or later in 0.1 s steps) for every subtitle the browser draws, and
-  subtitle appearance (size, colour, background, edge) for plain text subtitles.
+  subtitle appearance (size, colour, background, edge) for plain text subtitles. A switch under
+  Account settings shows styled subtitles as plain text too, in the size and colour you chose.
 - Touch controls: tap to show or hide the controls, double-tap the left or right side to skip,
   double-tap the middle for full screen, and swipe sideways to seek.
 - Skip lengths of your choice (5 to 90 seconds, separately for back and forward), and a list of
@@ -478,19 +479,25 @@ docker/         container entrypoint that writes config.js and the nginx site
   The Chromecast therefore has to be able to open the address you use for Jellyplex: it does not
   work when you browse on `localhost`, and a server behind HTTPS needs a certificate the Chromecast
   trusts. The Cast software is loaded from Google (`www.gstatic.com`) the first time you pick
-  Chromecast, and not before. Shows, albums and playlists start from their beginning on a
-  Chromecast.
-- AirPlay shows the video and plays its sound on the other device. Subtitles are only shown there
-  when they are burned into the picture, and the address you use for Jellyplex has to be reachable
-  from the AirPlay device.
+  Chromecast, and not before. A show or season continues at the next episode to watch, as it
+  does in the browser; albums and playlists start from their beginning.
+- AirPlay shows the video and plays its sound on the other device. It only carries the picture,
+  so while it is in use the server burns the subtitles into the video, which means a transcode.
+  The address you use for Jellyplex has to be reachable from the AirPlay device.
 - HEVC and AV1 transcoding has to be switched on in the server: *Dashboard → Playback →
   Transcoding → Allow encoding in HEVC format / AV1 format*. Without it the server transcodes to
   H.264 as before. Files that are already HEVC or AV1 are passed through either way.
 - SyncPlay covers video. Music played while in a group stays on your own device.
 - Subtitle appearance applies to plain text subtitles. Styled (ASS/SSA) subtitles keep the look
-  their author gave them, and PGS subtitles are pictures. VobSub (DVD) subtitles are still burned
-  into the video by the server and can't be shifted. Styled and image subtitles are not shown in
-  picture-in-picture.
+  their author gave them unless you switch that off under Account settings, and PGS and VobSub
+  subtitles are pictures.
+- VobSub (DVD) subtitles are read out of the video file itself, because the server has no way to
+  hand them out. That works for Matroska (MKV) files whose index covers the subtitle track, which
+  MKVToolNix and ffmpeg write. For other files, and for VobSub in a file of its own (.idx/.sub),
+  the server burns them into the video as before and they can't be shifted.
+- A picture-in-picture window only shows the picture. While it is open, the server burns image
+  subtitles into the video, and in Chromium browsers styled subtitles too; Safari shows styled
+  subtitles as plain text there. This restarts the stream when the window opens and closes.
 - Audio delay can only make the sound later, not earlier: a browser can't play sound ahead of the
   picture. It is not available in Safari on iPhone and iPad.
 - Streaming quality, poster size, grid or list view and volume are stored per browser. The other

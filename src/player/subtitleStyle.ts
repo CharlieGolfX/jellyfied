@@ -8,9 +8,20 @@ export interface SubtitleStyle {
   color: 'white' | 'yellow' | 'cyan' | 'green' | 'grey';
   background: 'none' | 'translucent' | 'solid';
   edge: 'none' | 'shadow' | 'outline';
+  /**
+   * Draw styled (ASS/SSA) subtitles the way their author made them. Off: they are asked for as
+   * plain text and get the look chosen here, like every other text subtitle.
+   */
+  styled: boolean;
 }
 
-export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = { size: 'medium', color: 'white', background: 'none', edge: 'outline' };
+export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
+  size: 'medium',
+  color: 'white',
+  background: 'none',
+  edge: 'outline',
+  styled: true,
+};
 
 export const SUBTITLE_SIZES: { value: SubtitleStyle['size']; label: string; short: string; scale: number }[] = [
   { value: 'small', label: t('player.subtitleStyle.small'), short: 'S', scale: 0.75 },
@@ -57,6 +68,7 @@ function read(): SubtitleStyle {
       color: pick(SUBTITLE_COLORS, raw.color, DEFAULT_SUBTITLE_STYLE.color),
       background: pick(SUBTITLE_BACKGROUNDS, raw.background, DEFAULT_SUBTITLE_STYLE.background),
       edge: pick(SUBTITLE_EDGES, raw.edge, DEFAULT_SUBTITLE_STYLE.edge),
+      styled: raw.styled !== false,
     };
   } catch {
     return DEFAULT_SUBTITLE_STYLE;
@@ -85,6 +97,10 @@ onPrefPulled(KEY, () => {
 function subscribe(cb: () => void) {
   listeners.add(cb);
   return () => listeners.delete(cb);
+}
+
+export function getSubtitleStyle(): SubtitleStyle {
+  return current;
 }
 
 export function useSubtitleStyle(): [SubtitleStyle, (patch: Partial<SubtitleStyle>) => void] {

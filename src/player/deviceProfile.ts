@@ -30,18 +30,26 @@ export interface Capabilities {
   audioChannels: number;
   safari: boolean;
   chromium: boolean;
-  /** Styled (ASS/SSA) subtitles can be drawn here. */
-  assSubtitles: boolean;
   /** Image (PGS) subtitles can be drawn here. */
   pgsSubtitles: boolean;
 }
 
+/**
+ * How subtitles are asked for. 'canvas': styled and image subtitles come as they are and are drawn
+ * in the browser. 'text': text subtitles come as text (styled ones are shown as plain text) and the
+ * server burns image subtitles into the picture. 'burn': the server burns every subtitle in.
+ */
+export type SubtitleMode = 'canvas' | 'text' | 'burn';
+
 export interface ProfileOptions {
+  subtitles?: SubtitleMode;
+  /** In 'canvas' mode: take PGS subtitles as pictures (on unless switched off). */
+  images?: boolean;
   /**
-   * Ask for ASS and PGS subtitles as they are and draw them in the browser. When off, the server
-   * turns text subtitles into plain WebVTT and burns image subtitles into the picture.
+   * In 'canvas' mode: leave VobSub subtitles in the file, to be read out of it by the player.
+   * Only possible for some files, so it is off unless asked for.
    */
-  richSubtitles?: boolean;
+  vobSub?: boolean;
 }
 
 /** Channels of the sound output, so surround sound is only asked for when it can be heard. */
@@ -111,7 +119,6 @@ function probe(): Capabilities {
     audioChannels: outputChannels(),
     safari: isSafari(),
     chromium: isChromium(),
-    assSubtitles: canRenderAss(),
     pgsSubtitles: typeof Worker !== 'undefined',
   };
 }
@@ -133,7 +140,7 @@ function rangeTypes(c: Capabilities, dolbyVision: boolean): string {
 
 /** Builds the Jellyfin DeviceProfile for a browser with the given capabilities. */
 export function profileFor(c: Capabilities, maxBitrate: number = MAX_BITRATE, opts: ProfileOptions = {}): Record<string, unknown> {
-  const richSubtitles = opts.richSubtitles !== false;
+  const canvas = (opts.subtitles ?? 'canvas') === 'canvas';
 
   const videoCodecs = join([c.h264 && 'h264', c.hevc && 'hevc', c.av1 && 'av1', c.vp9 && 'vp9']);
   const mp4Audio = join([
@@ -291,15 +298,25 @@ export function profileFor(c: Capabilities, maxBitrate: number = MAX_BITRATE, op
 
   // The server picks the profile that matches a subtitle track as it is, and otherwise the first
   // one it can convert to. WebVTT therefore comes first: SRT and friends still arrive as WebVTT.
-  const subtitles: Record<string, unknown>[] = [
-    { Format: 'vtt', Method: 'External' },
-    { Format: 'webvtt', Method: 'External' },
-  ];
-  if (richSubtitles && c.assSubtitles) {
+  // With no profile at all, every subtitle is burned into the picture.
+  const subtitles: Record<string, unknown>[] =
+    opts.subtitles === 'burn'
+      ? []
+      : [
+          { Format: 'vtt', Method: 'External' },
+          { Format: 'webvtt', Method: 'External' },
+        ];
+  // The server never turns styled subtitles into WebVTT by itself: without these it burns them in.
+  // A browser that can't draw them fetches their plain-text version from the same address instead.
+  if (opts.subtitles !== 'burn') {
     subtitles.push({ Format: 'ass', Method: 'External' }, { Format: 'ssa', Method: 'External' });
   }
-  if (richSubtitles && c.pgsSubtitles) {
+  if (canvas && opts.images !== false && c.pgsSubtitles) {
     subtitles.push({ Format: 'pgssub', Method: 'External' });
+  }
+  // The server has no file to deliver for these; listing them only keeps it from burning them in.
+  if (canvas && opts.vobSub) {
+    subtitles.push({ Format: 'dvdsub', Method: 'External' });
   }
 
   return {

@@ -1,4 +1,6 @@
 import pgsWorkerUrl from 'libpgs/dist/libpgs.worker.js?url';
+import type { SubtitleMode } from '../deviceProfile';
+import type { ReadBytes } from './matroska';
 
 /** How the selected subtitle track gets on screen. */
 export type SubtitleKind =
@@ -9,7 +11,36 @@ export type SubtitleKind =
   /** Styled ASS/SSA subtitles drawn by libass. */
   | 'ass'
   /** Image subtitles (PGS) drawn from the pictures in the file. */
-  | 'pgs';
+  | 'pgs'
+  /** DVD image subtitles (VobSub), read out of the video file itself. */
+  | 'vobsub';
+
+/** What a subtitle track is made of: plain text, text with its own styling, or pictures. */
+export type SubtitleContent = 'text' | 'styled' | 'image';
+
+export function isVobSub(codec: string | null | undefined): boolean {
+  return /^(dvdsub|dvd_subtitle|vobsub)$/i.test(codec ?? '');
+}
+
+export function subtitleContent(codec: string | null | undefined): SubtitleContent {
+  if (/^(ass|ssa)$/i.test(codec ?? '')) return 'styled';
+  if (isVobSub(codec) || /^(pgssub|pgs|hdmv_pgs_subtitle|dvbsub|dvb_subtitle|xsub)$/i.test(codec ?? '')) return 'image';
+  return 'text';
+}
+
+/**
+ * How a track should be asked for, given where the picture is being shown. The canvases styled
+ * and image subtitles are drawn on stay behind in the page: AirPlay only carries what is in the
+ * picture, and so does a picture-in-picture window, apart from text the browser draws there itself.
+ */
+export function subtitleModeFor(
+  where: { airPlay: boolean; pip: boolean; pipDrawsText: boolean },
+  track: SubtitleContent | undefined,
+): SubtitleMode {
+  if (where.airPlay) return 'burn';
+  if (where.pip && track && track !== 'text') return track === 'styled' && where.pipDrawsText ? 'text' : 'burn';
+  return 'canvas';
+}
 
 /** A subtitle track that draws itself on a canvas over the video. */
 export interface CanvasSubtitles {
@@ -24,6 +55,19 @@ export function subtitleFormat(deliveryUrl: string | null | undefined): 'vtt' | 
   if (ext === 'ass' || ext === 'ssa') return 'ass';
   if (ext === 'pgssub' || ext === 'sup') return 'pgs';
   return 'vtt';
+}
+
+/** Where the server serves the plain-text (WebVTT) version of a styled subtitle track. */
+export function plainTextUrl(url: string): string {
+  return url.replace(/(\/stream)\.(?:ass|ssa)(?=$|\?)/i, '$1.vtt');
+}
+
+/**
+ * Whether a track arrives the same way in both modes, so that switching between them needs no
+ * new stream. Pictures are either delivered or burned in; text only changes when all is burned in.
+ */
+export function sameDelivery(a: SubtitleMode, b: SubtitleMode, track: SubtitleContent): boolean {
+  return a === b || (a !== 'burn' && b !== 'burn' && track !== 'image');
 }
 
 const FONT_FILE = /\.(ttf|otf|ttc|otc|woff2?)$/i;
@@ -123,6 +167,72 @@ export async function createPgsSubtitles(opts: {
     },
     destroy: () => {
       renderer.dispose();
+      canvas.remove();
+    },
+  };
+}
+
+/**
+ * DVD image subtitles, fetched piece by piece from the video file as the video gets to them.
+ * `layer` is the same one PGS subtitles use. Rejects when the file can't be read that way.
+ */
+export async function createVobSubSubtitles(opts: {
+  video: HTMLVideoElement;
+  layer: HTMLElement;
+  /** Reads a range of the video file. */
+  read: ReadBytes;
+  /** The server's number for the subtitle stream, and its place among the file's VobSub streams. */
+  streamIndex: number;
+  position: number;
+  delay: number;
+}): Promise<CanvasSubtitles> {
+  const { openVobSubTrack } = await import('./vobsub');
+  const track = await openVobSubTrack(opts.read, { streamIndex: opts.streamIndex, position: opts.position });
+  const { video } = opts;
+  const canvas = makeCanvas(opts.layer);
+  canvas.style.inset = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.objectFit = 'inherit';
+  const context = canvas.getContext('2d');
+  const scratch = document.createElement('canvas');
+  let delay = opts.delay;
+  let shown: unknown = undefined;
+  let frame = 0;
+  const draw = () => {
+    frame = requestAnimationFrame(draw);
+    const seconds = video.currentTime - delay;
+    track.prepare(seconds);
+    const event = track.at(seconds);
+    // The canvas has the video's shape, so that it is fitted into the player the way the video is.
+    // DVD pixels aren't square: the pictures are stretched from their frame onto it.
+    const width = video.videoWidth || track.header.width || 720;
+    const height = video.videoHeight || track.header.height || 480;
+    if (event === shown && canvas.width === width && canvas.height === height) return;
+    shown = event;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    if (!context) return;
+    context.clearRect(0, 0, width, height);
+    if (!event) return;
+    const { image } = event;
+    scratch.width = image.width;
+    scratch.height = image.height;
+    scratch.getContext('2d')?.putImageData(new ImageData(image.rgba as ImageDataArray, image.width, image.height), 0, 0);
+    const scaleX = width / (track.header.width || width);
+    const scaleY = height / (track.header.height || height);
+    context.drawImage(scratch, image.x * scaleX, image.y * scaleY, image.width * scaleX, image.height * scaleY);
+  };
+  frame = requestAnimationFrame(draw);
+  return {
+    setDelay: (seconds) => {
+      delay = seconds;
+    },
+    destroy: () => {
+      cancelAnimationFrame(frame);
+      track.close();
       canvas.remove();
     },
   };

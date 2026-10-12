@@ -153,6 +153,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   }, [nextId, queue, start, navigate, syncItemId, syncManager]);
 
   // ---- Stream ------------------------------------------------------------
+  const airPlay = useAirPlay(videoRef);
   const {
     stream,
     loading,
@@ -171,7 +172,6 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     streamRef,
     hlsRef,
     subtitleTrackRef,
-    setPreferNativeHls,
     showNativeSubtitles,
     changeAudio: switchAudio,
     changeSubtitle: switchSubtitle,
@@ -189,6 +189,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     assLayerRef,
     pgsLayerRef,
     subtitleDelay,
+    inPip,
+    airPlay: airPlay.active,
   });
   // Safari's own HLS player (iPhone, and AirPlay everywhere) can't route its sound through Web Audio.
   const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (stream.nativeHls || !hlsJsSupported()));
@@ -196,24 +198,6 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const subtitleTiming = subtitleKind !== 'none';
 
   useWakeLock(playing);
-
-  // AirPlay only takes a video the browser plays by itself, so a transcode that hls.js is feeding
-  // is loaded again through Safari's own HLS player once an AirPlay device is chosen.
-  const airPlay = useAirPlay(videoRef);
-  useEffect(() => {
-    setPreferNativeHls(airPlay.active);
-    const s = streamRef.current;
-    const video = videoRef.current;
-    if (!airPlay.active || !s || !video || !s.isHls || s.nativeHls) return;
-    void load({
-      start: video.currentTime,
-      audioIndex: s.audioIndex,
-      subIndex: s.subIndex,
-      bitrate: maxBitrate,
-      mediaSourceId: s.source.Id,
-      forceTranscode: true,
-    });
-  }, [airPlay.active, load, maxBitrate, streamRef, setPreferNativeHls]);
 
   // Auto-advance at the end.
   useEffect(() => {

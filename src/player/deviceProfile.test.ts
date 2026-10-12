@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { profileFor, type Capabilities } from './deviceProfile';
+import { profileFor, type Capabilities, type ProfileOptions } from './deviceProfile';
 
 const base: Capabilities = {
   h264: true,
@@ -23,7 +23,6 @@ const base: Capabilities = {
   audioChannels: 2,
   safari: false,
   chromium: true,
-  assSubtitles: true,
   pgsSubtitles: true,
 };
 
@@ -33,8 +32,8 @@ interface Profile {
   SubtitleProfiles: { Format: string; Method: string }[];
 }
 
-const build = (caps: Partial<Capabilities>, rich = true) =>
-  profileFor({ ...base, ...caps }, 8_000_000, { richSubtitles: rich }) as unknown as Profile;
+const build = (caps: Partial<Capabilities>, opts: ProfileOptions = {}) =>
+  profileFor({ ...base, ...caps }, 8_000_000, opts) as unknown as Profile;
 const videoTranscodes = (p: Profile) => p.TranscodingProfiles.filter((t) => t.Type === 'Video');
 const condition = (p: Profile, codec: string, property: string) =>
   p.CodecProfiles.find((c) => c.Codec === codec)?.Conditions.find((c) => c.Property === property)?.Value;
@@ -99,12 +98,21 @@ describe('subtitle profiles', () => {
     expect(formats(build({}))).toEqual(['vtt', 'webvtt', 'ass', 'ssa', 'pgssub']);
   });
 
-  it('leaves out what the browser cannot draw', () => {
-    expect(formats(build({ assSubtitles: false }))).toEqual(['vtt', 'webvtt', 'pgssub']);
+  it('leaves out the pictures the browser cannot draw', () => {
     expect(formats(build({ pgsSubtitles: false }))).toEqual(['vtt', 'webvtt', 'ass', 'ssa']);
+    expect(formats(build({}, { images: false }))).toEqual(['vtt', 'webvtt', 'ass', 'ssa']);
   });
 
-  it('falls back to server-side conversion when asked to', () => {
-    expect(formats(build({}, false))).toEqual(['vtt', 'webvtt']);
+  it('keeps every text format on offer in text mode, so the server only burns pictures in', () => {
+    expect(formats(build({}, { subtitles: 'text' }))).toEqual(['vtt', 'webvtt', 'ass', 'ssa']);
+    expect(formats(build({}, { subtitles: 'text', vobSub: true }))).toEqual(['vtt', 'webvtt', 'ass', 'ssa']);
+  });
+
+  it('only leaves VobSub subtitles in the file when the player can read them out of it', () => {
+    expect(formats(build({}, { vobSub: true }))).toEqual(['vtt', 'webvtt', 'ass', 'ssa', 'pgssub', 'dvdsub']);
+  });
+
+  it('offers nothing when every subtitle has to be burned into the picture', () => {
+    expect(formats(build({}, { subtitles: 'burn', vobSub: true }))).toEqual([]);
   });
 });

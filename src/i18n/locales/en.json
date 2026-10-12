@@ -1470,6 +1470,8 @@
     "skipForward": "Skip forward",
     "storedOnAccount": "Stored on your Jellyfin account and used by all clients.",
     "streamingQualityUpdated": "Streaming quality updated",
+    "styledSubtitles": "Keep the styling of styled subtitles",
+    "styledSubtitlesHint": "Styled (ASS/SSA) subtitles are drawn with their own fonts, colours and positions. Switch this off to get them as plain text in the size and colour chosen here. Applies from the next video you start.",
     "subtitleAppearance": "Subtitle appearance",
     "subtitleLanguage": "Preferred subtitle language",
     "subtitleMode": "Subtitle mode",

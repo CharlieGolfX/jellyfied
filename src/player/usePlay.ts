@@ -69,6 +69,9 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/** Most items handed to a Chromecast at once. */
+const CAST_QUEUE_LIMIT = 100;
+
 /**
  * Returns a function that plays any item. Normally that happens in this browser; while another
  * device is selected with "Play on", the item is sent there instead.
@@ -77,6 +80,7 @@ export function usePlay() {
   const api = useApi();
   const { serverId } = useSession();
   const local = useLocalPlay();
+  const lookUp = useQueueLookup();
   const toast = useToast();
   return useCallback(
     async (item: BaseItemDto, opts: PlayOptions = {}) => {
@@ -87,9 +91,23 @@ export function usePlay() {
         // Containers (shows, albums, playlists…) are sent as they are; the receiving app expands them.
         const single = !item.IsFolder && !CONTAINER_TYPES.has(item.Type);
         if (chromecast.status === 'connected') {
-          await castPlay({ api, serverId }, [item], {
+          let items = [item];
+          let startPositionTicks = opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined;
+          // The receiver starts a show or season at its first episode. Looked up here, it continues
+          // where it was left, as it does in this browser: the episodes from that one on are sent.
+          if (!opts.shuffle && (item.Type === 'Series' || item.Type === 'Season')) {
+            const queue = await lookUp(item, false).catch(() => null);
+            const episodes = queue?.items.filter((e) => e.MediaType === 'Video') ?? [];
+            const first = Math.max(0, queue?.startId ? episodes.findIndex((e) => e.Id === queue.startId) : 0);
+            const rest = episodes.slice(first, first + CAST_QUEUE_LIMIT);
+            if (rest.length) {
+              items = rest;
+              startPositionTicks = opts.fromStart ? 0 : (rest[0].UserData?.PlaybackPositionTicks ?? 0);
+            }
+          }
+          await castPlay({ api, serverId }, items, {
             shuffle: opts.shuffle,
-            startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
+            startPositionTicks,
             mediaSourceId: opts.mediaSourceId,
             audioStreamIndex: opts.audioStreamIndex,
             subtitleStreamIndex: opts.subtitleStreamIndex,
@@ -107,19 +125,18 @@ export function usePlay() {
         toast.error(err);
       }
     },
-    [api, serverId, local, toast],
+    [api, serverId, local, lookUp, toast],
   );
 }
 
-/** Plays any item in this browser: videos open the player, audio goes to the music queue. */
-export function useLocalPlay() {
+/**
+ * Looks up what a show, season, album, playlist or folder consists of, and which of those items to
+ * start with when that isn't the first: the next episode to watch of a show, or the first
+ * unwatched one of a season.
+ */
+function useQueueLookup() {
   const api = useApi();
   const { userId } = useSession();
-  const navigate = useNavigate();
-  const audio = useAudioPlayer();
-  const videoSession = useVideoSession();
-  const toast = useToast();
-  const sync = useSyncPlayManager();
 
   const fetchChildren = useCallback(
     async (item: BaseItemDto, shuffleItems: boolean): Promise<BaseItemDto[]> => {
@@ -189,6 +206,38 @@ export function useLocalPlay() {
     [api, userId],
   );
 
+  return useCallback(
+    async (item: BaseItemDto, shuffleItems: boolean): Promise<{ items: BaseItemDto[]; startId?: string }> => {
+      if (shuffleItems) return { items: await fetchChildren(item, true) };
+      if (item.Type === 'Series') {
+        const nextUp = await api.get<ItemsResult>('/Shows/NextUp', {
+          userId,
+          seriesId: item.Id,
+          limit: 1,
+          enableResumable: true,
+          disableFirstEpisode: false,
+        });
+        return { items: await fetchChildren(item, false), startId: nextUp.Items[0]?.Id };
+      }
+      const items = await fetchChildren(item, false);
+      const firstUnplayed = item.Type === 'Season' ? items.find((i) => i.MediaType === 'Video' && !i.UserData?.Played) : undefined;
+      return { items, startId: firstUnplayed?.Id };
+    },
+    [api, userId, fetchChildren],
+  );
+}
+
+/** Plays any item in this browser: videos open the player, audio goes to the music queue. */
+export function useLocalPlay() {
+  const api = useApi();
+  const { userId } = useSession();
+  const navigate = useNavigate();
+  const audio = useAudioPlayer();
+  const videoSession = useVideoSession();
+  const toast = useToast();
+  const sync = useSyncPlayManager();
+  const lookUp = useQueueLookup();
+
   const playVideoQueue = useCallback(
     (ids: string[], startIndex: number, opts: PlayOptions = {}) => {
       if (!ids.length) return;
@@ -240,28 +289,19 @@ export function useLocalPlay() {
           return;
         }
 
-        // Series: continue where the user left off unless shuffling.
+        // A show continues where the user left off, and a season at its first unwatched episode,
+        // unless shuffling.
+        const { items: children, startId } = await lookUp(item, Boolean(opts.shuffle));
         if (item.Type === 'Series' && !opts.shuffle) {
-          const nextUp = await api.get<ItemsResult>('/Shows/NextUp', {
-            userId,
-            seriesId: item.Id,
-            limit: 1,
-            enableResumable: true,
-            disableFirstEpisode: false,
-          });
-          const episodes = await fetchChildren(item, false);
-          const startId = nextUp.Items[0]?.Id;
-          const start = Math.max(0, startId ? episodes.findIndex((e) => e.Id === startId) : 0);
-          if (!episodes.length) throw new Error(t('player.play.noPlayableEpisodesFound'));
+          if (!children.length) throw new Error(t('player.play.noPlayableEpisodesFound'));
           playVideoQueue(
-            episodes.map((e) => e.Id),
-            start,
+            children.map((e) => e.Id),
+            Math.max(0, startId ? children.findIndex((e) => e.Id === startId) : 0),
             opts,
           );
           return;
         }
 
-        const children = await fetchChildren(item, Boolean(opts.shuffle));
         if (!children.length) {
           toast.info(t('player.play.nothingToPlayHere'));
           return;
@@ -271,21 +311,16 @@ export function useLocalPlay() {
           return;
         }
         const videos = children.filter((c) => c.MediaType === 'Video');
-        let start = 0;
-        if (item.Type === 'Season' && !opts.shuffle) {
-          const firstUnplayed = videos.findIndex((v) => !v.UserData?.Played);
-          start = firstUnplayed === -1 ? 0 : firstUnplayed;
-        }
         playVideoQueue(
           videos.map((v) => v.Id),
-          start,
+          Math.max(0, startId ? videos.findIndex((v) => v.Id === startId) : 0),
           opts,
         );
       } catch (err) {
         toast.error(err);
       }
     },
-    [api, userId, audio, fetchChildren, playVideoQueue, toast],
+    [audio, lookUp, playVideoQueue, toast],
   );
 }
 

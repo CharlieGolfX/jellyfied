@@ -142,7 +142,7 @@ export function SubtitlesMenu({
                   <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.unavailableBurnedIn')}</div>
                 )}
               </PanelSection>
-              {(kind === 'ass' || kind === 'pgs') && (
+              {(kind === 'ass' || kind === 'pgs' || kind === 'vobsub') && (
                 <div className="px-4 pb-2 text-xs text-white/40">
                   {kind === 'ass' ? t('player.video.menus.styledSubtitlesHint') : t('player.video.menus.imageSubtitlesHint')}
                 </div>

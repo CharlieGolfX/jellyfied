@@ -1,13 +1,14 @@
 import type Hls from 'hls.js';
 import { hlsJsSupported } from './hlsSupport';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { generateId } from '@/api/device';
+import { generateId, isChromium } from '@/api/device';
 import type { BaseItemDto, MediaStream, PlaybackInfoResponse } from '@/api/types';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { errorMessage } from '@/components/ui/Toast';
 import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { useAudioPlayer } from '../AudioPlayerProvider';
-import { buildDeviceProfile, MAX_BITRATE } from '../deviceProfile';
+import { buildDeviceProfile, canRenderAss, MAX_BITRATE, type SubtitleMode } from '../deviceProfile';
+import { getSubtitleStyle } from '../subtitleStyle';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped, stopTranscoding, type PlayMethod } from '../reporting';
 import { useSyncPlayManager } from '../SyncPlayProvider';
 import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from '../trackMemory';
@@ -16,11 +17,18 @@ import { BITRATE_KEY, readNumber, streamName, type ActiveStream, type LoadOption
 import {
   createAssSubtitles,
   createPgsSubtitles,
+  createVobSubSubtitles,
   isFontAttachment,
+  isVobSub,
+  plainTextUrl,
+  sameDelivery,
+  subtitleContent,
   subtitleFormat,
+  subtitleModeFor,
   type CanvasSubtitles,
   type SubtitleKind,
 } from './subtitleRenderers';
+import type { ReadBytes } from './matroska';
 import { useLatest } from '@/lib/useLatest';
 import { t } from '@/i18n';
 
@@ -40,6 +48,8 @@ export function usePlaybackStream({
   assLayerRef,
   pgsLayerRef,
   subtitleDelay,
+  inPip,
+  airPlay,
 }: {
   itemId: string;
   item: BaseItemDto | undefined;
@@ -55,6 +65,10 @@ export function usePlaybackStream({
   pgsLayerRef: RefObject<HTMLElement | null>;
   /** Seconds the subtitles are shifted: positive = later. */
   subtitleDelay: number;
+  /** The picture is in a picture-in-picture window. */
+  inPip: boolean;
+  /** The picture is being sent to an AirPlay device. */
+  airPlay: boolean;
 }) {
   const api = useApi();
   const { userId } = useSession();
@@ -73,8 +87,24 @@ export function usePlaybackStream({
   const canvasSubtitlesRef = useRef<CanvasSubtitles | null>(null);
   /** The delay currently set, for subtitles that are attached later. */
   const subtitleDelayRef = useLatest(subtitleDelay);
-  /** Cleared when drawing styled or image subtitles failed here, so the server converts them from then on. */
-  const richSubtitles = useRef(true);
+  /** Formats that could not be drawn here during this playback: the server converts them from then on. */
+  const undrawable = useRef(new Set<CanvasFormat>());
+  const inPipRef = useLatest(inPip);
+  const airPlayRef = useLatest(airPlay);
+
+  /** Styled subtitles are shown as plain text: by choice, or because they can't be drawn here. */
+  const plainStyled = useCallback(() => !getSubtitleStyle().styled || undrawable.current.has('ass') || !canRenderAss(), []);
+
+  /** How a subtitle track (or none) has to be asked for, with the picture where it is now. */
+  const subtitleModeOf = useCallback(
+    (track: MediaStream | undefined): SubtitleMode => {
+      let content = track ? subtitleContent(track.Codec) : undefined;
+      if (content === 'styled' && plainStyled()) content = 'text';
+      // Chromium's picture-in-picture window shows the picture only, not the browser's own subtitles.
+      return subtitleModeFor({ airPlay: airPlayRef.current, pip: inPipRef.current, pipDrawsText: !isChromium() }, content);
+    },
+    [airPlayRef, inPipRef, plainStyled],
+  );
 
   const [stream, setStream] = useState<ActiveStream | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,35 +159,57 @@ export function usePlaybackStream({
   }, [videoRef]);
 
   const attachSubtitle = useCallback(
-    async (s: MediaStream, token: number): Promise<'ok' | 'failed' | 'unsupported'> => {
+    /** Resolves to a format when that format couldn't be drawn here and the server has to convert it. */
+    async (s: MediaStream, token: number): Promise<'ok' | 'failed' | CanvasFormat> => {
       const video = videoRef.current;
       if (!video || !s.DeliveryUrl) return 'failed';
-      const url = /^https?:\/\//i.test(s.DeliveryUrl) ? s.DeliveryUrl : api.serverUrl + s.DeliveryUrl;
-      const format = subtitleFormat(s.DeliveryUrl);
+      let url = /^https?:\/\//i.test(s.DeliveryUrl) ? s.DeliveryUrl : api.serverUrl + s.DeliveryUrl;
+      // Styled subtitles that are to be shown as plain text: the server has that version next to the original.
+      if (subtitleFormat(url) === 'ass' && (plainStyled() || streamRef.current?.subtitleMode === 'text')) url = plainTextUrl(url);
+      const format = isVobSub(s.Codec) ? 'vobsub' : subtitleFormat(url);
       try {
-        const res = await fetch(url, { headers: { Authorization: api.authorizationHeader() } });
-        if (!res.ok) throw new Error(t('player.video.stream.subtitleRequestFailed', { status: res.status }));
+        // The server has no file to deliver for VobSub: those are read out of the video file.
+        const res = format === 'vobsub' ? null : await fetch(url, { headers: { Authorization: api.authorizationHeader() } });
+        if (res && !res.ok) throw new Error(t('player.video.stream.subtitleRequestFailed', { status: res.status }));
         if (format !== 'vtt') {
           const layer = format === 'ass' ? assLayerRef.current : pgsLayerRef.current;
           const source = streamRef.current?.source;
           let subtitles: CanvasSubtitles;
           try {
-            if (!layer) throw new Error(t('player.video.stream.noSubtitleLayer'));
-            subtitles =
-              format === 'ass'
-                ? await createAssSubtitles({
-                    video,
-                    layer,
-                    content: await res.text(),
-                    fonts: (source?.MediaAttachments ?? [])
-                      .filter(isFontAttachment)
-                      .map((a) => api.url(`/Videos/${itemId}/${source!.Id}/Attachments/${a.Index}`, undefined, true)),
-                    delay: subtitleDelayRef.current,
-                  })
-                : await createPgsSubtitles({ video, layer, data: await res.arrayBuffer(), delay: subtitleDelayRef.current });
+            if (!layer || !source) throw new Error(t('player.video.stream.noSubtitleLayer'));
+            if (format === 'ass') {
+              subtitles = await createAssSubtitles({
+                video,
+                layer,
+                content: await res!.text(),
+                fonts: (source.MediaAttachments ?? [])
+                  .filter(isFontAttachment)
+                  .map((a) => api.url(`/Videos/${itemId}/${source.Id}/Attachments/${a.Index}`, undefined, true)),
+                delay: subtitleDelayRef.current,
+              });
+            } else if (format === 'pgs') {
+              subtitles = await createPgsSubtitles({ video, layer, data: await res!.arrayBuffer(), delay: subtitleDelayRef.current });
+            } else {
+              if (s.IsExternal) throw new Error('VobSub subtitles in a file of their own');
+              const inFile = (source.MediaStreams ?? []).filter((m) => m.Type === 'Subtitle' && !m.IsExternal && isVobSub(m.Codec));
+              subtitles = await createVobSubSubtitles({
+                video,
+                layer,
+                read: fileReader(
+                  api.url(
+                    `/Videos/${itemId}/stream`,
+                    { static: true, mediaSourceId: source.Id, deviceId: api.deviceId, Tag: source.ETag ?? undefined },
+                    true,
+                  ),
+                ),
+                streamIndex: s.Index,
+                position: inFile.indexOf(s),
+                delay: subtitleDelayRef.current,
+              });
+            }
           } catch (err) {
             console.warn(`Could not draw ${format.toUpperCase()} subtitles here`, err);
-            return 'unsupported';
+            return format;
           }
           if (token !== loadToken.current) {
             subtitles.destroy();
@@ -168,7 +220,7 @@ export function usePlaybackStream({
           setSubtitleKind(format);
           return 'ok';
         }
-        const text = await res.text();
+        const text = await res!.text();
         if (token !== loadToken.current) return 'ok';
         clearSubtitles();
         const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/vtt' }));
@@ -191,7 +243,21 @@ export function usePlaybackStream({
         return 'failed';
       }
     },
-    [api, itemId, clearSubtitles, videoRef, assLayerRef, pgsLayerRef, subtitleDelayRef],
+    [api, itemId, clearSubtitles, plainStyled, videoRef, assLayerRef, pgsLayerRef, subtitleDelayRef],
+  );
+
+  /** Shows a subtitle track, and when it can't be drawn here, in the form the server can turn it into. */
+  const showSubtitle = useCallback(
+    async (s: MediaStream, token: number, reload: () => void) => {
+      const result = await attachSubtitle(s, token);
+      if (result === 'ok' || result === 'failed' || token !== loadToken.current || undrawable.current.has(result)) return;
+      undrawable.current.add(result);
+      // Styled subtitles come as plain text from the same place. Pictures have to be burned in,
+      // which takes a new stream.
+      if (result === 'ass') void attachSubtitle(s, token);
+      else reload();
+    },
+    [attachSubtitle],
   );
 
   const destroyHls = useCallback(() => {
@@ -199,11 +265,6 @@ export function usePlaybackStream({
     hlsRef.current = null;
   }, []);
 
-  /** Set while AirPlay is in use: HLS then goes to the browser's own player (see LoadOptions.nativeHls). */
-  const preferNativeHls = useRef(false);
-  const setPreferNativeHls = useCallback((prefer: boolean) => {
-    preferNativeHls.current = prefer;
-  }, []);
   /** Has the browser draw the text track itself (true), or leaves that to SubtitleOverlay (false). */
   const showNativeSubtitles = useCallback((show: boolean) => {
     const track = subtitleTrackRef.current?.track;
@@ -222,6 +283,14 @@ export function usePlaybackStream({
       const synced = Boolean(syncItemId) && syncManager?.getSnapshot().playlistItemId === syncItemId;
       if (synced) syncManager?.reloading();
 
+      // What is known about the file before asking: enough to decide how its subtitles should come.
+      const known = item.MediaSources?.find((s) => s.Id === opts.mediaSourceId) ?? item.MediaSources?.[0];
+      const wantedSub =
+        opts.subIndex != null && opts.subIndex >= 0
+          ? known?.MediaStreams?.find((s) => s.Type === 'Subtitle' && s.Index === opts.subIndex)
+          : undefined;
+      const subtitleMode = subtitleModeOf(wantedSub);
+
       try {
         const info = await api.post<PlaybackInfoResponse>(`/Items/${item.Id}/PlaybackInfo`, {
           UserId: userId,
@@ -237,7 +306,16 @@ export function usePlaybackStream({
           EnableTranscoding: true,
           AllowVideoStreamCopy: true,
           AllowAudioStreamCopy: true,
-          DeviceProfile: buildDeviceProfile(opts.bitrate, { richSubtitles: richSubtitles.current }),
+          DeviceProfile: buildDeviceProfile(opts.bitrate, {
+            subtitles: subtitleMode,
+            images: !undrawable.current.has('pgs'),
+            // VobSub pictures are fetched out of the file, which takes a Matroska file on the server's disk.
+            vobSub:
+              !undrawable.current.has('vobsub') &&
+              /mkv|matroska/i.test(known?.Container ?? '') &&
+              (known?.Protocol ?? 'File') === 'File' &&
+              !known?.IsInfiniteStream,
+          }),
         });
         if (token !== loadToken.current) return;
         if (info.ErrorCode) {
@@ -302,8 +380,10 @@ export function usePlaybackStream({
           audioIndex,
           subIndex,
           burnedSub: Boolean(subStream && subStream.DeliveryMethod === 'Encode'),
+          subtitleMode,
           transcodeReasons: reasons,
-          nativeHls: isHls && ((opts.nativeHls ?? preferNativeHls.current) || !hlsJsSupported()),
+          // AirPlay only takes a video the browser plays by itself (see LoadOptions.nativeHls).
+          nativeHls: isHls && ((opts.nativeHls ?? airPlayRef.current) || !hlsJsSupported()),
         };
 
         // Attach the new source.
@@ -362,11 +442,7 @@ export function usePlaybackStream({
         }
 
         if (subStream && subStream.DeliveryMethod === 'External' && subStream.DeliveryUrl) {
-          void attachSubtitle(subStream, token).then((result) => {
-            if (result !== 'unsupported' || token !== loadToken.current || !richSubtitles.current) return;
-            // Styled or image subtitles can't be drawn in this browser after all: ask again, and the
-            // server converts them (to plain text, or burned into the picture).
-            richSubtitles.current = false;
+          void showSubtitle(subStream, token, () => {
             void loadRef.current?.({ ...opts, start: video.currentTime || opts.start, subIndex, audioIndex });
           });
         }
@@ -386,7 +462,20 @@ export function usePlaybackStream({
         setError(errorMessage(err));
       }
     },
-    [api, item, userId, endSession, destroyHls, clearSubtitles, attachSubtitle, syncItemId, syncManager, videoRef],
+    [
+      api,
+      item,
+      userId,
+      endSession,
+      destroyHls,
+      clearSubtitles,
+      showSubtitle,
+      subtitleModeOf,
+      airPlayRef,
+      syncItemId,
+      syncManager,
+      videoRef,
+    ],
   );
 
   useEffect(() => {
@@ -399,6 +488,42 @@ export function usePlaybackStream({
     canvasSubtitlesRef.current?.setDelay(subtitleDelay);
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [subtitleDelay, subtitleKind]);
+
+  // The picture moved to a picture-in-picture window or an AirPlay device, or came back. AirPlay
+  // only takes a video the browser plays by itself, so a transcode that hls.js is feeding is loaded
+  // again through Safari's own HLS player. Neither carries the canvases along that styled and image
+  // subtitles are drawn on, so those are asked for in a form that does travel, and back afterwards.
+  useEffect(() => {
+    const s = streamRef.current;
+    const video = videoRef.current;
+    if (!s || !video) return;
+    const needsNativeHls = airPlay && s.isHls && !s.nativeHls;
+    const track = s.subIndex >= 0 ? s.source.MediaStreams?.find((m) => m.Type === 'Subtitle' && m.Index === s.subIndex) : undefined;
+    const mode = subtitleModeOf(track);
+    const content = subtitleContent(track?.Codec);
+    const needsOtherSubtitles = Boolean(track) && !sameDelivery(mode, s.subtitleMode, content) && !(mode === 'burn' && s.burnedSub);
+    const reload = (forceTranscode?: boolean) =>
+      void load({
+        start: video.currentTime,
+        audioIndex: s.audioIndex,
+        subIndex: s.subIndex,
+        bitrate: maxBitrate,
+        mediaSourceId: s.source.Id,
+        forceTranscode,
+      });
+    if (needsNativeHls || needsOtherSubtitles) {
+      reload(needsNativeHls || undefined);
+      return;
+    }
+    if (!track || mode === s.subtitleMode || s.burnedSub) return;
+    // The same stream will do; only styled subtitles are fetched again, to be drawn the other way.
+    const updated = { ...s, subtitleMode: mode };
+    streamRef.current = updated;
+    setStream(updated);
+    if (content !== 'styled') return;
+    clearSubtitles();
+    void showSubtitle(track, loadToken.current, reload);
+  }, [inPip, airPlay, load, maxBitrate, subtitleModeOf, showSubtitle, clearSubtitles, videoRef]);
 
   // SyncPlay: hand the video element to the group manager for as long as this player is open.
   useEffect(() => {
@@ -597,17 +722,19 @@ export function usePlaybackStream({
     if (!stream || index === stream.subIndex) return;
     const target = subtitleStreams.find((s) => s.Index === index);
     if (seriesId && rememberSubtitles && (target || index === -1)) rememberSubtitleTrack(seriesId, target);
-    const canSwapLocally = !stream.burnedSub && (index === -1 || target?.DeliveryMethod === 'External');
+    // A track that has to be asked for differently (see subtitleModeOf) needs a new stream.
+    const mode = target ? subtitleModeOf(target) : stream.subtitleMode;
+    const canSwapLocally =
+      !stream.burnedSub &&
+      (index === -1 || (target?.DeliveryMethod === 'External' && sameDelivery(mode, stream.subtitleMode, subtitleContent(target.Codec))));
     if (canSwapLocally) {
       const token = loadToken.current;
       clearSubtitles();
-      const updated = { ...stream, subIndex: index };
+      const updated = { ...stream, subIndex: index, subtitleMode: mode };
       streamRef.current = updated;
       setStream(updated);
       if (target) {
-        void attachSubtitle(target, token).then((result) => {
-          if (result !== 'unsupported' || token !== loadToken.current || !richSubtitles.current) return;
-          richSubtitles.current = false;
+        void showSubtitle(target, token, () => {
           void load({
             start: videoRef.current?.currentTime ?? 0,
             audioIndex: updated.audioIndex,
@@ -686,12 +813,26 @@ export function usePlaybackStream({
     streamRef,
     hlsRef,
     subtitleTrackRef,
-    setPreferNativeHls,
     showNativeSubtitles,
     changeAudio,
     changeSubtitle,
     changeQuality,
     retry,
     retryTranscode,
+  };
+}
+
+/** Subtitle formats that draw themselves on a canvas. */
+type CanvasFormat = Exclude<SubtitleKind, 'none' | 'text'>;
+
+/** Reads parts of a file on the server. Rejects when the server sends the whole file instead. */
+function fileReader(url: string): ReadBytes {
+  return async (offset, length) => {
+    const res = await fetch(url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } });
+    if (res.status !== 206) {
+      void res.body?.cancel().catch(() => {});
+      throw new Error(t('player.video.stream.subtitleRequestFailed', { status: res.status }));
+    }
+    return new Uint8Array(await res.arrayBuffer());
   };
 }
