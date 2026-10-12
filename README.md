@@ -10,9 +10,6 @@ A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a s
 layout and a full server dashboard for administrators. It runs as a
 small nginx container. Your Jellyfin server is not modified: Jellyfied is just another client.
 
-Jellyfied was called Jellyplex up to version 1.2.0. See [Coming from Jellyplex](#coming-from-jellyplex)
-if you are updating an older install.
-
 ![Home page with the featured title and Continue Watching](docs/screenshots/home.jpg)
 
 ## Contents
@@ -26,7 +23,6 @@ if you are updating an older install.
   - [Static hosting without Docker](#static-hosting-without-docker)
 - [Configuration](#configuration)
   - [Notes](#notes)
-  - [Coming from Jellyplex](#coming-from-jellyplex)
 - [Keyboard shortcuts (player)](#keyboard-shortcuts-player)
 - [Development](#development)
   - [Translations](#translations)
@@ -331,23 +327,6 @@ Docker Compose additionally understands these:
 - Under a base path, a reverse proxy in front has to pass the path on unchanged (no stripping).
 - Jellyfied stores only the session tokens of the signed-in accounts and UI preferences in the
   browser's local storage.
-
-### Coming from Jellyplex
-
-Jellyfied was called Jellyplex up to version 1.2.0. An existing install keeps working:
-
-- **Image:** new versions are published as `ghcr.io/charliegolfx/jellyfied`. The old
-  `ghcr.io/charliegolfx/jellyplex` image stays where it is but gets no more updates, so change the
-  image name to keep receiving them.
-- **Environment variables:** the `JELLYPLEX_…` names are still read where the matching
-  `JELLYFIED_…` one is not set, both by the container and by `docker-compose.yml`.
-- **Browsers:** sign-ins and settings saved under the old name are moved over the first time the
-  new version is opened, and settings synced to the Jellyfin account are carried over too.
-- **Compose:** the service and container are now called `jellyfied`. After pulling the new
-  `docker-compose.yml`, run `docker compose up -d --remove-orphans` once to replace the old
-  container.
-- **Base path:** if you serve it under `/jellyplex`, that path keeps working for as long as you
-  leave the setting as it is.
 
 ## Keyboard shortcuts (player)
 

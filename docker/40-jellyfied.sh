@@ -19,13 +19,6 @@
 # nginx runs as an unprivileged user, so everything written here lives in places that user owns.
 set -eu
 
-# Jellyfied was called Jellyplex up to version 1.2.0. Settings still given under the old names are
-# used where the new one is not set.
-JELLYFIED_LOCK_SERVER="${JELLYFIED_LOCK_SERVER:-${JELLYPLEX_LOCK_SERVER:-}}"
-JELLYFIED_BASE_PATH="${JELLYFIED_BASE_PATH:-${JELLYPLEX_BASE_PATH:-}}"
-[ -n "${JELLYPLEX_TRUSTED_PROXIES:-}" ] && [ "${JELLYFIED_TRUSTED_PROXIES:-private}" = "private" ] && JELLYFIED_TRUSTED_PROXIES="$JELLYPLEX_TRUSTED_PROXIES"
-[ -n "${JELLYPLEX_PORT:-}" ] && [ "${JELLYFIED_PORT:-80}" = "80" ] && JELLYFIED_PORT="$JELLYPLEX_PORT"
-
 HTML_DIR=/usr/share/nginx/html
 CONF=/etc/nginx/conf.d/default.conf
 HEADERS=/tmp/jellyfied-headers.conf

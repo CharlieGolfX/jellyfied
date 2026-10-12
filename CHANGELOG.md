@@ -1,22 +1,27 @@
 # Changelog
 
-Notable changes to Jellyfied (called Jellyplex up to version 1.2.0). The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+Notable changes to Jellyfied. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/). The version you are running is
 shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-12
+
 ### Changed
 - The descriptions of the project no longer compare it to other products.
+
+### Removed
+- Everything that still went by the project's former name: the old names of the environment
+  variables are no longer read, and what a browser or the account stored under the old name
+  is no longer carried over. Only the `JELLYFIED_` names work.
 
 ## [1.3.0] - 2026-10-12
 
 ### Changed
-- The project is now called Jellyfied, and has a logo of its own: a snowflake, in place of the
-  Jellyfin logo. The repository is `CharlieGolfX/jellyfied` and the image
-  `ghcr.io/charliegolfx/jellyfied`; the old image name gets no more updates. The environment
-  variables are now `JELLYFIED_…`, and the `JELLYPLEX_…` names keep working. Sign-ins and settings
-  saved in the browser or synced to the account under the old name are carried over.
+- The project has a new name, Jellyfied, and a logo of its own: a snowflake, in place of the
+  Jellyfin logo. The repository is `CharlieGolfX/jellyfied`, the image
+  `ghcr.io/charliegolfx/jellyfied`, and the environment variables start with `JELLYFIED_`.
 - The screenshots in the README are retaken with the new name and logo, from a library of freely
   licensed and public-domain films instead of commercial ones.
 - The "Jellyfin blue", "Jellyfin purple" and "Jellyfin dark" colours under Account settings are
@@ -120,12 +125,12 @@ shown in the account menu and on the login screen.
 - Live TV: channels with what is on, programmes airing now, and recordings.
 - Photo slideshow.
 
-- `JELLYPLEX_BASE_PATH` serves Jellyplex under a path such as `/jellyplex`.
+- `JELLYFIED_BASE_PATH` serves Jellyfied under a path such as `/jellyfied`.
 
 ### Changed
 - Menus follow their button while the page scrolls instead of closing.
 - The container's nginx no longer runs as root, and is based on nginx 1.30. The default port is
-  still 80; set `JELLYPLEX_PORT=8080` on runtimes that do not let an unprivileged process use it.
+  still 80; set `JELLYFIED_PORT=8080` on runtimes that do not let an unprivileged process use it.
 - The container's Content-Security-Policy now allows WebAssembly (for styled subtitles) and
   scripts from `www.gstatic.com` (Google's Cast software, loaded only when Chromecast is picked),
   and no longer allows inline styles.
@@ -142,7 +147,7 @@ shown in the account menu and on the login screen.
 - Behind a reverse proxy or tunnel, Jellyfin was told the proxy's address instead of the
   visitor's, so the dashboard and activity log showed the same address for everyone. The
   container now works out the visitor's address from `X-Forwarded-For` and passes that on.
-  `JELLYPLEX_TRUSTED_PROXIES` chooses which proxies are believed (default: private addresses).
+  `JELLYFIED_TRUSTED_PROXIES` chooses which proxies are believed (default: private addresses).
 - The device list in the server dashboard shows when each device was last active, and sorts by it.
 - Files without a date no longer show "Jan 1, 1970" in the library list.
 
@@ -173,7 +178,7 @@ other devices, the metadata editor and the server dashboard. See the
 [README](README.md#features) for the full list.
 
 ### Added
-- Prebuilt container images on GitHub Container Registry (`ghcr.io/charliegolfx/jellyplex`) for
+- Prebuilt container images on GitHub Container Registry (`ghcr.io/charliegolfx/jellyfied`) for
   amd64 and arm64: `latest` and version tags for releases, `edge` for the main branch.
 - The version is shown in the account menu and on the login screen.
 - A page that runs into an error no longer blanks the whole app: the page shows a message with
@@ -186,7 +191,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.0.0...v1.1.0

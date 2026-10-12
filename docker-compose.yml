@@ -5,6 +5,9 @@
 # The defaults below expect Jellyfin on the Docker host, port 8096. To change them, either edit
 # this file or put your own values in a .env file next to it (see .env.example).
 #
+# The project name, so it does not depend on what the folder is called.
+name: jellyfied
+
 services:
   jellyfied:
     build: .
@@ -12,8 +15,7 @@ services:
     container_name: jellyfied
     restart: unless-stopped
     ports:
-      - '${JELLYFIED_BIND_ADDRESS:-${JELLYPLEX_BIND_ADDRESS:-0.0.0.0}}:${JELLYFIED_HOST_PORT:-${JELLYPLEX_HOST_PORT:-8080}}:80'
-    # The JELLYPLEX_ names are the ones from before the rename; a .env file that still uses them works.
+      - '${JELLYFIED_BIND_ADDRESS:-0.0.0.0}:${JELLYFIED_HOST_PORT:-8080}:80'
     environment:
       # Jellyfin address as reachable FROM THIS CONTAINER. Jellyfied proxies it at /jellyfin,
       # so the browser only ever talks to Jellyfied (no CORS or mixed-content issues).
@@ -25,12 +27,12 @@ services:
       # e.g. https://jellyfin.example.com
       JELLYFIN_PUBLIC_URL: '${JELLYFIN_PUBLIC_URL:-}'
       # Optional: whether users can type a different server address on the login screen.
-      JELLYFIED_LOCK_SERVER: '${JELLYFIED_LOCK_SERVER:-${JELLYPLEX_LOCK_SERVER:-}}'
+      JELLYFIED_LOCK_SERVER: '${JELLYFIED_LOCK_SERVER:-}'
       # Optional: serve Jellyfied under a path, e.g. /jellyfied, behind a reverse proxy.
-      JELLYFIED_BASE_PATH: '${JELLYFIED_BASE_PATH:-${JELLYPLEX_BASE_PATH:-}}'
+      JELLYFIED_BASE_PATH: '${JELLYFIED_BASE_PATH:-}'
       # Optional: whose X-Forwarded-For header to believe, so Jellyfin sees visitors' own addresses
       # behind a reverse proxy or tunnel. Addresses or networks, or "none". Default: private ranges.
-      JELLYFIED_TRUSTED_PROXIES: '${JELLYFIED_TRUSTED_PROXIES:-${JELLYPLEX_TRUSTED_PROXIES:-private}}'
+      JELLYFIED_TRUSTED_PROXIES: '${JELLYFIED_TRUSTED_PROXIES:-private}'
     extra_hosts:
       # Makes host.docker.internal work on Linux too.
       - 'host.docker.internal:host-gateway'

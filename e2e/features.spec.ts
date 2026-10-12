@@ -434,16 +434,3 @@ test.describe('the server dashboard', () => {
     ]);
   });
 });
-
-test('settings saved under the name from before the rename still apply', async ({ page }) => {
-  await mockJellyfin(page);
-  await page.addInitScript(() => {
-    if (!localStorage.getItem('jellyfied.language')) localStorage.setItem('jellyplex.language', 'nb');
-  });
-  await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Logg inn' })).toBeVisible();
-  expect(await page.evaluate(() => [localStorage.getItem('jellyfied.language'), localStorage.getItem('jellyplex.language')])).toEqual([
-    'nb',
-    null,
-  ]);
-});

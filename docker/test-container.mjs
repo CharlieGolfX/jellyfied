@@ -155,25 +155,6 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   check('X-Forwarded-For from the peer is ignored', Boolean(seen) && seen !== '203.0.113.7', seen);
 });
 
-console.log(`\n${image}: settings under the names from before the rename`);
-await withContainer(
-  {
-    JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`,
-    JELLYPLEX_BASE_PATH: '/old',
-    JELLYPLEX_LOCK_SERVER: 'false',
-    JELLYPLEX_TRUSTED_PROXIES: 'none',
-  },
-  async () => {
-    check('the old base path setting is used', (await text('/old/')).includes('<base href="/old/"'));
-    check('the old lock setting is used', (await text('/old/config.js')).includes('lockServer: false'));
-    const seen = await fetch(`${origin}/old/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': '203.0.113.7' } }).then(
-      (r) => r.json().then((j) => j.forwardedFor),
-      () => null,
-    );
-    check('the old trusted proxies setting is used', Boolean(seen) && seen !== '203.0.113.7', seen);
-  },
-);
-
 console.log(`\n${image}: under /jellyfied`);
 await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIED_BASE_PATH: '/jellyfied/' }, async () => {
   const page = await text('/jellyfied/');

@@ -14,7 +14,7 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const target = env.JELLYFIN_DEV_URL || env.JELLYFIN_URL;
-  const port = Number(env.JELLYFIED_DEV_PORT || env.JELLYPLEX_DEV_PORT) || 5173;
+  const port = Number(env.JELLYFIED_DEV_PORT) || 5173;
 
   return {
     // Relative, so the same build can be served at the root or under a path (see index.html's <base>).

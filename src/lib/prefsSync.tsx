@@ -2,7 +2,6 @@ import { useEffect, useSyncExternalStore } from 'react';
 import type { JellyfinApi } from '@/api/client';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { onFlushPrefs, onPrefChanged, prefPulled } from './prefsBus';
-import { oldPrefKey } from './renamed';
 
 /**
  * Preferences that follow the user to other browsers. They are kept in local storage as before,
@@ -22,8 +21,6 @@ export const SYNCED_KEYS = [
 const ENABLED_KEY = 'jellyfied.syncPrefs';
 const PREFS_ID = 'usersettings';
 const CLIENT = 'jellyfied';
-/** Where the account kept these before the app was renamed. Read once, when the new place is empty. */
-const OLD_CLIENT = 'jellyplex';
 const PUSH_DELAY = 1500;
 const REFRESH_AFTER = 5 * 60_000;
 
@@ -133,24 +130,7 @@ function start(api: JellyfinApi, userId: string): () => void {
       if (stopped || !fetched || typeof fetched !== 'object') return;
       dto = fetched;
       pulledAt = Date.now();
-      let remote = fetched.CustomPrefs ?? {};
-      if (!SYNCED_KEYS.some((key) => typeof remote[key] === 'string')) {
-        const before = await api
-          .get<DisplayPreferences>(`/DisplayPreferences/${PREFS_ID}`, { userId, client: OLD_CLIENT })
-          .catch(() => null);
-        if (stopped) return;
-        const carried: Record<string, string> = {};
-        for (const key of SYNCED_KEYS) {
-          const value = before?.CustomPrefs?.[oldPrefKey(key)];
-          if (typeof value === 'string') carried[key] = value;
-        }
-        if (Object.keys(carried).length > 0) {
-          remote = { ...remote, ...carried };
-          dto = { ...fetched, CustomPrefs: remote };
-        }
-      }
-      const carriedOver = remote !== (fetched.CustomPrefs ?? remote);
-      const { apply, push: needsPush } = mergePrefs(remote, readLocal());
+      const { apply, push: needsPush } = mergePrefs(fetched.CustomPrefs ?? {}, readLocal());
       for (const [key, value] of Object.entries(apply)) {
         try {
           localStorage.setItem(key, value);
@@ -159,7 +139,7 @@ function start(api: JellyfinApi, userId: string): () => void {
         }
         prefPulled(key);
       }
-      if (needsPush || carriedOver) schedulePush();
+      if (needsPush) schedulePush();
     } catch {
       /* offline, or a server without this endpoint: the preferences simply stay local */
     }
