@@ -7,7 +7,7 @@ import { stripBasePath } from '@/lib/basePath';
 
 /**
  * The video player lives at app level (outside the routes) so playback survives navigation.
- * On /play/:id it is full screen; anywhere else it collapses into a Plex-style mini player.
+ * On /play/:id it is full screen; anywhere else it collapses into a mini player.
  */
 export interface VideoSession {
   itemId: string;

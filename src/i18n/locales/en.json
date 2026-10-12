@@ -962,7 +962,7 @@
     "signIn": "Sign in",
     "signInManually": "Sign in manually",
     "signOutAccount": "Sign {name} out",
-    "tagline": "A Plex-style client for Jellyfin · v{version}",
+    "tagline": "A client for Jellyfin · v{version}",
     "title": "Sign in",
     "useQuickConnect": "Use Quick Connect",
     "username": "Username",

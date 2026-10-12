@@ -103,7 +103,7 @@ export function SearchBox() {
     setActive(-1);
   }
 
-  // "/" focuses search, like Plex.
+  // "/" focuses search.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;

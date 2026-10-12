@@ -22,7 +22,7 @@ interface HubRowProps {
   className?: string;
 }
 
-/** A titled horizontal scroller with Plex-style paging arrows. */
+/** A titled horizontal scroller with paging arrows. */
 export function HubRow({ title, to, actions, children, className }: HubRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);

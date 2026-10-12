@@ -65,8 +65,8 @@ FOR A PARTICULAR PURPOSE. The full licence is at the end of this file.
 
 Source code: https://github.com/CharlieGolfX/jellyfied
 
-Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
-or by Plex, Inc. Jellyfin, Plex, Chromecast and AirPlay are trademarks of their owners.
+Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project.
+Jellyfin, Chromecast and AirPlay are trademarks of their owners.
 
 This file lists what Jellyfied is shipped with, and the licences that come with those parts.
 `,

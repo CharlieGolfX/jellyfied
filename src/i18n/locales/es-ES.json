@@ -962,7 +962,7 @@
     "signIn": "Iniciar sesión",
     "signInManually": "Iniciar sesión manualmente",
     "signOutAccount": "Cerrar la sesión de {name}",
-    "tagline": "Un cliente al estilo de Plex para Jellyfin · v{version}",
+    "tagline": "Un cliente para Jellyfin · v{version}",
     "title": "Iniciar sesión",
     "useQuickConnect": "Usar Quick Connect",
     "username": "Nombre de usuario",

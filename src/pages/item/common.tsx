@@ -40,7 +40,7 @@ import { t, tRich } from '@/i18n';
 
 const MetadataEditor = lazy(() => import('@/components/media/MetadataEditor'));
 
-/** Full-bleed blurred backdrop behind the detail page, Plex style. */
+/** Full-bleed blurred backdrop behind the detail page. */
 export function Backdrop({ item }: { item: BaseItemDto }) {
   const api = useApi();
   const src = backdropSrc(api, item, 1920);

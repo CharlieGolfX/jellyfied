@@ -1,4 +1,4 @@
-# Jellyfied — Plex-style frontend for an existing Jellyfin server.
+# Jellyfied — a web frontend for an existing Jellyfin server.
 #
 #   docker compose up -d   →   http://localhost:8080
 #

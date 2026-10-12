@@ -49,7 +49,7 @@ function parentPoster(item: BaseItemDto): ImageRef | null {
   return null;
 }
 
-/** Picks the best image for a card of the given shape, following Plex-like conventions. */
+/** Picks the best image for a card of the given shape. */
 export function cardImage(item: BaseItemDto, shape: CardShape): ImageRef | null {
   if (shape === 'landscape') {
     if (item.Type === 'Episode' || item.Type === 'Video' || item.Type === 'Photo' || item.Type === 'MusicVideo') {

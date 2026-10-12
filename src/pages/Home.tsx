@@ -140,7 +140,7 @@ export default function HomePage() {
   const [layout] = useHomeLayout();
   const [customizing, setCustomizing] = useState(false);
 
-  // Plex merges in-progress items with "on deck" episodes into one Continue Watching row.
+  // In-progress items and next-up episodes are merged into one Continue Watching row.
   const continueWatching = useMemo(() => {
     if (!resume.data && !nextUp.data) return undefined;
     const items = [...(resume.data?.Items ?? [])];

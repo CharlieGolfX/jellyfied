@@ -6,6 +6,9 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Changed
+- The descriptions of the project no longer compare it to other products.
+
 ## [1.3.0] - 2026-10-12
 
 ### Changed
@@ -165,7 +168,7 @@ shown in the account menu and on the login screen.
 
 ## [1.0.0] - 2026-10-11
 
-First public version: Plex-style browsing, the video and music players, SyncPlay, playing on
+First public version: library browsing, the video and music players, SyncPlay, playing on
 other devices, the metadata editor and the server dashboard. See the
 [README](README.md#features) for the full list.
 

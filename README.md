@@ -6,8 +6,8 @@
 > No part of it was written by hand. Keep that in mind when you decide whether to run it, and
 > please report anything that looks wrong.
 
-A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a layout modelled on Plex
-and a full server dashboard for administrators. It runs as a
+A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a streaming-service style
+layout and a full server dashboard for administrators. It runs as a
 small nginx container. Your Jellyfin server is not modified: Jellyfied is just another client.
 
 Jellyfied was called Jellyplex up to version 1.2.0. See [Coming from Jellyplex](#coming-from-jellyplex)
@@ -63,14 +63,14 @@ The posters and descriptions are what the Jellyfin server fetched for them from
 
 ## Features
 
-**Browsing (Plex layout)**
+**Browsing**
 - Top bar with global search (type `/` to focus) and live results, collapsible library sidebar, account menu.
 - Drag libraries in the sidebar to reorder them. The order is saved to your Jellyfin account, so it
   also applies to the home page and other Jellyfin apps.
-- Home: a featured title at the top, Continue Watching (in-progress plus next-up episodes merged,
-  like Plex's On Deck), Continue Listening, and Recently Added per library. "Customise home" at the
+- Home: a featured title at the top, Continue Watching (in-progress plus next-up episodes merged
+  into one row), Continue Listening, and Recently Added per library. "Customise home" at the
   bottom of the page reorders (drag, or the arrow buttons) or hides the rows and the featured title.
-- Libraries with Plex-style tabs: Recommended / Library / Collections / Categories for movies and TV,
+- Libraries with tabs: Recommended / Library / Collections / Categories for movies and TV,
   Albums / Artists / Genres for music, and folder browsing for home videos, photos, books and mixed libraries.
   Sorting, infinite scroll, and filters for watched state, favorites, genre, year, age rating,
   resolution (4K / HD / SD), tag and studio. Genre, year, rating, tag and studio take several
@@ -570,8 +570,8 @@ rest of the project.
 
 ## Credits
 
-Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
-or by Plex, Inc.; Jellyfin, Plex, Chromecast and AirPlay are trademarks of their owners.
+Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project;
+Jellyfin, Chromecast and AirPlay are trademarks of their owners.
 
 Jellyfied is built on React, TanStack Query, React Router, hls.js, JASSUB (libass), libpgs and
 Lucide, among others. Every build writes `licenses.txt` next to the site, with the copyright

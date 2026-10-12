@@ -962,7 +962,7 @@
     "signIn": "Logg inn",
     "signInManually": "Logg inn manuelt",
     "signOutAccount": "Logg ut {name}",
-    "tagline": "En klient i Plex-stil for Jellyfin · v{version}",
+    "tagline": "En klient for Jellyfin · v{version}",
     "title": "Logg inn",
     "useQuickConnect": "Bruk Quick Connect",
     "username": "Brukernavn",

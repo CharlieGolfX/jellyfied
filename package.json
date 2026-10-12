@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.3.0",
   "type": "module",
-  "description": "A Plex-style web frontend for Jellyfin",
+  "description": "A web frontend for Jellyfin",
   "license": "GPL-3.0-or-later",
   "author": "CharlieGolfX",
   "repository": "github:CharlieGolfX/jellyfied",

@@ -14,7 +14,7 @@ RUN npm run build && node scripts/precompress.mjs dist
 FROM nginxinc/nginx-unprivileged:1.30-alpine
 
 LABEL org.opencontainers.image.title="Jellyfied" \
-      org.opencontainers.image.description="A Plex-style web frontend for Jellyfin"
+      org.opencontainers.image.description="A web frontend for Jellyfin"
 
 # The nginx image runs every script in /docker-entrypoint.d before starting. That script writes the
 # site's nginx config, config.js and index.html, so those places belong to the nginx user.

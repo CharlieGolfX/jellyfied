@@ -3,7 +3,7 @@ import { RectangleVertical } from 'lucide-react';
 import { CARD_SCALE_MAX, CARD_SCALE_MIN, useCardScale } from '@/lib/cardScale';
 import { t } from '@/i18n';
 
-/** Plex-style poster size slider. The setting is global and persisted. */
+/** Poster size slider. The setting is global and persisted. */
 export function CardSizeSlider({ className }: { className?: string }) {
   const [scale, setScale] = useCardScale();
   return (
