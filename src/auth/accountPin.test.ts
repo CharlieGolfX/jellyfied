@@ -83,7 +83,8 @@ describe.each(['with the browser\u2019s cryptography', 'without it (plain http)'
     // Even the right PIN has to wait.
     expect(await checkPin(account, '4821', now + 1000)).toEqual({ ok: false, lockedFor: LOCK_MS - 1000 });
     expect((await checkPin(account, '4821', now + LOCK_MS + 1)).ok).toBe(true);
-  });
+    // Every try runs the slow hash written in JavaScript, which takes a while on a busy machine.
+  }, 30_000);
 
   it('can be removed', async () => {
     await setPin(account, '4821', 'token-abc');

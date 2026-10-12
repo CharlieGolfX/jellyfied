@@ -316,7 +316,8 @@ test('an account can be protected with a PIN that is asked for when switching to
   await form.getByRole('button', { name: 'Set PIN' }).click();
   await expect(page.getByText('PIN set')).toBeVisible();
   await expect(form.getByLabel('Current PIN')).toBeVisible();
-  expect(await page.evaluate(() => localStorage.getItem('jellyplex.pins'))).not.toContain('4821');
+  // Not stored as it was typed. (The digits alone may turn up inside the random salt or the hash.)
+  expect(await page.evaluate(() => localStorage.getItem('jellyplex.pins'))).not.toContain('"4821"');
 
   // A second account signs in on this browser and becomes the current one.
   await page.evaluate(() => {
@@ -339,7 +340,10 @@ test('an account can be protected with a PIN that is asked for when switching to
 
   await prompt.getByLabel('PIN').fill('4821');
   await prompt.getByRole('button', { name: 'Switch' }).click();
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).userName)).toBe(USER.name);
+  // Switching reloads the page, which can cut a look at its storage short: look again then.
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).userName).catch(() => null))
+    .toBe(USER.name);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).accessToken)).toBe('mock-token');
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
 });
