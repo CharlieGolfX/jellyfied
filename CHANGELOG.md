@@ -14,6 +14,8 @@ shown in the account menu and on the login screen.
   `ghcr.io/charliegolfx/jellyfied`; the old image name gets no more updates. The environment
   variables are now `JELLYFIED_…`, and the `JELLYPLEX_…` names keep working. Sign-ins and settings
   saved in the browser or synced to the account under the old name are carried over.
+- The screenshots in the README are retaken with the new name and logo, from a library of freely
+  licensed and public-domain films instead of commercial ones.
 - The "Jellyfin blue", "Jellyfin purple" and "Jellyfin dark" colours under Account settings are
   now named after Jellyfied. The colours are the same.
 - Jellyfied is now licensed under the GNU General Public License, version 3 or later (it was

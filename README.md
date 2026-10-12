@@ -55,6 +55,12 @@ if you are updating an older install.
 | --- | --- |
 | ![Account and playback settings](docs/screenshots/account-settings.png) |  |
 
+The library in these pictures is made up of freely licensed and public-domain titles: the Blender
+Studio open movies (Tears of Steel, Sintel, Big Buck Bunny, Cosmos Laundromat and others,
+CC BY), Sita Sings the Blues (CC0), Pioneer One (CC BY-NC-SA) and silent films from before 1929.
+The posters and descriptions are what the Jellyfin server fetched for them from
+[TMDB](https://www.themoviedb.org); they belong to their owners.
+
 ## Features
 
 **Browsing (Plex layout)**
@@ -457,6 +463,7 @@ Dates, numbers, sizes and durations are written the way the chosen language writ
   describes more exactly. A field the server does not have, or a type the server's description
   rules out, fails the type check.
 - **Screenshots**: `scripts/screenshots.mjs` retakes the pictures in this README from a real library.
+  Use one with freely licensed titles, as the current pictures do, not your own collection.
 
 GitHub Actions runs all of this except the playback tests on every push and pull request, and
 scans the container image for known vulnerabilities.
