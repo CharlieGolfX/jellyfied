@@ -12,6 +12,27 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 ![Home page with the featured title and Continue Watching](docs/screenshots/home.jpg)
 
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Installation](#installation)
+  - [Prebuilt image](#prebuilt-image)
+  - [Docker Compose](#docker-compose)
+  - [Building with Docker, without Compose](#building-with-docker-without-compose)
+  - [Static hosting without Docker](#static-hosting-without-docker)
+- [Configuration](#configuration)
+  - [Notes](#notes)
+- [Keyboard shortcuts (player)](#keyboard-shortcuts-player)
+- [Development](#development)
+  - [Translations](#translations)
+  - [Tests](#tests)
+  - [Releasing](#releasing)
+- [Compatibility and limitations](#compatibility-and-limitations)
+- [Contributing](#contributing)
+- [Credits](#credits)
+- [License](#license)
+
 ## Screenshots
 
 | Player | Library, Recommended tab |
@@ -50,8 +71,8 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   alternative to the poster grid.
 - Built for large libraries: only the rows near the screen are kept in the page, posters are
   requested in the size the screen needs and show a blurred preview until they arrive, an
-  item's page is fetched while the pointer rests on its card, and going back returns to where
-  you were in a list.
+  item's page is fetched while the pointer rests on its card, and going back, or changing the
+  poster size, returns to where you were in a list.
 - Select several items (the tick on a card or row; shift-click for everything in between) to mark
   them watched or unwatched, add them to a playlist or collection, or delete them in one go.
 - Pages update on their own: new media after a library scan, and watched state, favorites and
@@ -307,7 +328,7 @@ Docker Compose additionally understands these:
 | `Space` / `K`  | Play / pause        |
 | `←` / `J`      | Back 10 seconds ¹   |
 | `→` / `L`      | Forward 30 seconds ¹ |
-| `↑` / `↓`      | Volume              |
+| `↑` / `↓`      | Volume (also: turn the mouse wheel over the volume control) |
 | `M`            | Mute                |
 | `F`            | Full screen         |
 | `N`            | Next item           |

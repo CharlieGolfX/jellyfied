@@ -50,15 +50,10 @@ export default defineConfig(({ mode }) => {
         : undefined,
     },
     build: {
-      // hls.js is the one large piece (about 575 kB before compression). It is only fetched when a
-      // video is played, and sits in a file of its own so a new Jellyplex release does not make
-      // browsers download it again. Everything else stays under the usual 500 kB warning.
+      // hls.js is the one large piece (about 575 kB before compression). It is imported on demand,
+      // when the server sends a stream that needs it, which also puts it in a file of its own.
+      // Everything else stays under the usual 500 kB warning.
       chunkSizeWarningLimit: 600,
-      rollupOptions: {
-        output: {
-          manualChunks: (id) => (id.includes('/node_modules/hls.js/') ? 'hls' : undefined),
-        },
-      },
     },
     // The subtitle renderer finds its worker and WebAssembly files next to its own module, which
     // only works when the dev server leaves the package as it is.

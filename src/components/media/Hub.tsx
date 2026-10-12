@@ -7,6 +7,7 @@ import { defaultShape } from '@/api/images';
 import type { BaseItemDto } from '@/api/types';
 import { PosterCard, type PosterCardProps } from './PosterCard';
 import { t } from '@/i18n';
+import { useReveal } from '@/lib/useReveal';
 
 /** Card width in hub rows: responsive base size scaled by the global poster-size setting. */
 export function hubCardStyle(shape: CardShape): CSSProperties {
@@ -87,6 +88,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
       </div>
       <div
         ref={scrollerRef}
+        data-hub-scroller
         onScroll={update}
         // A horizontal scroller also clips vertically, so pad the top to leave room for the cards' hover ring.
         className="scrollbar-none -mt-1 overflow-x-auto scroll-smooth px-4 pt-1 pb-2 sm:px-8 lg:px-10"
@@ -107,16 +109,22 @@ interface HubProps extends Omit<HubRowProps, 'children'> {
   hideEmpty?: boolean;
 }
 
+/** How many cards of a row are put in the page at first, and with each step sideways. */
+const ROW_STEP = 30;
+
 export function Hub({ items, shape, loading, cardProps, hideEmpty = true, ...row }: HubProps) {
+  // A row can hold hundreds of cards (search results); the rest come as it is scrolled sideways.
+  const { shown, endRef } = useReveal(items?.length ?? 0, ROW_STEP, '[data-hub-scroller]', '0px 1200px');
   if (!loading && (!items || items.length === 0) && hideEmpty) return null;
   const s = shape ?? (items?.[0] ? defaultShape(items[0]) : 'poster');
   return (
     <HubRow {...row}>
       {loading && !items
         ? Array.from({ length: 8 }, (_, i) => <SkeletonCard key={i} shape={s} />)
-        : items?.map((item) => (
-            <PosterCard key={item.Id} item={item} shape={s} className="shrink-0" style={hubCardStyle(s)} {...cardProps} />
-          ))}
+        : items
+            ?.slice(0, shown)
+            .map((item) => <PosterCard key={item.Id} item={item} shape={s} className="shrink-0" style={hubCardStyle(s)} {...cardProps} />)}
+      {items && shown < items.length && <div ref={endRef} className="w-px shrink-0" data-testid="row-more" />}
     </HubRow>
   );
 }

@@ -1,4 +1,5 @@
-import Hls, { ErrorTypes, Events } from 'hls.js';
+import type Hls from 'hls.js';
+import { hlsJsSupported } from './hlsSupport';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { generateId } from '@/api/device';
 import type { BaseItemDto, MediaStream, PlaybackInfoResponse } from '@/api/types';
@@ -302,7 +303,7 @@ export function usePlaybackStream({
           subIndex,
           burnedSub: Boolean(subStream && subStream.DeliveryMethod === 'Encode'),
           transcodeReasons: reasons,
-          nativeHls: isHls && ((opts.nativeHls ?? preferNativeHls.current) || !Hls.isSupported()),
+          nativeHls: isHls && ((opts.nativeHls ?? preferNativeHls.current) || !hlsJsSupported()),
         };
 
         // Attach the new source.
@@ -317,7 +318,10 @@ export function usePlaybackStream({
 
         const start = Math.max(0, opts.start);
         if (isHls && !active.nativeHls) {
-          const hls = new Hls({
+          // Fetched now, the first time a stream needs it: files that play directly never do.
+          const { default: HlsPlayer, ErrorTypes, Events } = await import('hls.js');
+          if (token !== loadToken.current) return;
+          const hls = new HlsPlayer({
             // A live broadcast starts at its newest part.
             startPosition: source.IsInfiniteStream ? -1 : start,
             maxBufferLength: 30,

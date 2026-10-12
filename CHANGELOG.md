@@ -37,6 +37,13 @@ shown in the account menu and on the login screen.
 - Marking something watched or as a favourite shows at once, without waiting for the server.
 - An item's page is fetched while the pointer rests on its card, so it opens without a wait.
 - Going back returns to the same place in a list.
+- Changing the poster size keeps your place in a list.
+- Turning the mouse wheel over the volume control changes the volume, in the video player and
+  the music bar.
+- Long rows of search results and long track lists are put in the page as they are scrolled,
+  not all at once.
+- hls.js (about 575 kB) is fetched when a stream needs it, not with the player: files that play
+  directly never load it.
 - Selecting several items to mark them watched or unwatched, add them to a playlist or
   collection, or delete them. Shift-click selects everything in between.
 - The home page has a featured title at the top, and "Customise home" to reorder (by dragging or
@@ -85,7 +92,6 @@ shown in the account menu and on the login screen.
   `src/i18n/locales/`, with typed keys, placeholders, plural forms and a language setting.
   Only English exists so far.
 - The player's top bar and control bar are components of their own.
-- hls.js is built into a file of its own, so a new release does not make browsers fetch it again.
 - Lint is free of warnings, with every rule an error; Prettier formats the code.
 - Unit tests for the WebSocket client, SyncPlay, signing in and out, and what "Play" does; browser
   tests for search, settings, the dashboard and the metadata editor; all browser tests also run in

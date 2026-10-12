@@ -175,7 +175,8 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
     };
   if (path === '/Items' && url.searchParams.has('parentId'))
     return { body: libraryItems(options.big ? manyMovies : [movie], url.searchParams) };
-  if (path === '/Items') return { body: list(url.searchParams.has('searchTerm') ? [movie] : []) };
+  // A search finds the one movie, or with the large library all 260 of them.
+  if (path === '/Items') return { body: list(url.searchParams.has('searchTerm') ? (options.big ? manyMovies : [movie]) : []) };
   if (path === `/Items/${library.Id}`) return { body: library };
   if (path === `/Items/${movie.Id}`) return { body: movie };
   if (path === `/Items/${brokenMovie.Id}`) return { body: brokenMovie };

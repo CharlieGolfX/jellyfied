@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 
 export interface RowWindow {
@@ -33,11 +33,27 @@ export function rowsInView(count: number, columns: number, pitch: number, top: n
 export function useRowWindow(ref: RefObject<HTMLElement | null>, count: number): RowWindow {
   const [win, setWin] = useState<RowWindow>({ from: 0, to: Math.min(count, FIRST), padTop: 0, padBottom: 0 });
 
-  /** The window for where the page is scrolled to now, or null while the rows can't be measured. */
-  const compute = useCallback((): RowWindow | null => {
+  /** How the rows were laid out when they were last measured. */
+  const layout = useRef<{
+    columns: number;
+    pitch: number;
+    /** The item that starts the row at the top of the screen, and how far into that row the screen starts (0 to 1). */
+    item: number;
+    into: number;
+    /** Where this hook last put the page itself: arriving there is not the user choosing a new place. */
+    placed: number | null;
+  } | null>(null);
+
+  /**
+   * The window for where the page is scrolled to now, or null while the rows can't be measured.
+   * When the rows have changed shape since last time (another poster size, a resized window), the
+   * same items would be somewhere else in the list: `shift` is how far to scroll to keep the row
+   * that was at the top of the screen there, and the window is the one for that position.
+   */
+  const compute = useCallback((): { win: RowWindow; shift: number } | null => {
     const el = ref.current;
     const first = el?.firstElementChild as HTMLElement | null;
-    if (!el || !first || count === 0) return { from: 0, to: Math.min(count, FIRST), padTop: 0, padBottom: 0 };
+    if (!el || !first || count === 0) return { win: { from: 0, to: Math.min(count, FIRST), padTop: 0, padBottom: 0 }, shift: 0 };
     const style = getComputedStyle(el);
     const columns = style.display.includes('grid') ? Math.max(1, style.gridTemplateColumns.split(' ').length) : 1;
     const pitch = first.offsetHeight + (parseFloat(style.rowGap) || 0);
@@ -45,13 +61,31 @@ export function useRowWindow(ref: RefObject<HTMLElement | null>, count: number):
     const scroller = el.closest<HTMLElement>('#main-scroll') ?? document.documentElement;
     const view = scroller.getBoundingClientRect();
     // Where the visible area starts and ends, measured from the top of the element.
-    const top = view.top - el.getBoundingClientRect().top;
-    return rowsInView(count, columns, pitch, top - OVERSCAN, top + scroller.clientHeight + OVERSCAN);
+    let top = view.top - el.getBoundingClientRect().top;
+    let shift = 0;
+    const before = layout.current;
+    const changed = before !== null && (before.columns !== columns || Math.abs(before.pitch - pitch) > 0.5);
+    if (changed && (before.item > 0 || before.into > 0)) {
+      // Go by the item that was at the top, not by where the page is now: a list that became
+      // shorter has already been pulled back to its new end by the browser.
+      const target = (Math.floor(before.item / columns) + before.into) * pitch;
+      shift = target - top;
+      top = target;
+      layout.current = { ...before, columns, pitch, placed: target };
+    } else if (before && before.placed !== null && Math.abs(before.placed - top) < 2) {
+      // The page has arrived where it was put: the item to hold on to stays the same, so that
+      // going through several sizes does not drift a row at a time.
+      layout.current = { ...before, columns, pitch };
+    } else {
+      const row = Math.max(0, Math.floor(top / pitch));
+      layout.current = { columns, pitch, item: row * columns, into: Math.max(0, top / pitch - row), placed: null };
+    }
+    return { win: rowsInView(count, columns, pitch, top - OVERSCAN, top + scroller.clientHeight + OVERSCAN), shift };
   }, [ref, count]);
 
   useLayoutEffect(() => {
     const same = (a: RowWindow, b: RowWindow) => a.from === b.from && a.to === b.to && a.padTop === b.padTop && a.padBottom === b.padBottom;
-    const first = compute();
+    const first = compute()?.win ?? null;
     // The window depends on sizes that only exist once the rows are in the page.
     // oxlint-disable-next-line react/set-state-in-effect
     if (first) setWin((w) => (same(w, first) ? w : first));
@@ -63,9 +97,15 @@ export function useRowWindow(ref: RefObject<HTMLElement | null>, count: number):
     // moment later, so a jump to somewhere else in the list never shows an empty frame.
     const update = () => {
       const next = compute();
-      if (!next || (current && same(current, next))) return;
-      current = next;
-      flushSync(() => setWin(next));
+      if (!next) return;
+      // Worked out before the rows change: a page that gets shorter is pulled back by the browser first.
+      const target = (scroller instanceof Window ? scroller.scrollY : scroller.scrollTop) + next.shift;
+      if (!current || !same(current, next.win)) {
+        current = next.win;
+        flushSync(() => setWin(next.win));
+      }
+      // After the rows are in: the page is only now as tall as the new layout makes it.
+      if (Math.abs(next.shift) > 1) scroller.scrollTo({ top: target });
     };
     scroller.addEventListener('scroll', update, { passive: true });
     const observer = new ResizeObserver(() => requestAnimationFrame(update));

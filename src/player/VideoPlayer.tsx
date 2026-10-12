@@ -1,5 +1,4 @@
 import clsx from 'clsx';
-import Hls from 'hls.js';
 import { Airplay, Cast, PictureInPicture2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +27,7 @@ import { isPlayPath, useVideoSession } from './VideoSession';
 import { ControlButton } from './video/controls';
 import { EndsAt, SleepIndicator } from './video/indicators';
 import { ChaptersMenu, PictureMenu, SettingsMenu, SubtitlesMenu } from './video/menus';
+import { hlsJsSupported } from './video/hlsSupport';
 import { MiniOverlay } from './video/MiniOverlay';
 import { ControlBar, TopBar } from './video/PlayerBars';
 import { pipSupported, readNumber, SEGMENT_LABELS, VOLUME_KEY, type PlayerPanel } from './video/shared';
@@ -191,7 +191,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     subtitleDelay,
   });
   // Safari's own HLS player (iPhone, and AirPlay everywhere) can't route its sound through Web Audio.
-  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (stream.nativeHls || !Hls.isSupported()));
+  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (stream.nativeHls || !hlsJsSupported()));
   /** The subtitles are drawn here, not burned in, so they can be shifted in time. */
   const subtitleTiming = subtitleKind !== 'none';
 

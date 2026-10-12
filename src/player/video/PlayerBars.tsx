@@ -19,6 +19,7 @@ import type { ReactNode } from 'react';
 import { formatClock } from '@/lib/format';
 import { SeekBar } from '../SeekBar';
 import type { SeekSteps } from '../seekSteps';
+import { useWheelVolume } from '../useWheelVolume';
 import { ControlButton } from './controls';
 import { TRICKPLAY_PREVIEW_WIDTH } from './shared';
 import { t } from '@/i18n';
@@ -142,6 +143,11 @@ export function ControlBar({
   children?: ReactNode;
 }) {
   const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  // Turning the wheel over the speaker or its slider changes the volume.
+  const volumeRef = useWheelVolume(muted ? 0 : volume, (next) => {
+    onVolumeChange(next);
+    onMutedChange(false);
+  });
   const remaining = duration - currentTime;
   return (
     <div
@@ -188,7 +194,7 @@ export function ControlBar({
             <SkipForward size={24} fill="currentColor" />
           </ControlButton>
         )}
-        <div className="group/vol ml-1 flex items-center">
+        <div ref={volumeRef} className="group/vol ml-1 flex items-center">
           <ControlButton
             label={muted ? t('player.video.playerBars.unmute') : t('player.video.playerBars.mute')}
             onClick={() => onMutedChange((m) => !m)}

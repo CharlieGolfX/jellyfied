@@ -50,6 +50,15 @@ test.describe('playback on a real server', () => {
   });
 
   /** Asks the server for items with the signed-in session, the way the app does. */
+  /** Collects requests for the file hls.js is built into, from now on. */
+  function watchForHls(page: Page): string[] {
+    const seen: string[] = [];
+    page.on('request', (request) => {
+      if (/\/assets\/hls-[\w-]+\.js$/.test(new URL(request.url()).pathname)) seen.push(request.url());
+    });
+    return seen;
+  }
+
   async function items(page: Page, path: string, query: Record<string, string>): Promise<Item[]> {
     return page.evaluate(
       async (request) => {
@@ -118,6 +127,17 @@ test.describe('playback on a real server', () => {
     await page.keyboard.press('m');
     await expect.poll(() => video(page).evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
     await page.keyboard.press('m');
+
+    // The mouse wheel over the volume control: down is quieter, up is louder.
+    const volume = () => video(page).evaluate((v: HTMLVideoElement) => Math.round(v.volume * 100));
+    const loud = await volume();
+    await page.getByRole('button', { name: 'Mute', exact: true }).hover();
+    await page.mouse.wheel(0, 200);
+    await expect.poll(volume).toBe(Math.max(0, loud - 10));
+    await page.mouse.wheel(0, -100);
+    await expect.poll(volume).toBe(Math.max(0, loud - 10) + 5);
+    await page.mouse.wheel(0, -100);
+
     await page.keyboard.press('i');
     await expect(page.getByTestId('playback-info')).toBeVisible();
     await page.keyboard.press('i');
@@ -252,6 +272,7 @@ test.describe('playback on a real server', () => {
   test('transcodes on request and keeps playing', async ({ page }) => {
     const [movie] = await items(page, '/Items', { includeItemTypes: 'Movie', recursive: 'true', sortBy: 'SortName', limit: '1' });
     test.skip(!movie, 'the server has no movies');
+    const hlsRequests = watchForHls(page);
     await page.goto(`/item/${movie.Id}`);
     await page
       .getByRole('button', { name: 'Play from beginning' })
@@ -260,10 +281,15 @@ test.describe('playback on a real server', () => {
       .click();
     await expectPlaying(page);
     await showControls(page);
+    // A file that plays as it is does not need hls.js, so it has not been fetched.
+    const direct = await page.getByText('Direct Play', { exact: true }).isVisible();
+    if (direct) expect(hlsRequests).toHaveLength(0);
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByRole('button', { name: '2 Mbps 480p' }).click();
     await expect(page.getByText('Transcode', { exact: true })).toBeVisible({ timeout: 30_000 });
     await expectPlaying(page);
+    // The transcode comes as HLS: now it has been fetched, once.
+    expect(hlsRequests).toHaveLength(1);
     // Back to the original quality for whoever uses this browser profile next.
     await showControls(page);
     await page.getByRole('button', { name: 'Settings' }).click();

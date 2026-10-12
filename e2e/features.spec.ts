@@ -100,6 +100,47 @@ test.describe('a large library', () => {
     await expect(card(page, 'A film 01')).toBeInViewport();
   });
 
+  test('changing the poster size deep in a list keeps the place and leaves no empty screen', async ({ page }) => {
+    const scroller = page.locator('#main-scroll');
+    const grid = page.locator('#main-scroll .grid');
+    // Load the whole library, then stand in the middle of it.
+    for (let i = 0; i < 12 && (await grid.getAttribute('data-total')) !== '260'; i++) {
+      await scroller.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+      await page.waitForTimeout(250);
+    }
+    await scroller.evaluate((el) => el.scrollTo({ top: el.scrollHeight / 2 }));
+
+    /** What the visible area holds: whether cards reach its top and bottom, and the first title that starts a row in it. */
+    const view = () =>
+      page.evaluate(() => {
+        const scrollArea = document.getElementById('main-scroll')!;
+        const area = scrollArea.getBoundingClientRect();
+        const cards = [...document.querySelectorAll('#main-scroll .grid > *')].map((el) => ({ el, box: el.getBoundingClientRect() }));
+        const visible = cards.filter((c) => c.box.bottom > area.top + 160 && c.box.top < area.bottom);
+        return {
+          cards: cards.length,
+          above: Math.min(...cards.map((c) => c.box.top)) <= area.top + 160,
+          // (At the very end of the list there is nothing below the last row.)
+          below:
+            Math.max(...cards.map((c) => c.box.bottom)) >= area.bottom - 1 ||
+            scrollArea.scrollTop >= scrollArea.scrollHeight - scrollArea.clientHeight - 1,
+          titles: visible.map((c) => c.el.querySelector('a[aria-label]')?.getAttribute('aria-label') ?? ''),
+        };
+      });
+    await expect.poll(view).toMatchObject({ above: true, below: true });
+    const place = (await view()).titles[0];
+
+    const slider = page.getByRole('slider', { name: 'Poster size' });
+    for (const size of ['1.8', '0.6', '1.3', '1']) {
+      await slider.fill(size);
+      await expect.poll(view, { message: `at size ${size}` }).toMatchObject({ above: true, below: true });
+      // The title that was at the top of the screen is still on it.
+      await expect.poll(async () => (await view()).titles, { message: `at size ${size}` }).toContain(place);
+      // Still only the rows near the screen, whatever their size.
+      expect((await view()).cards).toBeLessThan(260);
+    }
+  });
+
   test('going back returns to the same place in the list', async ({ page }) => {
     const scroller = page.locator('#main-scroll');
     await scroller.evaluate((el) => el.scrollTo({ top: 1400 }));
@@ -173,6 +214,29 @@ test.describe('a large library', () => {
     await page.getByRole('checkbox', { name: 'Select A film 01' }).click({ modifiers: ['Shift'] });
     await expect(bar).toContainText('6 selected');
   });
+});
+
+test('a long row of search results is filled in as it is scrolled sideways', async ({ page }) => {
+  await mockJellyfin(page, { big: true });
+  await signIn(page);
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  await page.goto('/search?q=film');
+  await expect(page.getByRole('heading', { name: 'Movies' })).toBeVisible();
+  const row = page.locator('[data-hub-scroller]').first();
+  const cards = row.locator('a[aria-label]');
+  // 260 results, of which a first part is in the page.
+  await expect(cards).toHaveCount(30);
+  await expect(page.getByLabel('A film 01', { exact: true })).toBeVisible();
+
+  // Scrolling to the end of what is there brings the next part, until all of them are.
+  await row.evaluate((el) => el.scrollTo({ left: el.scrollWidth, behavior: 'instant' }));
+  await expect(cards).toHaveCount(60);
+  for (let i = 0; i < 12 && (await cards.count()) < 260; i++) {
+    await row.evaluate((el) => el.scrollTo({ left: el.scrollWidth, behavior: 'instant' }));
+    await page.waitForTimeout(150);
+  }
+  await expect(cards).toHaveCount(260);
+  await expect(page.getByTestId('row-more')).toHaveCount(0);
 });
 
 test('home rows can be dragged into another order', async ({ page }) => {

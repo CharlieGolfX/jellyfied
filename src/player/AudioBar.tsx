@@ -9,6 +9,7 @@ import { formatClock, ticksToSeconds } from '@/lib/format';
 import type { BaseItemDto } from '@/api/types';
 import { useAudioPlayer } from './AudioPlayerProvider';
 import { SeekBar } from './SeekBar';
+import { useWheelVolume } from './useWheelVolume';
 import { t } from '@/i18n';
 
 function useArt(item: BaseItemDto | null, size: number): string | undefined {
@@ -50,6 +51,8 @@ function QueueRow({ item, index, active }: { item: BaseItemDto; index: number; a
 
 export function AudioBar() {
   const player = useAudioPlayer();
+  // Turning the wheel over the speaker or its slider changes the volume.
+  const volumeRef = useWheelVolume(player.muted ? 0 : player.volume, player.setVolume);
   const [showQueue, setShowQueue] = useState(false);
   const art = useArt(player.current, 200);
   const item = player.current;
@@ -158,23 +161,25 @@ export function AudioBar() {
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
-          <button
-            onClick={player.toggleMute}
-            className="hidden rounded-full p-2 text-muted hover:text-fg sm:block"
-            aria-label={t('player.audioBar.mute')}
-          >
-            <VolumeIcon size={18} />
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={player.muted ? 0 : player.volume}
-            onChange={(e) => player.setVolume(Number(e.target.value))}
-            className="hidden w-24 lg:block"
-            aria-label={t('player.audioBar.volume')}
-          />
+          <span ref={volumeRef} className="flex items-center">
+            <button
+              onClick={player.toggleMute}
+              className="hidden rounded-full p-2 text-muted hover:text-fg sm:block"
+              aria-label={t('player.audioBar.mute')}
+            >
+              <VolumeIcon size={18} />
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={player.muted ? 0 : player.volume}
+              onChange={(e) => player.setVolume(Number(e.target.value))}
+              className="hidden w-24 lg:block"
+              aria-label={t('player.audioBar.volume')}
+            />
+          </span>
           <button
             onClick={() => setShowQueue((s) => !s)}
             className={clsx('rounded-full p-2', showQueue ? 'text-accent' : 'text-muted hover:text-fg')}

@@ -13,6 +13,7 @@ import { formatClock, ticksToSeconds } from '@/lib/format';
 import { useAudioPlayer } from '@/player/AudioPlayerProvider';
 import { useInstantMix, usePlay } from '@/player/usePlay';
 import { t } from '@/i18n';
+import { useReveal } from '@/lib/useReveal';
 
 interface TrackListProps {
   tracks: BaseItemDto[];
@@ -27,6 +28,9 @@ interface TrackListProps {
 
 /** Id of a row: playlists can hold the same item more than once, so they number their entries. */
 const entryId = (entry: BaseItemDto) => entry.PlaylistItemId ?? entry.Id;
+
+/** How many tracks are put in the page at first, and with each step down the list. */
+const TRACK_STEP = 100;
 
 export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, numbered = 'index', editablePlaylistId }: TrackListProps) {
   const api = useApi();
@@ -90,6 +94,8 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
     },
   });
 
+  // A playlist can run to thousands of tracks; the rest are added as the end comes near.
+  const { shown, endRef } = useReveal(tracks.length, TRACK_STEP, '#main-scroll', '1500px 0px');
   const discs = new Set(tracks.map((track) => track.ParentIndexNumber ?? 1));
   const multiDisc = discs.size > 1 && numbered === 'index';
 
@@ -107,7 +113,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
 
   return (
     <div className="divide-y divide-white/5">
-      {tracks.map((track, i) => {
+      {tracks.slice(0, shown).map((track, i) => {
         const disc = track.ParentIndexNumber ?? 1;
         const previousDisc = i > 0 ? (tracks[i - 1].ParentIndexNumber ?? 1) : undefined;
         const header =
@@ -276,6 +282,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
           </div>
         );
       })}
+      {shown < tracks.length && <div ref={endRef} className="h-px border-0" data-testid="tracks-more" />}
       {addingToPlaylist && <AddToPlaylistDialog item={addingToPlaylist} onClose={() => setAddingToPlaylist(null)} />}
     </div>
   );
