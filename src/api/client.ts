@@ -150,7 +150,7 @@ export class JellyfinApi {
       } catch {
         /* ignore */
       }
-      if (response.status === 401) message = t('api.client.yourSessionHasExpiredOr');
+      if (response.status === 401) message = t('api.client.sessionExpired');
       if (response.status === 403) message = t('api.client.youDoNotHavePermission');
       throw new ApiError(response.status, message);
     }

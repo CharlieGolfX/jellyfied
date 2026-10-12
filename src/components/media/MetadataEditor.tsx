@@ -54,18 +54,18 @@ export default function MetadataEditor({ itemId, onClose }: { itemId: string; on
       ) : (
         <>
           <div className="mb-5 flex gap-1 border-b border-white/10" role="tablist">
-            {tabs.map((entry) => (
+            {tabs.map((option) => (
               <button
-                key={entry.id}
+                key={option.id}
                 role="tab"
-                aria-selected={tab === entry.id}
-                onClick={() => setTab(entry.id)}
+                aria-selected={tab === option.id}
+                onClick={() => setTab(option.id)}
                 className={clsx(
                   '-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-                  tab === entry.id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg',
+                  tab === option.id ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg',
                 )}
               >
-                {entry.label}
+                {option.label}
               </button>
             ))}
           </div>

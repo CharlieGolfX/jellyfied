@@ -32,7 +32,7 @@ export default function ActivityPage() {
   return (
     <AdminPage
       title={t('admin.activity.activity')}
-      description={t('admin.activity.aLogOfSignIns')}
+      description={t('admin.activity.description')}
       actions={
         <div className="flex items-center gap-2 text-sm text-muted">
           <Button

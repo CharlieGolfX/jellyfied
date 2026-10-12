@@ -157,7 +157,7 @@ export function CastButton() {
                 if (casting) return;
                 void connectChromecast().then((connected) => {
                   if (connected) setCastTarget(null);
-                  else if (!navigator.onLine) toast.error(t('player.castButton.chromecastNeedsAnInternetConnection'));
+                  else if (!navigator.onLine) toast.error(t('player.castButton.needsInternet'));
                 });
               }}
               className={clsx(
@@ -167,9 +167,9 @@ export function CastButton() {
             >
               <Tv size={18} className="shrink-0" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{casting ? chromecast.deviceName : t('player.castButton.chromecast')}</span>
+                <span className="block truncate">{casting ? chromecast.deviceName : t('player.castButton.chromecastMenu')}</span>
                 <span className="block truncate text-xs text-muted">
-                  {casting ? t('player.castButton.chromecast2') : t('player.castButton.pickAChromecastOrA')}
+                  {casting ? t('player.castButton.chromecastName') : t('player.castButton.pickDevice')}
                 </span>
               </span>
             </button>

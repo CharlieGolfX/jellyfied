@@ -11,15 +11,26 @@ import type { StoredSession } from './AuthProvider';
  * A short PIN can be found by trying every one against the stored data with a program; each try is
  * made slow to hold that up, not to prevent it. More digits help: every extra one makes it ten
  * times as long.
+ *
+ * On https and localhost the browser's own cryptography does the work (PBKDF2 for the key, AES-GCM
+ * for the token), which makes a try far slower than the code here could. Over plain http a browser
+ * does not offer it, so there the same is done with the SHA-256 written out below. A PIN set that
+ * way is moved to the stronger form the first time it is entered where that exists.
  */
 const KEY = 'jellyplex.pins';
 /** How often the PIN is hashed over to make one key: what makes a try slow. */
 const ROUNDS = 20_000;
+/** The same for PBKDF2, which the browser runs natively and so can do far more of. */
+export const PBKDF2_ROUNDS = 600_000;
 /** After this many wrong tries in a row, the PIN can't be tried again for a while. */
 export const MAX_TRIES = 5;
 export const LOCK_MS = 60_000;
 
 interface StoredPin {
+  /** How the key is made from the PIN. Missing on PINs made with the SHA-256 in this file. */
+  kdf?: 'pbkdf2';
+  /** How many rounds of it, so the number can be raised later without losing the PINs there are. */
+  rounds?: number;
   salt: string;
   /** Tells a right PIN from a wrong one. */
   hash: string;
@@ -114,6 +125,60 @@ function crypt(bytes: Uint8Array, key: string): Uint8Array {
   return out;
 }
 
+/** The browser's cryptography, where there is any: only on https and localhost. */
+const subtle = (): SubtleCrypto | undefined => globalThis.crypto?.subtle;
+
+/** The same as `derive`, by PBKDF2: half of what comes out recognises the PIN, the other half is the key. */
+async function derivePbkdf2(pin: string, salt: string, rounds: number): Promise<{ hash: string; key: CryptoKey }> {
+  const api = subtle()!;
+  const material = await api.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(
+    await api.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: fromHex(salt), iterations: rounds }, material, 512),
+  );
+  const key = await api.importKey('raw', bits.slice(32), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  return { hash: toHex(bits.slice(0, 32)), key };
+}
+
+/** A new record for a PIN, with the token locked away in the strongest way this browser has. */
+async function seal(pin: string, accessToken: string): Promise<StoredPin> {
+  const text = new TextEncoder().encode(accessToken);
+  const api = subtle();
+  if (!api) {
+    const salt = toHex(crypto.getRandomValues(new Uint8Array(12)));
+    const { hash, key } = derive(pin, salt);
+    return { salt, hash, token: toHex(crypt(text, key)) };
+  }
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const { hash, key } = await derivePbkdf2(pin, salt, PBKDF2_ROUNDS);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const sealed = new Uint8Array(await api.encrypt({ name: 'AES-GCM', iv }, key, text));
+  return { kdf: 'pbkdf2', rounds: PBKDF2_ROUNDS, salt, hash, token: toHex(iv) + toHex(sealed) };
+}
+
+/** Tries a PIN on a record: whether it is the right one, and the token it locked away. */
+async function open(saved: StoredPin, pin: string): Promise<{ ok: boolean; accessToken?: string }> {
+  if (saved.kdf !== 'pbkdf2') {
+    const { hash, key } = derive(pin, saved.salt);
+    if (hash !== saved.hash) return { ok: false };
+    return { ok: true, accessToken: saved.token ? new TextDecoder().decode(crypt(fromHex(saved.token), key)) : undefined };
+  }
+  const api = subtle();
+  // Made where the browser had its cryptography, read where it has none: not something a browser
+  // does to one site, and nothing can be done with the record here.
+  if (!api) return { ok: false };
+  const { hash, key } = await derivePbkdf2(pin, saved.salt, saved.rounds ?? PBKDF2_ROUNDS);
+  if (hash !== saved.hash) return { ok: false };
+  if (!saved.token) return { ok: true };
+  const bytes = fromHex(saved.token);
+  try {
+    const plain = await api.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) }, key, bytes.slice(12));
+    return { ok: true, accessToken: new TextDecoder().decode(plain) };
+  } catch {
+    // The stored token was changed: the PIN is right, but there is nothing to sign in with.
+    return { ok: false };
+  }
+}
+
 function load(): Record<string, StoredPin> {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
@@ -136,10 +201,9 @@ export function hasPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>): bo
 }
 
 /** Sets the PIN of an account and locks its access token away with it. */
-export function setPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, accessToken: string) {
-  const salt = toHex(crypto.getRandomValues(new Uint8Array(12)));
-  const { hash, key } = derive(pin, salt);
-  store({ ...load(), [idOf(account)]: { salt, hash, token: toHex(crypt(new TextEncoder().encode(accessToken), key)) } });
+export async function setPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, accessToken: string): Promise<void> {
+  const record = await seal(pin, accessToken);
+  store({ ...load(), [idOf(account)]: record });
 }
 
 /** Whether the account's token is stored encrypted, so that it has to be taken out of the saved account. */
@@ -159,18 +223,23 @@ export type PinCheck = { ok: true; accessToken?: string } | { ok: false; lockedF
  * Checks a PIN and keeps count of wrong tries. The right PIN also gives back the access token it
  * locked away. An account without a PIN always passes.
  */
-export function checkPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, now = Date.now()): PinCheck {
-  const pins = load();
-  const saved = pins[idOf(account)];
+export async function checkPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>, pin: string, now = Date.now()): Promise<PinCheck> {
+  const id = idOf(account);
+  const saved = load()[id];
   if (!saved?.hash) return { ok: true };
   if (saved.lockedUntil && saved.lockedUntil > now) return { ok: false, lockedFor: saved.lockedUntil - now };
-  const { hash, key } = derive(pin, saved.salt);
-  if (hash === saved.hash) {
-    store({ ...pins, [idOf(account)]: { salt: saved.salt, hash: saved.hash, token: saved.token } });
-    return { ok: true, accessToken: saved.token ? new TextDecoder().decode(crypt(fromHex(saved.token), key)) : undefined };
+  const result = await open(saved, pin);
+  // Read again: working out the key takes a moment, and another tab may have written meanwhile.
+  const pins = load();
+  if (result.ok) {
+    const kept: StoredPin = { kdf: saved.kdf, rounds: saved.rounds, salt: saved.salt, hash: saved.hash, token: saved.token };
+    // A PIN from before the browser's cryptography was used, entered where it exists: lock the token away again with it.
+    const upgraded = saved.kdf !== 'pbkdf2' && subtle() && result.accessToken !== undefined ? await seal(pin, result.accessToken) : kept;
+    store({ ...pins, [id]: upgraded });
+    return { ok: true, accessToken: result.accessToken };
   }
   const tries = (saved.lockedUntil ? 0 : (saved.tries ?? 0)) + 1;
   const locked = tries >= MAX_TRIES;
-  store({ ...pins, [idOf(account)]: { ...saved, tries: locked ? 0 : tries, lockedUntil: locked ? now + LOCK_MS : undefined } });
+  store({ ...pins, [id]: { ...saved, tries: locked ? 0 : tries, lockedUntil: locked ? now + LOCK_MS : undefined } });
   return locked ? { ok: false, lockedFor: LOCK_MS } : { ok: false, triesLeft: MAX_TRIES - tries };
 }

@@ -220,7 +220,7 @@ export function EditPlaylistDialog({ playlist, onClose }: { playlist: BaseItemDt
         <div className="mt-3">
           <Switch
             label={t('media.playlists.visibleToAllUsers')}
-            description={t('media.playlists.otherUsersCanSeeAnd')}
+            description={t('media.playlists.publicHint')}
             checked={publicValue}
             disabled={access.isLoading}
             onChange={setIsPublic}

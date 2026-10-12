@@ -54,7 +54,7 @@ export function TopBar({
         onClick={onMinimize}
         className="rounded-full p-2 text-white hover:bg-white/15"
         aria-label={t('player.video.playerBars.back')}
-        title={t('player.video.playerBars.backKeepsPlayingInThe')}
+        title={t('player.video.playerBars.backToMini')}
       >
         <ArrowLeft size={26} />
       </button>
@@ -66,7 +66,7 @@ export function TopBar({
         <span
           data-testid="syncplay-badge"
           className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent sm:flex"
-          title={t('player.video.playerBars.syncplayWatchingWith', { names: group.Participants.join(', ') })}
+          title={t('player.video.playerBars.watchingWith', { names: group.Participants.join(', ') })}
         >
           <Users size={15} /> {group.GroupName} · {group.Participants.length}
         </span>

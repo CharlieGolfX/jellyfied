@@ -8,7 +8,7 @@ export default function NotFoundPage() {
   usePageTitle(t('notFound.pageNotFound'));
   return (
     <EmptyState icon={<Compass size={48} strokeWidth={1.25} />} title={t('notFound.pageNotFound')}>
-      <p>{t('notFound.thePageYouReLooking')}</p>
+      <p>{t('notFound.description')}</p>
       <Link to="/" className="mt-4 inline-block font-semibold text-accent hover:underline">
         {t('notFound.goHome')}
       </Link>

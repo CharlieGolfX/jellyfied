@@ -117,7 +117,7 @@ export function usePlaybackStream({
 
   const clearSubtitles = useCallback(() => {
     const video = videoRef.current;
-    if (video) video.querySelectorAll('track').forEach((entry) => entry.remove());
+    if (video) video.querySelectorAll('track').forEach((track) => track.remove());
     subtitleTrackRef.current = null;
     canvasSubtitlesRef.current?.destroy();
     canvasSubtitlesRef.current = null;
@@ -136,13 +136,13 @@ export function usePlaybackStream({
       const format = subtitleFormat(s.DeliveryUrl);
       try {
         const res = await fetch(url, { headers: { Authorization: api.authorizationHeader() } });
-        if (!res.ok) throw new Error(t('player.video.usePlaybackStream.subtitleRequestFailed', { status: res.status }));
+        if (!res.ok) throw new Error(t('player.video.stream.subtitleRequestFailed', { status: res.status }));
         if (format !== 'vtt') {
           const layer = format === 'ass' ? assLayerRef.current : pgsLayerRef.current;
           const source = streamRef.current?.source;
           let subtitles: CanvasSubtitles;
           try {
-            if (!layer) throw new Error(t('player.video.usePlaybackStream.thePlayerHasNoSubtitle'));
+            if (!layer) throw new Error(t('player.video.stream.noSubtitleLayer'));
             subtitles =
               format === 'ass'
                 ? await createAssSubtitles({
@@ -243,14 +243,14 @@ export function usePlaybackStream({
         if (info.ErrorCode) {
           throw new Error(
             info.ErrorCode === 'NotAllowed'
-              ? t('player.video.usePlaybackStream.youAreNotAllowedTo')
+              ? t('player.video.stream.notAllowed')
               : info.ErrorCode === 'RateLimitExceeded'
-                ? t('player.video.usePlaybackStream.theServerSBitrateLimit')
-                : t('player.video.usePlaybackStream.noCompatibleStreamIsAvailable'),
+                ? t('player.video.stream.bitrateLimitExceeded')
+                : t('player.video.stream.noCompatibleStream'),
           );
         }
         const source = info.MediaSources.find((s) => s.Id === opts.mediaSourceId) ?? info.MediaSources[0];
-        if (!source) throw new Error(t('player.video.usePlaybackStream.noPlayableMediaSourceWas'));
+        if (!source) throw new Error(t('player.video.stream.noMediaSource'));
 
         const playSessionId = info.PlaySessionId ?? generateId();
         const staticUrl = () =>
@@ -281,7 +281,7 @@ export function usePlaybackStream({
           url = staticUrl();
           method = 'DirectStream';
         } else {
-          throw new Error(t('player.video.usePlaybackStream.thisItemCanTBe'));
+          throw new Error(t('player.video.stream.cannotPlay'));
         }
 
         const reasons = (() => {
@@ -342,7 +342,7 @@ export function usePlaybackStream({
             setLoading(false);
             setError(
               data.type === ErrorTypes.NETWORK_ERROR
-                ? t('player.video.usePlaybackStream.lostConnectionToTheStream')
+                ? t('player.video.stream.connectionLost')
                 : t('player.playbackError', { details: data.details }),
             );
           });

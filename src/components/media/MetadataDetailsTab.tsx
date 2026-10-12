@@ -135,7 +135,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!form.Name.trim()) {
-      toast.error(t('media.metadataDetailsTab.theTitleCannotBeEmpty'));
+      toast.error(t('media.metadataDetailsTab.titleRequired'));
       return;
     }
     save.mutate();
@@ -156,7 +156,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
         <Field label={t('media.metadataDetailsTab.originalTitle')}>
           <Input {...text('OriginalTitle')} />
         </Field>
-        <Field label={t('media.metadataDetailsTab.sortTitle')} hint={t('media.metadataDetailsTab.leaveEmptyToSortBy')}>
+        <Field label={t('media.metadataDetailsTab.sortTitle')} hint={t('media.metadataDetailsTab.sortTitleHint')}>
           <Input {...text('ForcedSortName')} />
         </Field>
         <Field label={t('media.metadataDetailsTab.tagline')} className="sm:col-span-2">
@@ -194,10 +194,10 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
             <Input {...text('IndexNumber')} inputMode="numeric" />
           </Field>
         )}
-        <Field label={t('media.metadataDetailsTab.communityRating')} hint={t('media.metadataDetailsTab.n0To10')}>
+        <Field label={t('media.metadataDetailsTab.communityRating')} hint={t('media.metadataDetailsTab.rangeTen')}>
           <Input {...text('CommunityRating')} inputMode="decimal" />
         </Field>
-        <Field label={t('media.metadataDetailsTab.criticRating')} hint={t('media.metadataDetailsTab.n0To100')}>
+        <Field label={t('media.metadataDetailsTab.criticRating')} hint={t('media.metadataDetailsTab.rangePercent')}>
           <Input {...text('CriticRating')} inputMode="decimal" />
         </Field>
         <Field label={t('media.metadataDetailsTab.parentalRating')}>
@@ -256,7 +256,7 @@ export function DetailsTab({ item, onSaved }: { item: BaseItemDto & Record<strin
 
       <Switch
         label={t('media.metadataDetailsTab.lockThisItem')}
-        description={t('media.metadataDetailsTab.preventsLibraryScansAndMetadata')}
+        description={t('media.metadataDetailsTab.lockHint')}
         checked={form.LockData}
         onChange={(v) => set('LockData', v)}
       />

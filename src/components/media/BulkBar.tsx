@@ -98,7 +98,7 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
     <>
       <div
         role="toolbar"
-        aria-label={t('media.bulkBar.actionsForTheSelectedItems')}
+        aria-label={t('media.bulkBar.selectionActions')}
         data-testid="bulk-bar"
         className="animate-pop-in fixed bottom-24 left-1/2 z-40 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 rounded-lg bg-base-750 px-2 py-1.5 shadow-2xl ring-1 ring-white/15"
       >
@@ -154,7 +154,7 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
         title={t('media.bulkBar.delete', { items: plural(items.length, 'item') })}
         message={
           <>
-            {t('media.bulkBar.thisDeletesTheFilesFrom')}
+            {t('media.bulkBar.deleteWarning')}
             <span className="mt-2 block max-h-32 overflow-y-auto text-fg">
               {items.slice(0, 30).map((i) => (
                 <span key={i.Id} className="block truncate">

@@ -48,7 +48,7 @@ function PlayerCrash() {
           : 'fixed right-4 bottom-4 z-[60] flex w-[min(420px,calc(100vw-2rem))] flex-col items-center gap-3 rounded-lg bg-base-850 p-4 text-center shadow-2xl ring-1 ring-white/15'
       }
     >
-      <p className="text-sm text-muted">{t('app.thePlayerRanIntoAn')}</p>
+      <p className="text-sm text-muted">{t('app.playerCrashed')}</p>
       <button onClick={dismiss} className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
         {mode === 'full' ? t('app.goBack') : t('common.close')}
       </button>

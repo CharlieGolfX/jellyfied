@@ -154,7 +154,7 @@ function NowPlayingCard({ session }: { session: SessionInfo }) {
       <Modal
         open={messageOpen}
         onClose={() => setMessageOpen(false)}
-        title={t('admin.dashboard.message', { name: session.UserName ?? t('admin.dashboard.theUser') })}
+        title={t('admin.dashboard.messageTo', { name: session.UserName ?? t('admin.dashboard.userFallback') })}
         size="sm"
         footer={
           <>
@@ -167,7 +167,7 @@ function NowPlayingCard({ session }: { session: SessionInfo }) {
           </>
         }
       >
-        <Field label={t('admin.dashboard.message2')}>
+        <Field label={t('admin.dashboard.messageLabel')}>
           <Input autoFocus value={message} onChange={(e) => setMessage(e.target.value)} />
         </Field>
       </Modal>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
   const allSessions = sessions.data ?? [];
   const playing = allSessions.filter((s) => s.NowPlayingItem);
   const idle = allSessions.filter((s) => !s.NowPlayingItem);
-  const running = (tasks.data ?? []).filter((entry) => entry.State !== 'Idle');
+  const running = (tasks.data ?? []).filter((task) => task.State !== 'Idle');
   const sys = info.data;
 
   return (
@@ -271,14 +271,10 @@ export default function DashboardPage() {
       }
     >
       {sys?.HasPendingRestart && (
-        <div className="rounded-md bg-star/10 px-4 py-3 text-sm text-star ring-1 ring-star/30">
-          {t('admin.dashboard.theServerNeedsToRestart')}
-        </div>
+        <div className="rounded-md bg-star/10 px-4 py-3 text-sm text-star ring-1 ring-star/30">{t('admin.dashboard.restartPending')}</div>
       )}
       {sys?.HasUpdateAvailable && (
-        <div className="rounded-md bg-info/10 px-4 py-3 text-sm text-info ring-1 ring-info/30">
-          {t('admin.dashboard.aJellyfinServerUpdateIs')}
-        </div>
+        <div className="rounded-md bg-info/10 px-4 py-3 text-sm text-info ring-1 ring-info/30">{t('admin.dashboard.updateAvailable')}</div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -395,14 +391,14 @@ export default function DashboardPage() {
               <p className="text-sm text-muted">{t('admin.dashboard.noTasksAreRunning')}</p>
             ) : (
               <div className="space-y-3">
-                {running.map((entry) => (
-                  <div key={entry.Id}>
+                {running.map((task) => (
+                  <div key={task.Id}>
                     <div className="flex justify-between text-sm">
-                      <span className="truncate">{entry.Name}</span>
-                      <span className="text-muted tabular-nums">{Math.round(entry.CurrentProgressPercentage ?? 0)}%</span>
+                      <span className="truncate">{task.Name}</span>
+                      <span className="text-muted tabular-nums">{Math.round(task.CurrentProgressPercentage ?? 0)}%</span>
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded bg-white/10">
-                      <div className="h-full bg-accent transition-all" style={{ width: `${entry.CurrentProgressPercentage ?? 0}%` }} />
+                      <div className="h-full bg-accent transition-all" style={{ width: `${task.CurrentProgressPercentage ?? 0}%` }} />
                     </div>
                   </div>
                 ))}
@@ -428,7 +424,7 @@ export default function DashboardPage() {
       <ConfirmDialog
         open={confirm !== null}
         title={confirm === 'restart' ? t('admin.dashboard.restartServer') : t('admin.dashboard.shutDownServer')}
-        message={confirm === 'restart' ? t('admin.dashboard.activePlaybackSessionsWillBe') : t('admin.dashboard.jellyfinWillStopAndMust')}
+        message={confirm === 'restart' ? t('admin.dashboard.restartWarning') : t('admin.dashboard.jellyfinWillStopAndMust')}
         confirmLabel={confirm === 'restart' ? t('admin.dashboard.restart') : t('admin.dashboard.shutDown')}
         danger={confirm === 'shutdown'}
         loading={power.isPending}

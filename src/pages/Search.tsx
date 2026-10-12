@@ -51,7 +51,7 @@ export default function SearchPage() {
   if (!q) {
     return (
       <EmptyState icon={<SearchIcon size={44} strokeWidth={1.25} />} title={t('search.searchYourLibraries')}>
-        {t('search.findMoviesShowsEpisodesMusic')}
+        {t('search.prompt')}
       </EmptyState>
     );
   }
@@ -66,8 +66,8 @@ export default function SearchPage() {
         {t('search.resultsFor')} <span className="text-accent">“{q}”</span>
       </h1>
       {total === 0 && (
-        <EmptyState icon={<SearchIcon size={44} strokeWidth={1.25} />} title={t('search.noResults2')}>
-          {t('search.tryADifferentSpellingOr')}
+        <EmptyState icon={<SearchIcon size={44} strokeWidth={1.25} />} title={t('search.noResultsTitle')}>
+          {t('search.noResultsHint')}
         </EmptyState>
       )}
       {GROUPS.map((g) => (

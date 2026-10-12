@@ -42,13 +42,13 @@ export default function BrandingPage() {
       }
     >
       <Card title={t('admin.branding.loginScreen')}>
-        <Field label={t('admin.branding.loginDisclaimer')} hint={t('admin.branding.shownUnderTheSignIn')}>
+        <Field label={t('admin.branding.loginDisclaimer')} hint={t('admin.branding.disclaimerHint')}>
           <TextArea rows={4} value={draft.LoginDisclaimer ?? ''} onChange={(e) => set('LoginDisclaimer', e.target.value)} />
         </Field>
       </Card>
 
-      <Card title={t('admin.branding.jellyfinWebInterface')} description={t('admin.branding.theseTwoOnlyAffectJellyfin')}>
-        <Field label={t('admin.branding.customCss')} hint={t('admin.branding.jellyplexDoesNotLoadIt')}>
+      <Card title={t('admin.branding.jellyfinWebInterface')} description={t('admin.branding.webOnlyHint')}>
+        <Field label={t('admin.branding.customCss')} hint={t('admin.branding.customCssHint')}>
           <TextArea
             rows={8}
             spellCheck={false}
@@ -60,7 +60,7 @@ export default function BrandingPage() {
         <div className="mt-3">
           <Switch
             label={t('admin.branding.splashScreen')}
-            description={t('admin.branding.showAnImageMadeFrom')}
+            description={t('admin.branding.splashscreenHint')}
             checked={Boolean(draft.SplashscreenEnabled)}
             onChange={(v) => set('SplashscreenEnabled', v)}
           />

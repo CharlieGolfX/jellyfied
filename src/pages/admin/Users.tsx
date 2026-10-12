@@ -46,7 +46,7 @@ export default function UsersPage() {
   return (
     <AdminPage
       title={t('admin.users.users')}
-      description={t('admin.users.manageWhoCanSignIn')}
+      description={t('admin.users.description')}
       actions={
         <Button variant="primary" icon={<UserPlus size={16} />} onClick={() => setOpen(true)}>
           {t('admin.users.addUser')}
@@ -114,7 +114,7 @@ export default function UsersPage() {
           <Field label={t('admin.users.username')}>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
           </Field>
-          <Field label={t('common.password')} hint={t('admin.users.optionalUsersWithoutAPassword')}>
+          <Field label={t('common.password')} hint={t('admin.users.passwordHint')}>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </Field>
           <button type="submit" className="hidden" />

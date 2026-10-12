@@ -50,7 +50,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
   const [order, setOrder] = useState<string[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const dropped = useRef(false);
-  const tracks = order ? order.map((id) => listed.find((entry) => entryId(entry) === id)).filter((entry) => entry !== undefined) : listed;
+  const tracks = order ? order.map((id) => listed.find((track) => entryId(track) === id)).filter((track) => track !== undefined) : listed;
 
   const dragProps = (id: string) => ({
     draggable: true,
@@ -83,7 +83,7 @@ export function TrackList({ tracks: listed, albumArtist, showAlbum, showArt, num
     },
     onDragEnd: () => {
       const index = order?.indexOf(dragId ?? '') ?? -1;
-      const moved = dropped.current && dragId && index >= 0 && index !== listed.findIndex((entry) => entryId(entry) === dragId);
+      const moved = dropped.current && dragId && index >= 0 && index !== listed.findIndex((track) => entryId(track) === dragId);
       setDragId(null);
       if (!moved) {
         setOrder(null);

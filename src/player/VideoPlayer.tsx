@@ -268,7 +268,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       }
     }
     if (!applyAudioDelay(video, audioDelay) && audioDelay !== 0) {
-      toast.error(t('player.videoPlayer.audioDelayIsnTAvailable'));
+      toast.error(t('player.videoPlayer.audioDelayUnavailable'));
       setAudioDelay(0);
     }
   }, [audioDelay, audioDelayAvailable, api, load, maxBitrate, toast, streamRef, hlsRef]);
@@ -319,11 +319,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   }, [pauseAudio]);
 
   const seekTo = useCallback(
-    (entry: number) => {
+    (time: number) => {
       const video = videoRef.current;
       if (!video) return;
       const max = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity;
-      video.currentTime = Math.min(Math.max(0, entry), max - 0.25);
+      video.currentTime = Math.min(Math.max(0, time), max - 0.25);
       setCurrentTime(video.currentTime);
     },
     [setCurrentTime],
@@ -792,7 +792,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             />
             {airPlay.available && (
               <ControlButton
-                label={airPlay.active ? t('player.videoPlayer.airplayPlayingOnAnotherDevice') : t('player.videoPlayer.airplay')}
+                label={airPlay.active ? t('player.videoPlayer.airplayActive') : t('player.videoPlayer.airplay')}
                 onClick={airPlay.pick}
                 active={airPlay.active}
               >
@@ -801,7 +801,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             )}
             {chromecastSupported && !inSync && (
               <ControlButton
-                label={t('player.videoPlayer.playOnAChromecast')}
+                label={t('player.videoPlayer.playOnChromecast')}
                 onClick={() => void connectChromecast()}
                 active={cast.status === 'loading'}
               >

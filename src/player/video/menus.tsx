@@ -139,14 +139,12 @@ export function SubtitlesMenu({
                     testId="subtitle-delay"
                   />
                 ) : (
-                  <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.notAvailableForSubtitlesThat')}</div>
+                  <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.unavailableBurnedIn')}</div>
                 )}
               </PanelSection>
               {(kind === 'ass' || kind === 'pgs') && (
                 <div className="px-4 pb-2 text-xs text-white/40">
-                  {kind === 'ass'
-                    ? t('player.video.menus.theseSubtitlesBringTheirOwn')
-                    : t('player.video.menus.theseSubtitlesArePicturesSo')}
+                  {kind === 'ass' ? t('player.video.menus.styledSubtitlesHint') : t('player.video.menus.imageSubtitlesHint')}
                 </div>
               )}
               {textSubtitles && (
@@ -163,7 +161,7 @@ export function SubtitlesMenu({
                       </PanelChip>
                     ))}
                   </div>
-                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.moreSubtitleOptionsAreUnder')}</div>
+                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.moreSubtitleOptions')}</div>
                 </PanelSection>
               )}
             </>
@@ -333,10 +331,10 @@ export function SettingsMenu({
                     sliderLabel={t('player.video.menus.audioDelay')}
                     testId="audio-delay"
                   />
-                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.holdsTheSoundBackWhen')}</div>
+                  <div className="px-4 pb-2 text-xs text-white/40">{t('player.video.menus.audioDelayHint')}</div>
                 </>
               ) : (
-                <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.notAvailableInThisBrowser')}</div>
+                <div className="px-4 pt-1 pb-2 text-xs text-white/50">{t('player.video.menus.unavailableInBrowser')}</div>
               )}
             </PanelSection>
           )}

@@ -43,7 +43,7 @@ export function AlbumDetails({ item }: { item: BaseItemDto }) {
   );
 
   const list = tracks.data?.Items ?? [];
-  const totalTicks = list.reduce((sum, entry) => sum + (entry.RunTimeTicks ?? 0), 0);
+  const totalTicks = list.reduce((sum, track) => sum + (track.RunTimeTicks ?? 0), 0);
 
   return (
     <DetailFrame
@@ -200,7 +200,7 @@ export function PlaylistDetails({ item }: { item: BaseItemDto }) {
       }),
   });
   const list = entries.data?.Items ?? [];
-  const totalTicks = list.reduce((sum, entry) => sum + (entry.RunTimeTicks ?? 0), 0);
+  const totalTicks = list.reduce((sum, track) => sum + (track.RunTimeTicks ?? 0), 0);
   const canEdit = useCanEditPlaylist(item.Id);
   const [editing, setEditing] = useState(false);
 

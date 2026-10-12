@@ -47,17 +47,17 @@ export default function ApiKeysPage() {
       await navigator.clipboard.writeText(text);
       toast.success(t('admin.apiKeys.copiedToClipboard'));
     } catch {
-      toast.error(t('admin.apiKeys.clipboardIsNotAvailableOn'));
+      toast.error(t('admin.apiKeys.clipboardUnavailable'));
     }
   };
 
   return (
     <AdminPage
       title={t('admin.apiKeys.apiKeys')}
-      description={t('admin.apiKeys.keysLetExternalApplicationsLike')}
+      description={t('admin.apiKeys.description')}
       actions={
         <Button variant="primary" icon={<Plus size={16} />} onClick={() => setCreating(true)}>
-          {t('admin.apiKeys.newApiKey')}
+          {t('admin.apiKeys.newKey')}
         </Button>
       }
     >
@@ -67,7 +67,7 @@ export default function ApiKeysPage() {
         <ErrorState error={keys.error} onRetry={() => keys.refetch()} />
       ) : (
         <div className="divide-y divide-white/5 overflow-hidden rounded-lg bg-base-800/70 ring-1 ring-white/5">
-          {keys.data!.Items.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">{t('admin.apiKeys.noApiKeysYet')}</p>}
+          {keys.data!.Items.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">{t('admin.apiKeys.noKeys')}</p>}
           {keys.data!.Items.map((k) => (
             <div key={k.AccessToken} className="flex flex-wrap items-center gap-4 px-4 py-3">
               <div className="min-w-0 flex-1">
@@ -105,7 +105,7 @@ export default function ApiKeysPage() {
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title={t('admin.apiKeys.newApiKey')}
+        title={t('admin.apiKeys.newKey')}
         size="sm"
         footer={
           <>
@@ -118,17 +118,17 @@ export default function ApiKeysPage() {
           </>
         }
       >
-        <Field label={t('admin.apiKeys.appName')} hint={t('admin.apiKeys.aLabelSoYouRemember')}>
+        <Field label={t('admin.apiKeys.appName')} hint={t('admin.apiKeys.nameHint')}>
           <Input autoFocus value={appName} onChange={(e) => setAppName(e.target.value)} placeholder={t('admin.apiKeys.sonarr')} />
         </Field>
       </Modal>
       <ConfirmDialog
         open={revoking !== null}
-        title={t('admin.apiKeys.revokeApiKey')}
+        title={t('admin.apiKeys.revokeKeyTitle')}
         danger
         confirmLabel={t('admin.apiKeys.revoke')}
         loading={revoke.isPending}
-        message={t('admin.apiKeys.applicationsUsingTheKeyWill', { appName: revoking?.AppName })}
+        message={t('admin.apiKeys.revokeWarning', { appName: revoking?.AppName })}
         onClose={() => setRevoking(null)}
         onConfirm={() => revoking && revoke.mutate(revoking)}
       />

@@ -191,7 +191,7 @@ export function SearchBox() {
       {open && debounced.length >= 2 && (
         <div className="animate-pop-in absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-lg bg-base-750 shadow-2xl ring-1 ring-black/40">
           {results.length === 0 && !isFetching && (
-            <div className="px-4 py-6 text-center text-sm text-muted">{t('search.noResults', { query: debounced })}</div>
+            <div className="px-4 py-6 text-center text-sm text-muted">{t('search.noResultsFor', { query: debounced })}</div>
           )}
           {results.map((item, i) => {
             const src = imageSrc(api, cardImage(item, 'poster'), 96);

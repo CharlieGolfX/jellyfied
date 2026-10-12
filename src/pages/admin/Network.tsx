@@ -56,7 +56,7 @@ export default function NetworkPage() {
     >
       <Card title={t('admin.network.serverAddress')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.network.baseUrl')} hint={t('admin.network.eGJellyfinWhenServing')}>
+          <Field label={t('admin.network.baseUrl')} hint={t('admin.network.baseUrlHint')}>
             <Input className="font-mono" value={draft.BaseUrl ?? ''} onChange={(e) => set('BaseUrl', e.target.value)} />
           </Field>
           <div />
@@ -106,11 +106,7 @@ export default function NetworkPage() {
           <Switch label={t('admin.network.enableIpv4')} checked={draft.EnableIPv4} onChange={(v) => set('EnableIPv4', v)} />
           <Switch label={t('admin.network.enableIpv6')} checked={draft.EnableIPv6} onChange={(v) => set('EnableIPv6', v)} />
           {'EnableUPnP' in draft && (
-            <Switch
-              label={t('admin.network.enableAutomaticPortMappingUpnp')}
-              checked={draft.EnableUPnP}
-              onChange={(v) => set('EnableUPnP', v)}
-            />
+            <Switch label={t('admin.network.enableUpnp')} checked={draft.EnableUPnP} onChange={(v) => set('EnableUPnP', v)} />
           )}
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -124,7 +120,7 @@ export default function NetworkPage() {
               onChange={(e) => setLists((l) => ({ ...l, addresses: e.target.value }))}
             />
           </Field>
-          <Field label={t('admin.network.knownProxies')} hint={t('admin.network.reverseProxiesWhoseXForwarded')}>
+          <Field label={t('admin.network.knownProxies')} hint={t('admin.network.knownProxiesHint')}>
             <TextArea className="font-mono" value={lists.proxies} onChange={(e) => setLists((l) => ({ ...l, proxies: e.target.value }))} />
           </Field>
           <Field label={t('admin.network.remoteIpFilter')} hint={t('admin.network.onePerLine')}>
@@ -133,8 +129,8 @@ export default function NetworkPage() {
         </div>
         <div className="mt-2">
           <Switch
-            label={t('admin.network.remoteIpFilterIsA')}
-            description={t('admin.network.whenOffTheFilterIs')}
+            label={t('admin.network.filterIsBlocklist')}
+            description={t('admin.network.filterIsBlocklistHint')}
             checked={draft.IsRemoteIPFilterBlacklist}
             onChange={(v) => set('IsRemoteIPFilterBlacklist', v)}
           />

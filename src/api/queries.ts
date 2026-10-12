@@ -320,9 +320,9 @@ export function useMediaSegments(itemId: string | undefined) {
 export function patchUserData<T>(data: T, id: string, patch: Partial<UserItemData>): T {
   if (Array.isArray(data)) {
     let changed = false;
-    const next = data.map((entry: unknown) => {
-      const patched = patchUserData(entry, id, patch);
-      if (patched !== entry) changed = true;
+    const next = data.map((cached: unknown) => {
+      const patched = patchUserData(cached, id, patch);
+      if (patched !== cached) changed = true;
       return patched;
     });
     return changed ? (next as T) : data;

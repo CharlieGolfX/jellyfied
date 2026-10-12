@@ -11,15 +11,15 @@ export const VOLUME_KEY = 'jellyplex.volume';
 
 export const QUALITY_OPTIONS: { label: string; value: number }[] = [
   { label: t('player.video.shared.originalAuto'), value: MAX_BITRATE },
-  { label: t('player.video.shared.n40Mbps4k'), value: 40_000_000 },
-  { label: t('player.video.shared.n20Mbps1080p'), value: 20_000_000 },
-  { label: t('player.video.shared.n12Mbps1080p'), value: 12_000_000 },
-  { label: t('player.video.shared.n8Mbps1080p'), value: 8_000_000 },
-  { label: t('player.video.shared.n4Mbps720p'), value: 4_000_000 },
-  { label: t('player.video.shared.n3Mbps720p'), value: 3_000_000 },
-  { label: t('player.video.shared.n2Mbps480p'), value: 2_000_000 },
-  { label: t('player.video.shared.n1Mbps480p'), value: 1_000_000 },
-  { label: t('player.video.shared.n720Kbps360p'), value: 720_000 },
+  { label: t('player.video.shared.quality40Mbps'), value: 40_000_000 },
+  { label: t('player.video.shared.quality20Mbps'), value: 20_000_000 },
+  { label: t('player.video.shared.quality12Mbps'), value: 12_000_000 },
+  { label: t('player.video.shared.quality8Mbps'), value: 8_000_000 },
+  { label: t('player.video.shared.quality4Mbps'), value: 4_000_000 },
+  { label: t('player.video.shared.quality3Mbps'), value: 3_000_000 },
+  { label: t('player.video.shared.quality2Mbps'), value: 2_000_000 },
+  { label: t('player.video.shared.quality1Mbps'), value: 1_000_000 },
+  { label: t('player.video.shared.quality720Kbps'), value: 720_000 },
 ];
 
 export interface ActiveStream {

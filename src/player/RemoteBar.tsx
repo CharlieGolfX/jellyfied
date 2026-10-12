@@ -288,7 +288,7 @@ function RemoteBarView({
             onClick={controls.disconnect}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted hover:bg-white/10 hover:text-fg"
             aria-label={t('player.remoteBar.stopPlayingOnDevice')}
-            title={t('player.remoteBar.disconnectPlayOnThisDevice')}
+            title={t('player.remoteBar.disconnectHint')}
           >
             <X size={16} /> <span className="hidden sm:inline">{t('player.remoteBar.disconnect')}</span>
           </button>

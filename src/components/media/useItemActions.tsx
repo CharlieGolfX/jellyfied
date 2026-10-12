@@ -79,7 +79,7 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   }
   if (item.Type !== 'Person' && item.Type !== 'UserView' && item.Type !== 'CollectionFolder') {
     menuItems.push({
-      label: item.UserData?.IsFavorite ? t('media.useItemActions.removeFromFavorites') : t('media.useItemActions.addToFavorites'),
+      label: item.UserData?.IsFavorite ? t('media.itemActions.removeFromFavorites') : t('media.itemActions.addToFavorites'),
       icon: <Heart size={16} />,
       onSelect: () => setFavorite.mutate({ id: item.Id, favorite: !item.UserData?.IsFavorite }, { onError: (e) => toast.error(e) }),
     });
@@ -87,12 +87,12 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   // Based on the saved position, not the progress bar: a watched item that is being rewatched has both.
   if ((item.UserData?.PlaybackPositionTicks ?? 0) > 0 && item.MediaType === 'Video' && !item.IsFolder) {
     menuItems.push({
-      label: t('media.useItemActions.removeFromContinueWatching'),
+      label: t('media.itemActions.removeFromContinueWatching'),
       icon: <History size={16} />,
       // The card may be gone by the time the lists have refreshed, so don't rely on mutate() callbacks.
       onSelect: () =>
         void clearProgress.mutateAsync(item.Id).then(
-          () => toast.success(t('media.useItemActions.removedFromContinueWatching')),
+          () => toast.success(t('media.itemActions.removedFromContinueWatching')),
           (e) => toast.error(e),
         ),
     });
@@ -104,11 +104,11 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
     menuItems.push({ label: t('common.addToCollection'), icon: <FolderPlus size={16} />, onSelect: () => setAddingToCollection(true) });
     if (collectionId) {
       menuItems.push({
-        label: t('media.useItemActions.removeFromCollection'),
+        label: t('media.itemActions.removeFromCollection'),
         icon: <FolderMinus size={16} />,
         onSelect: () =>
           void removeFromCollection.mutateAsync({ collectionId, itemId: item.Id }).then(
-            () => toast.success(t('media.useItemActions.removedFromCollection')),
+            () => toast.success(t('media.itemActions.removedFromCollection')),
             (e) => toast.error(e),
           ),
       });
@@ -120,20 +120,20 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   if (item.Type === 'Episode' && item.SeriesId) {
     menuItems.push({ divider: true, label: '' });
     menuItems.push({
-      label: t('media.useItemActions.goToShow'),
+      label: t('media.itemActions.goToShow'),
       icon: <Tv size={16} />,
       onSelect: () => navigate(`/item/${item.SeriesId}`),
     });
     if (item.SeasonId)
       menuItems.push({
-        label: t('media.useItemActions.goToSeason'),
+        label: t('media.itemActions.goToSeason'),
         icon: <Tv size={16} />,
         onSelect: () => navigate(`/item/${item.SeasonId}`),
       });
   }
   if (item.Type === 'Audio' && item.AlbumId) {
     menuItems.push({
-      label: t('media.useItemActions.goToAlbum'),
+      label: t('media.itemActions.goToAlbum'),
       icon: <Music size={16} />,
       onSelect: () => navigate(`/item/${item.AlbumId}`),
     });

@@ -78,7 +78,7 @@ export default function DevicesPage() {
                   disabled={isThis}
                   onClick={() => setDeleting(d)}
                   aria-label={t('admin.devices.removeDevice')}
-                  title={isThis ? t('admin.devices.youCanTRemoveThe') : t('admin.devices.removeDevice')}
+                  title={isThis ? t('admin.devices.cannotRemoveCurrent') : t('admin.devices.removeDevice')}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -89,11 +89,11 @@ export default function DevicesPage() {
       )}
       <ConfirmDialog
         open={deleting !== null}
-        title={deleting === 'all' ? t('admin.devices.signOutAllOtherDevices') : t('admin.devices.removeDevice2')}
+        title={deleting === 'all' ? t('admin.devices.signOutAllOtherDevices') : t('admin.devices.removeDeviceTitle')}
         message={
           deleting === 'all'
             ? t('admin.devices.everyDeviceExceptThisOne')
-            : t('admin.devices.willBeSignedOut', { name: deleting?.Name ?? t('admin.devices.theDevice') })
+            : t('admin.devices.willBeSignedOut', { name: deleting?.Name ?? t('admin.devices.deviceFallback') })
         }
         confirmLabel={t('admin.devices.signOut')}
         danger

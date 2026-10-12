@@ -56,8 +56,8 @@ export function Card({
 }
 
 const SUBTITLE_MODES: { value: UserConfiguration['SubtitleMode']; label: string }[] = [
-  { value: 'Default', label: t('settings.defaultMatchLanguagePreferenceForced') },
-  { value: 'Smart', label: t('settings.smartShowWhenAudioIs') },
+  { value: 'Default', label: t('settings.subtitleModeDefault') },
+  { value: 'Smart', label: t('settings.subtitleModeSmart') },
   { value: 'OnlyForced', label: t('settings.onlyForcedSubtitles') },
   { value: 'Always', label: t('settings.alwaysShowSubtitles') },
   { value: 'None', label: t('settings.neverShowSubtitles') },
@@ -139,7 +139,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-bold">{t('settings.accountSettings2')}</h1>
+      <h1 className="text-2xl font-bold">{t('settings.accountSettingsTitle')}</h1>
 
       <Card title={t('settings.profile')}>
         <div className="flex items-center gap-5">
@@ -179,7 +179,7 @@ export default function SettingsPage() {
 
       <Card
         title={t('settings.playback')}
-        description={t('settings.storedOnYourJellyfinAccount')}
+        description={t('settings.storedOnAccount')}
         actions={
           <Button variant="primary" size="sm" loading={saveConfig.isPending} onClick={() => saveConfig.mutate(config)}>
             {t('common.save')}
@@ -197,7 +197,7 @@ export default function SettingsPage() {
               ))}
             </Select>
           </Field>
-          <Field label={t('settings.preferredSubtitleLanguage')}>
+          <Field label={t('settings.subtitleLanguage')}>
             <Select value={config.SubtitleLanguagePreference ?? ''} onChange={(e) => set('SubtitleLanguagePreference', e.target.value)}>
               <option value="">{t('settings.anyLanguage')}</option>
               {languages.map((l) => (
@@ -219,12 +219,12 @@ export default function SettingsPage() {
         </div>
         <div className="mt-3 divide-y divide-white/5">
           <Switch
-            label={t('settings.playDefaultAudioTrackRegardless')}
+            label={t('settings.playDefaultAudio')}
             checked={config.PlayDefaultAudioTrack}
             onChange={(v) => set('PlayDefaultAudioTrack', v)}
           />
           <Switch
-            label={t('settings.automaticallyPlayTheNextEpisode')}
+            label={t('settings.autoplayNext')}
             checked={config.EnableNextEpisodeAutoPlay}
             onChange={(v) => set('EnableNextEpisodeAutoPlay', v)}
           />
@@ -234,12 +234,12 @@ export default function SettingsPage() {
             onChange={(v) => set('RememberAudioSelections', v)}
           />
           <Switch
-            label={t('settings.rememberSubtitleSelections')}
+            label={t('settings.rememberSubtitles')}
             checked={config.RememberSubtitleSelections}
             onChange={(v) => set('RememberSubtitleSelections', v)}
           />
           <Switch
-            label={t('settings.hideWatchedItemsInRecently')}
+            label={t('settings.hideWatchedInLatest')}
             checked={config.HidePlayedInLatest}
             onChange={(v) => set('HidePlayedInLatest', v)}
           />
@@ -251,11 +251,11 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card title={t('common.thisDevice')} description={t('settings.streamingQualityIsStoredIn')}>
+      <Card title={t('common.thisDevice')} description={t('settings.qualityHint')}>
         <div className="mb-3 border-b border-white/5 pb-2">
           <Switch
             label={t('settings.syncMyPreferences')}
-            description={t('settings.keepsColoursSubtitleAppearanceSkip')}
+            description={t('settings.syncHint')}
             checked={syncPrefs}
             onChange={setSyncPrefs}
           />
@@ -275,13 +275,13 @@ export default function SettingsPage() {
             }}
           >
             <option value={MAX_BITRATE}>{t('settings.originalAuto')}</option>
-            <option value={40_000_000}>{t('settings.n40Mbps4k')}</option>
-            <option value={20_000_000}>{t('settings.n20Mbps1080p')}</option>
-            <option value={12_000_000}>{t('settings.n12Mbps1080p')}</option>
-            <option value={8_000_000}>{t('settings.n8Mbps1080p')}</option>
-            <option value={4_000_000}>{t('settings.n4Mbps720p')}</option>
-            <option value={2_000_000}>{t('settings.n2Mbps480p')}</option>
-            <option value={1_000_000}>{t('settings.n1Mbps480p')}</option>
+            <option value={40_000_000}>{t('settings.quality40Mbps')}</option>
+            <option value={20_000_000}>{t('settings.quality20Mbps')}</option>
+            <option value={12_000_000}>{t('settings.quality12Mbps')}</option>
+            <option value={8_000_000}>{t('settings.quality8Mbps')}</option>
+            <option value={4_000_000}>{t('settings.quality4Mbps')}</option>
+            <option value={2_000_000}>{t('settings.quality2Mbps')}</option>
+            <option value={1_000_000}>{t('settings.quality1Mbps')}</option>
           </Select>
         </Field>
         <Field className="mt-4" label={t('settings.defaultTimeDisplay')} hint={t('settings.usedForClockTimesSuch')}>
@@ -292,12 +292,12 @@ export default function SettingsPage() {
               toast.success(t('settings.timeDisplayUpdated'));
             }}
           >
-            <option value="24h">{t('settings.n24Hour2145')}</option>
-            <option value="12h">{t('settings.n12Hour945Pm')}</option>
+            <option value="24h">{t('settings.clock24Hour')}</option>
+            <option value="12h">{t('settings.clock12Hour')}</option>
           </Select>
         </Field>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label={t('settings.skipBack')} hint={t('settings.thePlayerSBackButton')}>
+          <Field label={t('settings.skipBack')} hint={t('settings.backHint')}>
             <Select value={seekSteps.back} onChange={(e) => setSeekSteps({ back: Number(e.target.value) })}>
               {SEEK_STEP_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -306,7 +306,7 @@ export default function SettingsPage() {
               ))}
             </Select>
           </Field>
-          <Field label={t('settings.skipForward')} hint={t('settings.theForwardButtonTheAnd')}>
+          <Field label={t('settings.skipForward')} hint={t('settings.forwardHint')}>
             <Select value={seekSteps.forward} onChange={(e) => setSeekSteps({ forward: Number(e.target.value) })}>
               {SEEK_STEP_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -336,7 +336,7 @@ function InterfaceColorsCard() {
   return (
     <Card
       title={t('settings.interfaceColours')}
-      description={t('settings.theAccentColourAndBackground')}
+      description={t('settings.themeHint')}
       actions={
         changed ? (
           <Button size="sm" variant="ghost" onClick={() => setTheme(DEFAULT_THEME)}>
@@ -439,7 +439,7 @@ function SubtitleAppearanceCard() {
     </Field>
   );
   return (
-    <Card title={t('settings.subtitleAppearance')} description={t('settings.howTextSubtitlesLookIn')}>
+    <Card title={t('settings.subtitleAppearance')} description={t('settings.subtitleStyleHint')}>
       <div
         className="mb-4 flex aspect-[32/9] items-end justify-center rounded-md bg-gradient-to-br from-sky-900 via-slate-700 to-amber-800 p-4"
         aria-hidden
@@ -449,7 +449,7 @@ function SubtitleAppearanceCard() {
           className="rounded-sm px-[0.35em] text-center font-semibold"
           style={{ ...subtitleLineCss(style), fontSize: `${20 * subtitleScale(style)}px`, lineHeight: 1.3 }}
         >
-          {t('settings.thisIsHowSubtitlesWill')}
+          {t('settings.subtitlePreview')}
         </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -500,7 +500,7 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
         </Field>
         <Field
           label={t('settings.confirmNewPassword')}
-          hint={mismatch ? <span className="text-danger">{t('settings.passwordsDonTMatch')}</span> : undefined}
+          hint={mismatch ? <span className="text-danger">{t('settings.passwordMismatch')}</span> : undefined}
         >
           <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
@@ -573,52 +573,68 @@ function AccountPinCard() {
     setProtectedNow(hasPin(session));
   };
   /** Changing or removing a PIN takes the PIN, or anyone at the keyboard could do it. */
-  const currentIsRight = () => {
-    const result = checkPin(session, current);
+  const currentIsRight = async () => {
+    const result = await checkPin(session, current);
     if (result.ok) return true;
-    toast.error(
-      result.lockedFor ? t('auth.pin.locked', { seconds: Math.ceil(result.lockedFor / 1000) }) : t('settings.theCurrentPinIsWrong'),
-    );
+    toast.error(result.lockedFor ? t('auth.pin.locked', { seconds: Math.ceil(result.lockedFor / 1000) }) : t('settings.pinWrong'));
     setCurrent('');
     return false;
   };
-  const submit = (e: FormEvent) => {
+  // Working out a key from a PIN takes a moment: one thing at a time.
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (mismatch || !validPin(next) || !currentIsRight()) return;
-    protectAccount(next);
-    toast.success(protectedNow ? t('settings.pinChanged') : t('settings.pinSet'));
-    reset();
+    if (busy || mismatch || !validPin(next)) return;
+    setBusy(true);
+    try {
+      if (!(await currentIsRight())) return;
+      await protectAccount(next);
+      toast.success(protectedNow ? t('settings.pinChanged') : t('settings.pinSet'));
+      reset();
+    } finally {
+      setBusy(false);
+    }
   };
-  const remove = () => {
-    if (!currentIsRight()) return;
-    protectAccount(null);
-    toast.success(t('settings.pinRemoved'));
-    reset();
+  const remove = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (!(await currentIsRight())) return;
+      await protectAccount(null);
+      toast.success(t('settings.pinRemoved'));
+      reset();
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Card title={t('settings.accountPin')} description={t('settings.askedForBeforeSomeoneSwitches')}>
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3" data-testid="account-pin">
+    <Card title={t('settings.accountPin')} description={t('settings.pinHint')}>
+      <form onSubmit={(e) => void submit(e)} className="grid gap-4 sm:grid-cols-3" data-testid="account-pin">
         {protectedNow && (
           <Field label={t('settings.currentPin')}>
             <PinInput value={current} onChange={setCurrent} />
           </Field>
         )}
-        <Field label={protectedNow ? t('settings.newPin') : t('settings.pin')} hint={t('settings.n4To12Digits')}>
+        <Field label={protectedNow ? t('settings.newPin') : t('settings.pin')} hint={t('settings.pinLength')}>
           <PinInput value={next} onChange={setNext} />
         </Field>
         <Field
           label={t('settings.repeatThePin')}
-          hint={mismatch ? <span className="text-danger">{t('settings.thePinsDonTMatch')}</span> : undefined}
+          hint={mismatch ? <span className="text-danger">{t('settings.pinMismatch')}</span> : undefined}
         >
           <PinInput value={confirm} onChange={setConfirm} />
         </Field>
         <div className="flex flex-wrap gap-2 sm:col-span-3">
-          <Button type="submit" variant="primary" disabled={mismatch || !validPin(next) || next !== confirm || (protectedNow && !current)}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={busy || mismatch || !validPin(next) || next !== confirm || (protectedNow && !current)}
+          >
             {protectedNow ? t('settings.changePin') : t('settings.setPin')}
           </Button>
           {protectedNow && (
-            <Button variant="outline" disabled={!current} onClick={remove}>
+            <Button variant="outline" disabled={busy || !current} onClick={() => void remove()}>
               {t('settings.removePin')}
             </Button>
           )}

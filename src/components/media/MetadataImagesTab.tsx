@@ -83,7 +83,7 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
       <RemoteImagePicker
         item={item}
         type={searching}
-        label={IMAGE_TYPES.find((entry) => entry.type === searching)?.label ?? searching}
+        label={IMAGE_TYPES.find((image) => image.type === searching)?.label ?? searching}
         onBack={() => setSearching(null)}
         onPicked={() => {
           setSearching(null);
@@ -160,8 +160,8 @@ export function ImagesTab({ item }: { item: BaseItemDto }) {
                     <button
                       onClick={() => remove.mutate(img)}
                       disabled={remove.isPending}
-                      aria-label={t('media.metadataImagesTab.deleteImage', { kind: label.toLowerCase() })}
-                      title={t('media.metadataImagesTab.deleteImage2')}
+                      aria-label={t('media.metadataImagesTab.deleteKindImage', { kind: label.toLowerCase() })}
+                      title={t('media.metadataImagesTab.deleteImageTitle')}
                       className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1.5 text-white opacity-0 transition-opacity group-hover/img:opacity-100 hover:bg-danger focus:opacity-100"
                     >
                       <Trash2 size={14} />
@@ -216,7 +216,7 @@ function RemoteImagePicker({
         <Button size="sm" variant="secondary" onClick={onBack}>
           {t('media.metadataImagesTab.back')}
         </Button>
-        <h3 className="mr-auto text-sm font-semibold">{t('media.metadataImagesTab.findAImageOnline', { kind: label.toLowerCase() })}</h3>
+        <h3 className="mr-auto text-sm font-semibold">{t('media.metadataImagesTab.findKindOnline', { kind: label.toLowerCase() })}</h3>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
@@ -234,9 +234,7 @@ function RemoteImagePicker({
       ) : remote.error ? (
         <ErrorState error={remote.error} onRetry={() => remote.refetch()} />
       ) : list.length === 0 ? (
-        <p className="py-10 text-center text-sm text-faint">
-          {t('media.metadataImagesTab.theServerSMetadataProviders', { kind: label.toLowerCase() })}
-        </p>
+        <p className="py-10 text-center text-sm text-faint">{t('media.metadataImagesTab.noRemoteImages', { kind: label.toLowerCase() })}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {list.map((img) => (

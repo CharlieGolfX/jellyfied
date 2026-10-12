@@ -126,11 +126,7 @@ function onMessage(_namespace: string, raw: string) {
   const message = parseCastMessage(raw);
   if (!message) return;
   if (message.type === 'playbackerror' || message.type === 'connectionerror') {
-    errorHandler?.(
-      message.type === 'connectionerror'
-        ? t('player.chromecast.theChromecastCouldNotReach')
-        : t('player.chromecast.theChromecastCouldNotPlay'),
-    );
+    errorHandler?.(message.type === 'connectionerror' ? t('player.chromecast.serverUnreachable') : t('player.chromecast.cannotPlay'));
     return;
   }
   if (message.type === 'playbackstop') {
@@ -278,7 +274,7 @@ function serverVersion(auth: CastAuth): Promise<string | undefined> {
 async function send(auth: CastAuth, command: string, options: Record<string, unknown> = {}): Promise<unknown> {
   const version = await serverVersion(auth);
   const session = win().cast?.framework.CastContext.getInstance().getCurrentSession();
-  if (!session) throw new Error(t('player.chromecast.notConnectedToAChromecast'));
+  if (!session) throw new Error(t('player.chromecast.notConnected'));
   return session.sendMessage(NAMESPACE, {
     options,
     command,
@@ -307,7 +303,7 @@ export interface CastPlayOptions {
 /** Plays items on the Chromecast. Shows, albums and other containers are expanded by the receiver. */
 export function castPlay(auth: CastAuth, items: BaseItemDto[], opts: CastPlayOptions = {}): Promise<unknown> {
   if (isLocalOnlyAddress(castServerAddress(auth.api.serverUrl))) {
-    return Promise.reject(new Error(t('player.chromecast.aChromecastCanTReach')));
+    return Promise.reject(new Error(t('player.chromecast.localhostUnreachable')));
   }
   return send(auth, opts.queue ?? (opts.shuffle ? 'Shuffle' : 'PlayNow'), {
     // The receiver looks the items up itself, so it only needs to know which ones.

@@ -15,12 +15,12 @@ import { t, tRich } from '@/i18n';
 
 /** What a backup holds besides the database, which is always part of it. */
 const PARTS: { key: keyof BackupOptionsDto; label: string; description: string }[] = [
-  { key: 'Metadata', label: t('common.metadata'), description: t('admin.backups.imagesAndMetadataFilesThe') },
-  { key: 'Subtitles', label: t('common.subtitles'), description: t('admin.backups.subtitlesTheServerHasDownloaded') },
+  { key: 'Metadata', label: t('common.metadata'), description: t('admin.backups.metadataHint') },
+  { key: 'Subtitles', label: t('common.subtitles'), description: t('admin.backups.subtitlesHint') },
   {
     key: 'Trickplay',
     label: t('admin.backups.trickplayImages'),
-    description: t('admin.backups.previewThumbnailsForSeekingUsually'),
+    description: t('admin.backups.trickplayHint'),
   },
 ];
 
@@ -48,7 +48,7 @@ export default function BackupsPage() {
   const restore = useMutation({
     mutationFn: (backup: BackupManifestDto) => api.post('/Backup/Restore', { ArchiveFileName: fileName(backup.Path) }),
     onSuccess: () => {
-      toast.success(t('admin.backups.theServerIsRestartingTo'));
+      toast.success(t('admin.backups.restoring'));
       setRestoring(null);
     },
     onError: (e) => toast.error(e),
@@ -71,7 +71,7 @@ export default function BackupsPage() {
       ) : backups.error ? (
         <ErrorState error={backups.error} onRetry={() => backups.refetch()} />
       ) : list.length === 0 ? (
-        <EmptyState title={t('admin.backups.noBackupsYet')}>{t('admin.backups.createOneBeforeUpgradingThe')}</EmptyState>
+        <EmptyState title={t('admin.backups.noBackupsYet')}>{t('admin.backups.emptyHint')}</EmptyState>
       ) : (
         <ul className="space-y-3">
           {list.map((b) => (
@@ -123,7 +123,7 @@ export default function BackupsPage() {
           </>
         }
       >
-        <p className="mb-3 text-sm text-muted">{t('admin.backups.theDatabaseIsAlwaysIncluded')}</p>
+        <p className="mb-3 text-sm text-muted">{t('admin.backups.createHint')}</p>
         {PARTS.map((p) => (
           <div key={p.key} className="py-1">
             <Checkbox label={p.label} checked={Boolean(options[p.key])} onChange={(v) => setOptions((o) => ({ ...o, [p.key]: v }))} />

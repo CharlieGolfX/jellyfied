@@ -285,12 +285,12 @@ export class SyncPlayManager {
       case 'GroupDoesNotExist':
         // Also the answer when a remembered group has ended in the meantime: nothing to report then.
         if (this.inGroup) {
-          this.onNotice?.({ type: 'error', message: t('player.syncplay.thatSyncplayGroupNoLonger') });
+          this.onNotice?.({ type: 'error', message: t('player.syncPlay.groupGone') });
           this.clearGroup();
         } else storeGroup(null);
         break;
       case 'LibraryAccessDenied':
-        this.onNotice?.({ type: 'error', message: t('player.syncplay.youDonTHaveAccess') });
+        this.onNotice?.({ type: 'error', message: t('player.syncPlay.noAccess') });
         break;
       case 'StateUpdate': {
         const state = (u.Data as { State?: SyncPlayGroup['State'] })?.State;

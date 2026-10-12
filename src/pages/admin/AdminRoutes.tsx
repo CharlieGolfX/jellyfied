@@ -43,60 +43,60 @@ import { t } from '@/i18n';
 const NAV: { to: string; label: string; icon: ReactNode; end?: boolean; group: string }[] = [
   {
     to: '/admin',
-    label: t('admin.adminRoutes.dashboard'),
+    label: t('admin.nav.dashboard'),
     icon: <Gauge size={18} />,
     end: true,
-    group: t('admin.adminRoutes.groupServer'),
+    group: t('admin.nav.groupServer'),
   },
-  { to: '/admin/general', label: t('admin.adminRoutes.general'), icon: <Settings size={18} />, group: t('admin.adminRoutes.groupServer') },
-  { to: '/admin/users', label: t('admin.adminRoutes.users'), icon: <Users size={18} />, group: t('admin.adminRoutes.groupServer') },
+  { to: '/admin/general', label: t('admin.nav.general'), icon: <Settings size={18} />, group: t('admin.nav.groupServer') },
+  { to: '/admin/users', label: t('admin.nav.users'), icon: <Users size={18} />, group: t('admin.nav.groupServer') },
   {
     to: '/admin/libraries',
-    label: t('admin.adminRoutes.libraries'),
+    label: t('admin.nav.libraries'),
     icon: <Library size={18} />,
-    group: t('admin.adminRoutes.groupServer'),
+    group: t('admin.nav.groupServer'),
   },
-  { to: '/admin/metadata', label: t('common.metadata'), icon: <FileCog size={18} />, group: t('admin.adminRoutes.groupServer') },
-  { to: '/admin/playback', label: t('common.transcoding'), icon: <Zap size={18} />, group: t('admin.adminRoutes.groupServer') },
+  { to: '/admin/metadata', label: t('common.metadata'), icon: <FileCog size={18} />, group: t('admin.nav.groupServer') },
+  { to: '/admin/playback', label: t('common.transcoding'), icon: <Zap size={18} />, group: t('admin.nav.groupServer') },
   {
     to: '/admin/network',
-    label: t('admin.adminRoutes.networking'),
+    label: t('admin.nav.networking'),
     icon: <Network size={18} />,
-    group: t('admin.adminRoutes.groupServer'),
+    group: t('admin.nav.groupServer'),
   },
   {
     to: '/admin/branding',
-    label: t('admin.adminRoutes.branding'),
+    label: t('admin.nav.branding'),
     icon: <Paintbrush size={18} />,
-    group: t('admin.adminRoutes.groupServer'),
+    group: t('admin.nav.groupServer'),
   },
   {
     to: '/admin/tasks',
-    label: t('admin.adminRoutes.scheduledTasks'),
+    label: t('admin.nav.scheduledTasks'),
     icon: <CalendarClock size={18} />,
-    group: t('admin.adminRoutes.groupManage'),
+    group: t('admin.nav.groupManage'),
   },
   {
     to: '/admin/activity',
-    label: t('admin.adminRoutes.activity'),
+    label: t('admin.nav.activity'),
     icon: <Activity size={18} />,
-    group: t('admin.adminRoutes.groupManage'),
+    group: t('admin.nav.groupManage'),
   },
   {
     to: '/admin/devices',
-    label: t('admin.adminRoutes.devices'),
+    label: t('admin.nav.devices'),
     icon: <MonitorSmartphone size={18} />,
-    group: t('admin.adminRoutes.groupManage'),
+    group: t('admin.nav.groupManage'),
   },
-  { to: '/admin/plugins', label: t('admin.adminRoutes.plugins'), icon: <Puzzle size={18} />, group: t('admin.adminRoutes.groupManage') },
+  { to: '/admin/plugins', label: t('admin.nav.plugins'), icon: <Puzzle size={18} />, group: t('admin.nav.groupManage') },
   {
     to: '/admin/backups',
-    label: t('admin.adminRoutes.backups'),
+    label: t('admin.nav.backups'),
     icon: <DatabaseBackup size={18} />,
-    group: t('admin.adminRoutes.groupManage'),
+    group: t('admin.nav.groupManage'),
   },
-  { to: '/admin/apikeys', label: t('admin.adminRoutes.apiKeys'), icon: <KeyRound size={18} />, group: t('admin.adminRoutes.groupManage') },
-  { to: '/admin/logs', label: t('admin.adminRoutes.logs'), icon: <FileText size={18} />, group: t('admin.adminRoutes.groupManage') },
+  { to: '/admin/apikeys', label: t('admin.nav.apiKeys'), icon: <KeyRound size={18} />, group: t('admin.nav.groupManage') },
+  { to: '/admin/logs', label: t('admin.nav.logs'), icon: <FileText size={18} />, group: t('admin.nav.groupManage') },
 ];
 
 function AdminNav() {
@@ -133,15 +133,11 @@ function AdminNav() {
 }
 
 export default function AdminRoutes() {
-  usePageTitle(t('admin.adminRoutes.serverDashboard'));
+  usePageTitle(t('admin.nav.serverDashboard'));
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading) return <PageSpinner />;
   if (!user?.Policy?.IsAdministrator) {
-    return (
-      <EmptyState title={t('admin.adminRoutes.administratorAccessRequired')}>
-        {t('admin.adminRoutes.onlyJellyfinAdministratorsCanOpen')}
-      </EmptyState>
-    );
+    return <EmptyState title={t('admin.nav.adminRequired')}>{t('admin.nav.adminRequiredHint')}</EmptyState>;
   }
 
   return (
@@ -169,7 +165,7 @@ export default function AdminRoutes() {
           <Route path="plugins" element={<PluginsPage />} />
           <Route path="apikeys" element={<ApiKeysPage />} />
           <Route path="logs" element={<LogsPage />} />
-          <Route path="*" element={<EmptyState title={t('admin.adminRoutes.pageNotFound')} />} />
+          <Route path="*" element={<EmptyState title={t('admin.nav.pageNotFound')} />} />
         </Routes>
       </div>
     </div>

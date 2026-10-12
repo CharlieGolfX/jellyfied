@@ -94,7 +94,7 @@ export function usePlay() {
             audioStreamIndex: opts.audioStreamIndex,
             subtitleStreamIndex: opts.subtitleStreamIndex,
           });
-          toast.info(t('player.usePlay.playingOn', { deviceName: chromecast.deviceName }));
+          toast.info(t('player.play.playingOn', { deviceName: chromecast.deviceName }));
           return;
         }
         if (!target) return;
@@ -102,7 +102,7 @@ export function usePlay() {
           command: opts.shuffle ? 'PlayShuffle' : 'PlayNow',
           startPositionTicks: opts.fromStart ? 0 : single ? (item.UserData?.PlaybackPositionTicks ?? 0) : undefined,
         });
-        toast.info(t('player.usePlay.playingOn', { deviceName: target.deviceName }));
+        toast.info(t('player.play.playingOn', { deviceName: target.deviceName }));
       } catch (err) {
         toast.error(err);
       }
@@ -252,7 +252,7 @@ export function useLocalPlay() {
           const episodes = await fetchChildren(item, false);
           const startId = nextUp.Items[0]?.Id;
           const start = Math.max(0, startId ? episodes.findIndex((e) => e.Id === startId) : 0);
-          if (!episodes.length) throw new Error(t('player.usePlay.noPlayableEpisodesFound'));
+          if (!episodes.length) throw new Error(t('player.play.noPlayableEpisodesFound'));
           playVideoQueue(
             episodes.map((e) => e.Id),
             start,
@@ -263,7 +263,7 @@ export function useLocalPlay() {
 
         const children = await fetchChildren(item, Boolean(opts.shuffle));
         if (!children.length) {
-          toast.info(t('player.usePlay.nothingToPlayHere'));
+          toast.info(t('player.play.nothingToPlayHere'));
           return;
         }
         if (children[0].MediaType === 'Audio') {
@@ -315,7 +315,7 @@ export function useInstantMix() {
         });
         const tracks = result.Items.filter((i) => i.MediaType === 'Audio');
         if (!tracks.length) {
-          toast.info(t('player.usePlay.noSimilarMusicFoundFor'));
+          toast.info(t('player.play.noInstantMix'));
           return;
         }
         audio.play(tracks);

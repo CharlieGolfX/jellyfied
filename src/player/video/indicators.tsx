@@ -28,7 +28,7 @@ export function SleepIndicator() {
     <span
       data-testid="sleep-indicator"
       className="mr-2 flex items-center gap-1 text-sm text-accent tabular-nums"
-      title={sleep.endOfVideo ? t('player.video.indicators.sleepTimerStopsWhenThis') : t('player.video.indicators.sleepTimer')}
+      title={sleep.endOfVideo ? t('player.video.indicators.sleepAtEnd') : t('player.video.indicators.sleepTimer')}
     >
       <Moon size={15} />
       {sleep.endOfVideo ? t('player.video.indicators.endOfVideo') : formatClock(left)}

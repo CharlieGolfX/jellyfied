@@ -69,7 +69,7 @@ function CustomizeHome({ rows, onClose }: { rows: { id: string; label: string; h
     >
       <Switch
         label={t('home.featuredTitle')}
-        description={t('home.aLargeBannerWithA')}
+        description={t('home.bannerHint')}
         checked={layout.banner}
         onChange={(banner) => setLayout({ banner })}
       />
@@ -160,7 +160,7 @@ export default function HomePage() {
   if (libraries.length === 0) {
     return (
       <EmptyState icon={<HomeIcon size={48} strokeWidth={1.25} />} title={t('home.noLibrariesYet')}>
-        {t('home.yourAccountDoesnTHave')}
+        {t('home.noLibraries')}
       </EmptyState>
     );
   }

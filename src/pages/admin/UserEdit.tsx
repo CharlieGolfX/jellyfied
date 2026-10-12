@@ -121,16 +121,16 @@ export default function UserEditPage() {
       <div className="flex items-center gap-4">
         <Avatar userId={user.data.Id} tag={user.data.PrimaryImageTag} name={user.data.Name} size={56} />
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['profile', 'access', 'parental', 'password'] as Tab[]).map((entry) => (
+          {(['profile', 'access', 'parental', 'password'] as Tab[]).map((option) => (
             <button
-              key={entry}
-              onClick={() => setTab(entry)}
+              key={option}
+              onClick={() => setTab(option)}
               className={clsx(
-                'rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors',
-                tab === entry ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
+                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                tab === option ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
               )}
             >
-              {entry}
+              {t(`admin.userEdit.tab.${option}`)}
             </button>
           ))}
         </div>
@@ -152,7 +152,7 @@ export default function UserEditPage() {
               />
               <Switch
                 label={t('admin.userEdit.disableThisUser')}
-                description={t('admin.userEdit.theUserWonTBe')}
+                description={t('admin.userEdit.disabledHint')}
                 checked={policy.IsDisabled}
                 disabled={isSelf}
                 onChange={(v) => p('IsDisabled', v)}
@@ -184,18 +184,18 @@ export default function UserEditPage() {
                 onChange={(v) => p('EnableVideoPlaybackTranscoding', v)}
               />
               <Switch
-                label={t('admin.userEdit.allowRemuxingContainerChangesWithout')}
+                label={t('admin.userEdit.allowRemuxing')}
                 checked={policy.EnablePlaybackRemuxing}
                 onChange={(v) => p('EnablePlaybackRemuxing', v)}
               />
               <Switch
-                label={t('admin.userEdit.forceTranscodingOfRemoteMedia')}
+                label={t('admin.userEdit.forceRemoteTranscoding')}
                 checked={policy.ForceRemoteSourceTranscoding}
                 onChange={(v) => p('ForceRemoteSourceTranscoding', v)}
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <Field label={t('admin.userEdit.remoteBitrateLimitMbps')} hint={t('admin.userEdit.n0NoLimit')}>
+              <Field label={t('admin.userEdit.remoteBitrateLimitMbps')} hint={t('admin.userEdit.zeroNoLimit')}>
                 <Input
                   type="number"
                   min={0}
@@ -204,7 +204,7 @@ export default function UserEditPage() {
                   onChange={(e) => p('RemoteClientBitrateLimit', Math.round(Number(e.target.value || 0) * 1_000_000))}
                 />
               </Field>
-              <Field label={t('admin.userEdit.maxActiveSessions')} hint={t('admin.userEdit.n0Unlimited')}>
+              <Field label={t('admin.userEdit.maxActiveSessions')} hint={t('admin.userEdit.zeroUnlimited')}>
                 <Input
                   type="number"
                   min={0}
@@ -212,7 +212,7 @@ export default function UserEditPage() {
                   onChange={(e) => p('MaxActiveSessions', Number(e.target.value || 0))}
                 />
               </Field>
-              <Field label={t('admin.userEdit.failedLoginsBeforeLockout')} hint={t('admin.userEdit.n1Default0Never')}>
+              <Field label={t('admin.userEdit.loginAttempts')} hint={t('admin.userEdit.lockoutHint')}>
                 <Input
                   type="number"
                   min={-1}
@@ -231,7 +231,7 @@ export default function UserEditPage() {
                 onChange={(v) => p('EnableContentDownloading', v)}
               />
               <Switch
-                label={t('admin.userEdit.allowMediaDeletionFromAll')}
+                label={t('admin.userEdit.deleteFromAll')}
                 checked={policy.EnableContentDeletion}
                 onChange={(v) => p('EnableContentDeletion', v)}
               />
@@ -250,12 +250,12 @@ export default function UserEditPage() {
                 />
               )}
               <Switch
-                label={t('admin.userEdit.allowRemoteControlOfOther')}
+                label={t('admin.userEdit.controlOtherUsers')}
                 checked={policy.EnableRemoteControlOfOtherUsers}
                 onChange={(v) => p('EnableRemoteControlOfOtherUsers', v)}
               />
               <Switch
-                label={t('admin.userEdit.allowRemoteControlOfShared')}
+                label={t('admin.userEdit.controlSharedDevices')}
                 checked={policy.EnableSharedDeviceControl}
                 onChange={(v) => p('EnableSharedDeviceControl', v)}
               />
@@ -265,14 +265,14 @@ export default function UserEditPage() {
                 onChange={(v) => p('EnableLiveTvAccess', v)}
               />
               <Switch
-                label={t('admin.userEdit.allowLiveTvRecordingManagement')}
+                label={t('admin.userEdit.manageRecordings')}
                 checked={policy.EnableLiveTvManagement}
                 onChange={(v) => p('EnableLiveTvManagement', v)}
               />
             </div>
             {!policy.EnableContentDeletion && (folders.data?.Items.length ?? 0) > 0 && (
               <div className="mt-4">
-                <div className="mb-1 text-sm font-medium">{t('admin.userEdit.allowDeletionFromTheseLibraries')}</div>
+                <div className="mb-1 text-sm font-medium">{t('admin.userEdit.deleteFromLibraries')}</div>
                 {folders.data!.Items.map((f) => (
                   <Checkbox
                     key={f.Id}
@@ -366,7 +366,7 @@ function PasswordForm({ user, isSelf, onDone }: { user: UserDto; isSelf: boolean
   return (
     <Card
       title={t('common.password')}
-      description={user.HasPassword ? t('admin.userEdit.thisUserHasAPassword') : t('admin.userEdit.thisUserHasNoPassword')}
+      description={user.HasPassword ? t('admin.userEdit.hasPassword') : t('admin.userEdit.thisUserHasNoPassword')}
     >
       <form
         className="grid max-w-md gap-4"
@@ -385,7 +385,7 @@ function PasswordForm({ user, isSelf, onDone }: { user: UserDto; isSelf: boolean
         </Field>
         <Field
           label={t('admin.userEdit.confirmPassword')}
-          hint={mismatch ? <span className="text-danger">{t('admin.userEdit.passwordsDonTMatch')}</span> : undefined}
+          hint={mismatch ? <span className="text-danger">{t('admin.userEdit.passwordMismatch')}</span> : undefined}
         >
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>

@@ -8,7 +8,7 @@ export type PictureAspect = 'auto' | '16:9' | '4:3' | '21:9' | '2.39:1';
 export const PICTURE_FITS: { value: PictureFit; label: string; title: string }[] = [
   { value: 'fit', label: t('player.picture.fit'), title: t('player.picture.showTheWholePicture') },
   { value: 'fill', label: t('player.picture.fill'), title: t('player.picture.fillTheScreenAndCrop') },
-  { value: 'stretch', label: t('player.picture.stretch'), title: t('player.picture.stretchThePictureToThe') },
+  { value: 'stretch', label: t('player.picture.stretch'), title: t('player.picture.stretchHint') },
 ];
 
 export const PICTURE_ASPECTS: { value: PictureAspect; label: string; ratio?: number }[] = [

@@ -42,7 +42,7 @@ const AudioPlayerContext = createContext<AudioPlayerState | null>(null);
 
 function supportedContainers(): string {
   const a = document.createElement('audio');
-  const can = (entry: string) => a.canPlayType(entry).replace(/no/, '') !== '';
+  const can = (type: string) => a.canPlayType(type).replace(/no/, '') !== '';
   const list: string[] = [];
   if (can('audio/webm; codecs="opus"')) list.push('opus', 'webm|opus');
   list.push('mp3');

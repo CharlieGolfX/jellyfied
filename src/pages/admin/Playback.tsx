@@ -11,11 +11,11 @@ import { t } from '@/i18n';
 const HW_ACCEL = [
   { value: 'none', label: t('admin.playback.noneSoftware') },
   { value: 'qsv', label: t('admin.playback.intelQuickSyncQsv') },
-  { value: 'vaapi', label: t('admin.playback.videoAccelerationApiVaApi') },
+  { value: 'vaapi', label: t('admin.playback.vaapi') },
   { value: 'nvenc', label: t('admin.playback.nvidiaNvenc') },
   { value: 'amf', label: t('admin.playback.amdAmf') },
   { value: 'videotoolbox', label: t('admin.playback.appleVideotoolbox') },
-  { value: 'v4l2m2m', label: t('admin.playback.video4linux2V4l2') },
+  { value: 'v4l2m2m', label: t('admin.playback.v4l2') },
   { value: 'rkmpp', label: t('admin.playback.rockchipMppRkmpp') },
 ];
 
@@ -47,7 +47,7 @@ export default function PlaybackPage() {
   return (
     <AdminPage
       title={t('common.transcoding')}
-      description={t('admin.playback.configureHowJellyfinConvertsMedia')}
+      description={t('admin.playback.description')}
       actions={
         <Button
           variant="primary"
@@ -73,7 +73,7 @@ export default function PlaybackPage() {
             </Select>
           </Field>
           {hw === 'vaapi' && (
-            <Field label={t('admin.playback.vaApiDevice')}>
+            <Field label={t('admin.playback.vaapiDevice')}>
               <Input className="font-mono" value={enc.VaapiDevice ?? ''} onChange={(ev) => e('VaapiDevice', ev.target.value)} />
             </Field>
           )}
@@ -103,12 +103,12 @@ export default function PlaybackPage() {
                 onChange={(v) => e('EnableHardwareEncoding', v)}
               />
               <Switch
-                label={t('admin.playback.enable10BitHevcHardware')}
+                label={t('admin.playback.hevc10BitDecoding')}
                 checked={enc.EnableDecodingColorDepth10Hevc}
                 onChange={(v) => e('EnableDecodingColorDepth10Hevc', v)}
               />
               <Switch
-                label={t('admin.playback.enable10BitVp9Hardware')}
+                label={t('admin.playback.vp9TenBitDecoding')}
                 checked={enc.EnableDecodingColorDepth10Vp9}
                 onChange={(v) => e('EnableDecodingColorDepth10Vp9', v)}
               />
@@ -120,31 +120,31 @@ export default function PlaybackPage() {
       <Card title={t('admin.playback.encoding')}>
         <div className="divide-y divide-white/5">
           <Switch
-            label={t('admin.playback.allowEncodingInHevcFormat')}
+            label={t('admin.playback.allowHevcEncoding')}
             checked={enc.AllowHevcEncoding}
             onChange={(v) => e('AllowHevcEncoding', v)}
           />
           {'AllowAv1Encoding' in enc && (
             <Switch
-              label={t('admin.playback.allowEncodingInAv1Format')}
+              label={t('admin.playback.allowAv1Encoding')}
               checked={enc.AllowAv1Encoding}
               onChange={(v) => e('AllowAv1Encoding', v)}
             />
           )}
           <Switch
             label={t('admin.playback.enableToneMapping')}
-            description={t('admin.playback.convertHdrToSdrWhen')}
+            description={t('admin.playback.tonemappingHint')}
             checked={enc.EnableTonemapping}
             onChange={(v) => e('EnableTonemapping', v)}
           />
           <Switch
-            label={t('admin.playback.allowSubtitleExtractionOnThe')}
+            label={t('admin.playback.subtitleExtraction')}
             checked={enc.EnableSubtitleExtraction}
             onChange={(v) => e('EnableSubtitleExtraction', v)}
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label={t('admin.playback.encodingThreads')} hint={t('admin.playback.n1Automatic')}>
+          <Field label={t('admin.playback.encodingThreads')} hint={t('admin.playback.minusOneAutomatic')}>
             <Input
               type="number"
               min={-1}
@@ -193,13 +193,13 @@ export default function PlaybackPage() {
         <div className="divide-y divide-white/5">
           <Switch
             label={t('admin.playback.throttleTranscodes')}
-            description={t('admin.playback.pauseTranscodingOnceEnoughIs')}
+            description={t('admin.playback.throttleHint')}
             checked={enc.EnableThrottling}
             onChange={(v) => e('EnableThrottling', v)}
           />
           <Switch
             label={t('admin.playback.deleteOldSegments')}
-            description={t('admin.playback.removeAlreadyPlayedSegmentsTo')}
+            description={t('admin.playback.segmentDeletionHint')}
             checked={enc.EnableSegmentDeletion}
             onChange={(v) => e('EnableSegmentDeletion', v)}
           />
@@ -224,12 +224,12 @@ export default function PlaybackPage() {
         </div>
       </Card>
 
-      <Card title={t('admin.playback.resume')} description={t('admin.playback.whenPlaybackProgressIsSaved')}>
+      <Card title={t('admin.playback.resume')} description={t('admin.playback.resumeDescription')}>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label={t('admin.playback.minimumResume')} hint={t('admin.playback.belowThisProgressIsnT')}>
             <Input type="number" min={0} max={100} value={srv.MinResumePct} onChange={(ev) => s('MinResumePct', num(ev.target.value, 5))} />
           </Field>
-          <Field label={t('admin.playback.maximumResume')} hint={t('admin.playback.aboveThisTheItemIs')}>
+          <Field label={t('admin.playback.maximumResume')} hint={t('admin.playback.maxResumeHint')}>
             <Input
               type="number"
               min={1}
@@ -238,7 +238,7 @@ export default function PlaybackPage() {
               onChange={(ev) => s('MaxResumePct', num(ev.target.value, 90))}
             />
           </Field>
-          <Field label={t('admin.playback.minimumDurationSeconds')} hint={t('admin.playback.shorterItemsAreNeverResumable')}>
+          <Field label={t('admin.playback.minimumDurationSeconds')} hint={t('admin.playback.minResumeDurationHint')}>
             <Input
               type="number"
               min={0}
@@ -248,7 +248,7 @@ export default function PlaybackPage() {
           </Field>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label={t('admin.playback.remoteClientBitrateLimitMbps')} hint={t('admin.playback.n0NoLimit')}>
+          <Field label={t('admin.playback.remoteBitrateLimit')} hint={t('admin.playback.zeroNoLimit')}>
             <Input
               type="number"
               min={0}

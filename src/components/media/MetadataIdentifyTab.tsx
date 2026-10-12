@@ -40,7 +40,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
     mutationFn: (result: RemoteSearchResult) =>
       api.post(`/Items/RemoteSearch/Apply/${item.Id}`, result, { replaceAllImages: replaceImages }),
     onSuccess: () => {
-      toast.success(t('media.metadataIdentifyTab.itemIdentifiedItsMetadataIs'));
+      toast.success(t('media.metadataIdentifyTab.identified'));
       // The server refreshes the item in the background; pick the changes up shortly after.
       window.setTimeout(() => void qc.invalidateQueries({ queryKey: [MEDIA] }), 2500);
       void qc.invalidateQueries({ queryKey: [MEDIA] });
@@ -66,7 +66,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
       </div>
     );
   } else if (results && results.length === 0) {
-    body = <p className="py-10 text-center text-sm text-faint">{t('media.metadataIdentifyTab.noMatchesFoundTryA')}</p>;
+    body = <p className="py-10 text-center text-sm text-faint">{t('media.metadataIdentifyTab.noMatches')}</p>;
   } else if (results) {
     body = (
       <div className="grid gap-3 sm:grid-cols-2">
@@ -94,7 +94,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">{t('media.metadataIdentifyTab.searchTheServerSMetadata')}</p>
+      <p className="text-sm text-muted">{t('media.metadataIdentifyTab.description')}</p>
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
@@ -119,7 +119,7 @@ export function IdentifyTab({ item, onApplied }: { item: BaseItemDto; onApplied:
           checked={replaceImages}
           onChange={(e) => setReplaceImages(e.target.checked)}
         />
-        {t('media.metadataIdentifyTab.alsoReplaceTheExistingImages')}
+        {t('media.metadataIdentifyTab.replaceImages')}
       </label>
       {apply.isPending && <p className="text-sm text-muted">{t('media.metadataIdentifyTab.applyingMatch')}</p>}
       {body}

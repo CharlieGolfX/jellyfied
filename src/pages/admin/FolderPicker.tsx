@@ -111,14 +111,14 @@ export function FolderPicker({ open, onClose, onPick }: { open: boolean; onClose
           ) : listing.data?.length === 0 ? (
             <p className="p-3 text-sm text-muted">{t('admin.folderPicker.noSubfolders')}</p>
           ) : (
-            listing.data?.map((entry) => (
+            listing.data?.map((folder) => (
               <button
-                key={entry.Path}
-                onClick={() => enter(entry.Path)}
+                key={folder.Path}
+                onClick={() => enter(folder.Path)}
                 className="flex w-full items-center gap-2.5 rounded px-3 py-2 text-left text-sm hover:bg-white/10"
               >
                 {path ? <Folder size={16} className="shrink-0 text-accent" /> : <HardDrive size={16} className="shrink-0 text-accent" />}
-                <span className="truncate">{entry.Name || entry.Path}</span>
+                <span className="truncate">{folder.Name || folder.Path}</span>
               </button>
             ))
           )}

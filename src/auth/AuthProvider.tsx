@@ -34,7 +34,7 @@ interface AuthState {
    */
   switchAccount: (account: StoredSession, accessToken?: string) => void;
   /** Sets (or with null, removes) the PIN of the account in use, and locks or frees its saved sign-in. */
-  protectAccount: (pin: string | null) => void;
+  protectAccount: (pin: string | null) => Promise<void>;
   /** Leaves the current account signed in and opens the sign-in screen for another one. */
   addAccount: () => void;
   /** Signs a saved account out and forgets it. */
@@ -180,9 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const protectAccount = useCallback(
-    (pin: string | null) => {
+    async (pin: string | null) => {
       if (!session) return;
-      if (pin) setPin(session, pin, session.accessToken);
+      if (pin) await setPin(session, pin, session.accessToken);
       else clearPin(session);
       const saved: StoredSession = pin ? { ...session, accessToken: '', sealed: true } : { ...session, sealed: undefined };
       updateAccounts((list) => list.map((a) => (sameAccount(a, session) ? saved : a)));

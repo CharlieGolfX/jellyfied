@@ -27,8 +27,8 @@ const TYPES: { value: string; label: string }[] = [
   { value: 'mixed', label: t('admin.libraries.mixedMoviesShows') },
 ];
 
-function typeLabel(entry?: CollectionType | null | string): string {
-  return TYPES.find((x) => x.value === entry)?.label ?? (entry ? entry : t('admin.libraries.mixedContent'));
+function typeLabel(type?: CollectionType | null | string): string {
+  return TYPES.find((x) => x.value === type)?.label ?? (type ? type : t('admin.libraries.mixedContent'));
 }
 
 function useLibraries() {
@@ -75,7 +75,7 @@ export default function LibrariesPage() {
       }),
     onSuccess: (_d, { lib, full }) => {
       toast.success(
-        full ? t('admin.libraries.refreshingAllMetadataIn', { name: lib.Name }) : t('admin.libraries.scanning', { name: lib.Name }),
+        full ? t('admin.libraries.refreshingMetadata', { name: lib.Name }) : t('admin.libraries.scanningLibrary', { name: lib.Name }),
       );
       invalidate();
     },
@@ -115,7 +115,7 @@ export default function LibrariesPage() {
   return (
     <AdminPage
       title={t('admin.libraries.libraries')}
-      description={t('admin.libraries.librariesOrganiseMediaFoldersOn')}
+      description={t('admin.libraries.description')}
       actions={
         <>
           <Button icon={<RefreshCw size={16} />} loading={scanAll.isPending} onClick={() => scanAll.mutate()}>
@@ -132,7 +132,7 @@ export default function LibrariesPage() {
       ) : libraries.error ? (
         <ErrorState error={libraries.error} onRetry={() => libraries.refetch()} />
       ) : libraries.data!.length === 0 ? (
-        <EmptyState title={t('admin.libraries.noLibrariesYet')}>{t('admin.libraries.addALibraryToStart')}</EmptyState>
+        <EmptyState title={t('admin.libraries.noLibrariesYet')}>{t('admin.libraries.emptyHint')}</EmptyState>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {libraries.data!.map((lib) => (
@@ -155,7 +155,7 @@ export default function LibrariesPage() {
                   {lib.RefreshStatus === 'Active' && (
                     <div className="mt-2">
                       <div className="flex justify-between text-xs text-muted">
-                        <span>{t('admin.libraries.scanning2')}</span>
+                        <span>{t('admin.libraries.scanningLabel')}</span>
                         <span className="tabular-nums">{Math.round(lib.RefreshProgress ?? 0)}%</span>
                       </div>
                       <div className="mt-1 h-1 overflow-hidden rounded bg-white/10">
@@ -210,7 +210,7 @@ export default function LibrariesPage() {
                     <button
                       onClick={() => removePath.mutate({ lib, path: loc })}
                       className="rounded p-1 text-faint opacity-0 group-hover:opacity-100 hover:bg-white/10 hover:text-danger"
-                      aria-label={t('admin.libraries.remove', { loc })}
+                      aria-label={t('admin.libraries.removeLocation', { loc })}
                       title={t('admin.libraries.removeFolder')}
                     >
                       <X size={14} />
@@ -244,7 +244,7 @@ export default function LibrariesPage() {
         open={deleting !== null}
         title={t('admin.libraries.removeLibrary')}
         danger
-        confirmLabel={t('admin.libraries.remove2')}
+        confirmLabel={t('admin.libraries.removeLabel')}
         loading={remove.isPending}
         message={<>{tRich('admin.libraries.removeConfirm', { name: <strong className="text-fg">{deleting?.Name}</strong> })}</>}
         onClose={() => setDeleting(null)}
@@ -312,12 +312,12 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
               value={type}
               onChange={(e) => {
                 setType(e.target.value);
-                if (!name) setName(TYPES.find((entry) => entry.value === e.target.value)?.label ?? '');
+                if (!name) setName(TYPES.find((option) => option.value === e.target.value)?.label ?? '');
               }}
             >
-              {TYPES.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
+              {TYPES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </Select>
@@ -334,7 +334,7 @@ function AddLibraryModal({ open, onClose, onCreated }: { open: boolean; onClose:
                   <button
                     onClick={() => setPaths((ps) => ps.filter((x) => x !== p))}
                     className="text-faint hover:text-danger"
-                    aria-label={t('admin.libraries.remove2')}
+                    aria-label={t('admin.libraries.removeLabel')}
                   >
                     <X size={14} />
                   </button>

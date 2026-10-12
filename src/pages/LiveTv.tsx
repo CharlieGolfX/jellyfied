@@ -233,7 +233,7 @@ function Recordings() {
   });
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!isLoading && (data?.Items.length ?? 0) === 0) {
-    return <EmptyState title={t('liveTv.noRecordings')}>{t('liveTv.programmesRecordedByTheServer')}</EmptyState>;
+    return <EmptyState title={t('liveTv.noRecordings')}>{t('liveTv.recordingsHint')}</EmptyState>;
   }
   return (
     <div className="px-4 pt-6 sm:px-8 lg:px-10">
@@ -245,7 +245,7 @@ function Recordings() {
 /** Live TV: the channels with what is on, what is airing now, and the recordings. */
 export default function LiveTvPage({ library }: { library: BaseItemDto }) {
   const [params, setParams] = useSearchParams();
-  const tab = TABS.find((entry) => entry.id === params.get('tab'))?.id ?? 'channels';
+  const tab = TABS.find((option) => option.id === params.get('tab'))?.id ?? 'channels';
 
   return (
     <div className="pb-10">
@@ -258,17 +258,17 @@ export default function LiveTvPage({ library }: { library: BaseItemDto }) {
             {library.Name}
           </div>
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            {TABS.map((entry) => (
+            {TABS.map((option) => (
               <button
-                key={entry.id}
-                onClick={() => setParams({ tab: entry.id }, { replace: true })}
+                key={option.id}
+                onClick={() => setParams({ tab: option.id }, { replace: true })}
                 className={clsx(
                   'relative h-9 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                  tab === entry.id ? 'text-fg' : 'text-muted hover:text-fg',
+                  tab === option.id ? 'text-fg' : 'text-muted hover:text-fg',
                 )}
               >
-                {entry.label}
-                {tab === entry.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
+                {option.label}
+                {tab === option.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
               </button>
             ))}
           </div>

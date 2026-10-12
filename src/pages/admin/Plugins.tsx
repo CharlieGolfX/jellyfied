@@ -47,7 +47,7 @@ function Installed() {
   const toggle = useMutation({
     mutationFn: (p: PluginInfo) => api.post(`/Plugins/${p.Id}/${p.Version}/${p.Status === 'Disabled' ? 'Enable' : 'Disable'}`),
     onSuccess: () => {
-      toast.success(t('admin.plugins.pluginUpdatedRestartTheServer'));
+      toast.success(t('admin.plugins.updatedRestart'));
       void invalidate();
     },
     onError: (e) => toast.error(e),
@@ -97,7 +97,7 @@ function Installed() {
                     variant="ghost"
                     icon={<ExternalLink size={14} />}
                     onClick={() => window.open(configUrl(p)!, '_blank', 'noopener')}
-                    title={t('admin.plugins.opensThePluginSSettings')}
+                    title={t('admin.plugins.settingsHint')}
                   >
                     {t('admin.plugins.configure')}
                   </Button>
@@ -130,7 +130,7 @@ function Installed() {
         danger
         confirmLabel={t('admin.plugins.uninstall')}
         loading={uninstall.isPending}
-        message={t('admin.plugins.uninstallTheServerMustBe', { name: removing?.Name })}
+        message={t('admin.plugins.uninstallConfirm', { name: removing?.Name })}
         onClose={() => setRemoving(null)}
         onConfirm={() => removing && uninstall.mutate(removing)}
       />
@@ -157,7 +157,7 @@ function Catalog() {
       });
     },
     onSuccess: (_d, p) => {
-      toast.success(t('admin.plugins.installingRestartTheServerOnce', { name: p.name }));
+      toast.success(t('admin.plugins.installingRestart', { name: p.name }));
       void qc.invalidateQueries({ queryKey: ['admin', 'plugins'] });
     },
     onError: (e) => toast.error(e),
@@ -241,7 +241,7 @@ function Repositories() {
 
   return (
     <div className="space-y-3">
-      <p className="max-w-2xl text-sm text-muted">{t('admin.plugins.theCatalogueListsThePlugins')}</p>
+      <p className="max-w-2xl text-sm text-muted">{t('admin.plugins.repositoriesHint')}</p>
       {draft.map((r, i) => (
         <div
           key={i}
@@ -270,7 +270,7 @@ function Repositories() {
           </Button>
         </div>
       ))}
-      {draft.length === 0 && <p className="text-sm text-muted">{t('admin.plugins.noRepositoriesTheCatalogueIs')}</p>}
+      {draft.length === 0 && <p className="text-sm text-muted">{t('admin.plugins.noRepositories')}</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setDraft([...draft, { Name: '', Url: '', Enabled: true }])}>
           {t('admin.plugins.addRepository')}
@@ -279,7 +279,7 @@ function Repositories() {
           variant="primary"
           loading={save.isPending}
           disabled={!complete}
-          title={complete ? undefined : t('admin.plugins.everyRepositoryNeedsAName')}
+          title={complete ? undefined : t('admin.plugins.repositoryInvalid')}
           onClick={() => save.mutate(draft.map((r) => ({ ...r, Name: r.Name?.trim(), Url: r.Url?.trim() })))}
         >
           {t('admin.plugins.saveRepositories')}
@@ -294,19 +294,19 @@ export default function PluginsPage() {
   return (
     <AdminPage
       title={t('admin.plugins.plugins')}
-      description={t('admin.plugins.extendJellyfinWithMetadataProviders')}
+      description={t('admin.plugins.description')}
       actions={
         <div className="flex gap-1 rounded-lg bg-base-800/70 p-1 ring-1 ring-white/5">
-          {(['installed', 'catalog', 'repositories'] as const).map((entry) => (
+          {(['installed', 'catalog', 'repositories'] as const).map((option) => (
             <button
-              key={entry}
-              onClick={() => setTab(entry)}
+              key={option}
+              onClick={() => setTab(option)}
               className={clsx(
-                'rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors',
-                tab === entry ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
+                'rounded-md px-4 py-1.5 text-sm font-medium transition-colors',
+                tab === option ? 'bg-white/10 text-fg' : 'text-muted hover:text-fg',
               )}
             >
-              {entry}
+              {t(`admin.plugins.tab.${option}`)}
             </button>
           ))}
         </div>

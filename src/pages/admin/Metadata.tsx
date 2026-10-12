@@ -101,15 +101,15 @@ export default function MetadataPage() {
             value={metadataDraft.UseFileCreationTimeForDateAdded ? 'file' : 'scan'}
             onChange={(e) => setMetadataDraft({ ...metadataDraft, UseFileCreationTimeForDateAdded: e.target.value === 'file' })}
           >
-            <option value="file">{t('admin.metadata.theDateTheFileWas')}</option>
-            <option value="scan">{t('admin.metadata.theDateItWasScanned')}</option>
+            <option value="file">{t('admin.metadata.dateFileCreated')}</option>
+            <option value="scan">{t('admin.metadata.dateScanned')}</option>
           </Select>
         </Field>
       </Card>
 
-      <Card title={t('admin.metadata.nfoFiles')} description={t('admin.metadata.forLibrariesThatSaveMetadata')}>
+      <Card title={t('admin.metadata.nfoFiles')} description={t('admin.metadata.nfoHint')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.metadata.saveWatchDataToNfo')} hint={t('admin.metadata.letsOtherApplicationsReadWhat')}>
+          <Field label={t('admin.metadata.saveWatchDataToNfo')} hint={t('admin.metadata.nfoUserHint')}>
             <Select value={nfoDraft.UserId ?? ''} onChange={(e) => setNfo({ UserId: e.target.value || null })}>
               <option value="">{t('admin.metadata.nobody')}</option>
               {(users.data ?? []).map((u) => (
@@ -137,12 +137,12 @@ export default function MetadataPage() {
             onChange={(v) => setNfo({ SaveImagePathsInNfo: v })}
           />
           <Switch
-            label={t('admin.metadata.applyPathSubstitutionToImage')}
+            label={t('admin.metadata.substituteImagePaths')}
             checked={Boolean(nfoDraft.EnablePathSubstitution)}
             onChange={(v) => setNfo({ EnablePathSubstitution: v })}
           />
           <Switch
-            label={t('admin.metadata.copyExtraFanArtTo')}
+            label={t('admin.metadata.copyExtraFanArt')}
             description={t('admin.metadata.forKodiSkinsThatLook')}
             checked={Boolean(nfoDraft.EnableExtraThumbsDuplication)}
             onChange={(v) => setNfo({ EnableExtraThumbsDuplication: v })}
@@ -153,7 +153,7 @@ export default function MetadataPage() {
       {'DummyChapterDuration' in serverDraft && (
         <Card title={t('admin.metadata.chapters')}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('admin.metadata.chapterLengthForVideosWithout')} hint={t('admin.metadata.n0MakesNoChapters')}>
+            <Field label={t('admin.metadata.dummyChapterLength')} hint={t('admin.metadata.zeroNoChapters')}>
               <Input
                 type="number"
                 min={0}
@@ -178,7 +178,7 @@ export default function MetadataPage() {
       )}
 
       {trickplay && (
-        <Card title={t('admin.metadata.trickplay')} description={t('admin.metadata.thePreviewThumbnailsShownWhile')}>
+        <Card title={t('admin.metadata.trickplay')} description={t('admin.metadata.trickplayHint')}>
           <div className="divide-y divide-white/5">
             <Switch
               label={t('admin.metadata.hardwareDecoding')}
@@ -186,8 +186,8 @@ export default function MetadataPage() {
               onChange={(v) => setTrickplay({ EnableHwAcceleration: v })}
             />
             <Switch
-              label={t('admin.metadata.hardwareAcceleratedJpegEncoding')}
-              description={t('admin.metadata.onlyWithQsvVaApi')}
+              label={t('admin.metadata.hardwareJpeg')}
+              description={t('admin.metadata.hardwareJpegHint')}
               checked={Boolean(trickplay.EnableHwEncoding)}
               onChange={(v) => setTrickplay({ EnableHwEncoding: v })}
             />
@@ -199,7 +199,7 @@ export default function MetadataPage() {
             />
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <Field label={t('admin.metadata.duringALibraryScan')}>
+            <Field label={t('admin.metadata.duringScan')}>
               <Select
                 value={trickplay.ScanBehavior ?? 'NonBlocking'}
                 onChange={(e) => setTrickplay({ ScanBehavior: e.target.value as TrickplayOptions['ScanBehavior'] })}
@@ -232,7 +232,7 @@ export default function MetadataPage() {
             <Field label={t('admin.metadata.widthsPixels')} hint={t('admin.metadata.oneSetOfImagesPer')}>
               <Input value={widths ?? ''} onChange={(e) => setWidths(e.target.value)} />
             </Field>
-            <Field label={t('admin.metadata.imagesPerRowOfA')}>
+            <Field label={t('admin.metadata.imagesPerRow')}>
               <Input
                 type="number"
                 min={1}
@@ -248,7 +248,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ TileHeight: num(e.target.value, 10) })}
               />
             </Field>
-            <Field label={t('admin.metadata.jpegQuality')} hint={t('admin.metadata.n0To100')}>
+            <Field label={t('admin.metadata.jpegQuality')} hint={t('admin.metadata.rangePercent')}>
               <Input
                 type="number"
                 min={0}
@@ -257,7 +257,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ JpegQuality: num(e.target.value, 90) })}
               />
             </Field>
-            <Field label={t('admin.metadata.qualityScale')} hint={t('admin.metadata.n2BestTo31')}>
+            <Field label={t('admin.metadata.qualityScale')} hint={t('admin.metadata.rangeQscale')}>
               <Input
                 type="number"
                 min={2}
@@ -266,7 +266,7 @@ export default function MetadataPage() {
                 onChange={(e) => setTrickplay({ Qscale: num(e.target.value, 4) })}
               />
             </Field>
-            <Field label={t('admin.metadata.threads')} hint={t('admin.metadata.n0LetsFfmpegDecide')}>
+            <Field label={t('admin.metadata.threads')} hint={t('admin.metadata.zeroFfmpegDecides')}>
               <Input
                 type="number"
                 min={0}

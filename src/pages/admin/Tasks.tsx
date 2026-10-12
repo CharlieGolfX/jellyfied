@@ -94,20 +94,20 @@ export default function TasksPage() {
   const tasks = useQuery({
     queryKey: ['admin', 'tasks'],
     queryFn: () => api.get<TaskInfo[]>('/ScheduledTasks', { isHidden: false }),
-    refetchInterval: (q) => ((q.state.data ?? []).some((entry) => entry.State !== 'Idle') ? 1500 : 10_000),
+    refetchInterval: (q) => ((q.state.data ?? []).some((task) => task.State !== 'Idle') ? 1500 : 10_000),
   });
 
   if (tasks.isLoading) return <PageSpinner />;
   if (tasks.error) return <ErrorState error={tasks.error} onRetry={() => tasks.refetch()} />;
 
   const groups = new Map<string, TaskInfo[]>();
-  for (const entry of tasks.data ?? []) {
-    const key = entry.Category || t('admin.tasks.otherCategory');
-    groups.set(key, [...(groups.get(key) ?? []), entry]);
+  for (const task of tasks.data ?? []) {
+    const key = task.Category || t('admin.tasks.otherCategory');
+    groups.set(key, [...(groups.get(key) ?? []), task]);
   }
 
   return (
-    <AdminPage title={t('admin.tasks.scheduledTasks')} description={t('admin.tasks.maintenanceJobsThatJellyfinRuns')}>
+    <AdminPage title={t('admin.tasks.scheduledTasks')} description={t('admin.tasks.description')}>
       {[...groups.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([category, list]) => (
@@ -115,8 +115,8 @@ export default function TasksPage() {
             <div className="-my-3 divide-y divide-white/5">
               {list
                 .sort((a, b) => a.Name.localeCompare(b.Name))
-                .map((entry) => (
-                  <TaskRow key={entry.Id} task={entry} />
+                .map((task) => (
+                  <TaskRow key={task.Id} task={task} />
                 ))}
             </div>
           </Card>

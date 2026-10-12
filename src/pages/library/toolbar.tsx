@@ -31,7 +31,7 @@ export function AlphabetBar({ value, onChange }: { value: string; onChange: (let
     <div
       className="scrollbar-none -mx-1 flex gap-0.5 overflow-x-auto"
       role="group"
-      aria-label={t('library.toolbar.jumpToALetter')}
+      aria-label={t('library.toolbar.jumpToLetter')}
       data-testid="alphabet-bar"
     >
       {LETTERS.map((l) => (
@@ -39,7 +39,7 @@ export function AlphabetBar({ value, onChange }: { value: string; onChange: (let
           key={l}
           onClick={() => onChange(value === l ? null : l)}
           aria-pressed={value === l}
-          title={l === '#' ? t('library.toolbar.goToTitlesThatStart') : t('library.toolbar.goToTitlesThatStart2', { l })}
+          title={l === '#' ? t('library.toolbar.goToSymbols') : t('library.toolbar.goToLetter', { l })}
           className={clsx(
             'h-7 min-w-7 shrink-0 rounded px-1.5 text-xs font-semibold transition-colors',
             value === l ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-white/10 hover:text-fg',

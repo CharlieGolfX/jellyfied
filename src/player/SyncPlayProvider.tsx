@@ -52,11 +52,11 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
     };
     m.onStop = () => getActiveVideo()?.stop();
     m.onNotice = (n) => {
-      const entry = ctx.current.toast;
-      if (n.type === 'joined') entry.info(t('player.syncPlay.joined', { user: n.user }));
-      else if (n.type === 'left') entry.info(t('player.syncPlay.left', { user: n.user }));
-      else if (n.type === 'error') entry.error(n.message);
-      else if (n.type === 'info') entry.info(n.message);
+      const notify = ctx.current.toast;
+      if (n.type === 'joined') notify.info(t('player.syncPlay.joined', { user: n.user }));
+      else if (n.type === 'left') notify.info(t('player.syncPlay.left', { user: n.user }));
+      else if (n.type === 'error') notify.error(n.message);
+      else if (n.type === 'info') notify.info(n.message);
     };
     setManager(m);
     return () => m.dispose();
@@ -137,10 +137,10 @@ export function SyncPlayButton() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label={t('player.syncPlayProvider.syncplay')}
+        aria-label={t('player.syncPlayProvider.title')}
         title={
           sync.group
-            ? t('player.syncPlayProvider.syncplay2', { groupName: sync.group.GroupName })
+            ? t('player.syncPlayProvider.titleWithGroup', { groupName: sync.group.GroupName })
             : t('player.syncPlayProvider.syncplayWatchTogether')
         }
         className={clsx('rounded-full p-2 hover:bg-white/10', open || sync.group ? 'text-accent' : 'text-muted hover:text-fg')}
@@ -153,7 +153,7 @@ export function SyncPlayButton() {
           data-testid="syncplay-menu"
         >
           <div className="px-4 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-faint uppercase">
-            {t('player.syncPlayProvider.syncplay')}
+            {t('player.syncPlayProvider.title')}
           </div>
           {sync.group ? (
             <>
@@ -172,7 +172,7 @@ export function SyncPlayButton() {
                   ))}
                 </div>
                 <p className="mt-2 text-xs text-faint">
-                  {sync.hasQueue ? t('player.syncPlayProvider.playPauseAndSeekApply') : t('player.syncPlayProvider.playAMovieOrEpisode')}
+                  {sync.hasQueue ? t('player.syncPlayProvider.playPauseAndSeekApply') : t('player.syncPlayProvider.emptyHint')}
                 </p>
               </div>
               {sync.hasQueue && !sync.following && (
@@ -207,7 +207,7 @@ export function SyncPlayButton() {
                   disabled={busy}
                   onClick={() => void run(() => manager.createGroup(`${user?.Name ?? session.userName}'s group`))}
                 >
-                  <Plus size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.createAGroup')}
+                  <Plus size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.createGroup')}
                 </button>
               )}
               {groups.isLoading ? (

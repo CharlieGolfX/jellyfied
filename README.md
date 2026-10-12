@@ -466,8 +466,9 @@ docker/         container entrypoint that writes config.js and the nginx site
   like in other apps with an account switcher, unless it has a PIN. With a PIN, the account's
   sign-in is stored encrypted while someone else uses the browser. Two limits: the account that
   is in use at the moment is not protected by its PIN, and a short PIN can be found by a program
-  that tries every combination against the stored data (each try is slowed down, and every extra
-  digit makes it ten times as long). On a shared device with people you don't trust, sign out
+  that tries every combination against the stored data (each try is slowed down, most of all on
+  https and localhost, where the browser's own cryptography is used; every extra digit makes it
+  ten times as long). On a shared device with people you don't trust, sign out
   instead. Signing in with the password again removes the PIN, and an account whose PIN is
   forgotten can only be removed from the device, not signed out on the server from there.
 - The login disclaimer is shown as plain text; HTML in it is not rendered.

@@ -37,9 +37,9 @@ export function SeekBar({ current, duration, buffered, onSeek, className, compac
   };
   const onPointerMove = (e: ReactPointerEvent) => {
     if (!valid) return;
-    const entry = fromEvent(e.clientX);
-    setHover(entry);
-    if (drag !== null) setDrag(entry);
+    const time = fromEvent(e.clientX);
+    setHover(time);
+    if (drag !== null) setDrag(time);
   };
   const onPointerUp = (e: ReactPointerEvent) => {
     if (drag === null) return;

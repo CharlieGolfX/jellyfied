@@ -34,11 +34,15 @@ function PinPrompt({
 }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const result = checkPin(account, pin);
+    if (checking) return;
+    setChecking(true);
+    const result = await checkPin(account, pin);
     if (result.ok) return onUnlocked(result.accessToken);
+    setChecking(false);
     setPin('');
     setError(
       result.lockedFor
@@ -49,10 +53,10 @@ function PinPrompt({
 
   return (
     <Modal open onClose={onClose} title={t('auth.pinPrompt.switchTo', { userName: account.userName })} size="sm">
-      <form onSubmit={submit} className="space-y-4" data-testid="pin-prompt">
+      <form onSubmit={(e) => void submit(e)} className="space-y-4" data-testid="pin-prompt">
         <p className="flex items-start gap-2 text-sm text-muted">
           <Lock size={16} className="mt-0.5 shrink-0" />
-          {t('auth.pinPrompt.thisAccountIsProtectedBy')}
+          {t('auth.pinPrompt.protectedByPin')}
         </p>
         <Field label={t('auth.pinPrompt.pin')} hint={error ? <span className="text-danger">{error}</span> : undefined}>
           <PinInput value={pin} onChange={setPin} autoFocus />
@@ -61,7 +65,7 @@ function PinPrompt({
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" variant="primary" disabled={pin.length < 4}>
+          <Button type="submit" variant="primary" disabled={pin.length < 4 || checking}>
             {t('auth.pinPrompt.switch')}
           </Button>
         </div>

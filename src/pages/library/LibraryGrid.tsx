@@ -44,7 +44,7 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
   const [view] = useLibraryView();
   const filters = useFilters(library.Id, itemTypes);
   const values = useFilterValues(library.Id, itemTypes);
-  const studios = useStudios(library.Id, itemTypes, Boolean(itemTypes?.some((entry) => HAS_STUDIOS.has(entry))));
+  const studios = useStudios(library.Id, itemTypes, Boolean(itemTypes?.some((type) => HAS_STUDIOS.has(type))));
 
   const sort = config.sorts.find((s) => s.value === params.get('sort')) ?? config.sorts[0];
   const order = (params.get('order') as 'Ascending' | 'Descending' | null) ?? sort.defaultOrder;
@@ -215,7 +215,7 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
   const ratings = values.data?.OfficialRatings ?? [];
   const tags = values.data?.Tags ?? filters.data?.Tags ?? [];
   const studioList = studios.data?.Items ?? [];
-  const hasResolution = Boolean(itemTypes?.some((entry) => HAS_RESOLUTION.has(entry)));
+  const hasResolution = Boolean(itemTypes?.some((type) => HAS_RESOLUTION.has(type)));
 
   const baseWidth = config.shape === 'landscape' ? 250 : config.shape === 'square' ? 160 : 145;
   const kind = itemTypes?.includes('BoxSet')
@@ -351,7 +351,7 @@ function LibraryItems({ library, config, itemTypes }: { library: BaseItemDto; co
         <ErrorState error={result.error} onRetry={() => result.refetch()} />
       ) : !loading && items.length === 0 ? (
         <EmptyState title={t('library.libraryGrid.nothingHere')}>
-          {filtered ? t('library.libraryGrid.noItemsMatchTheCurrent') : t('library.libraryGrid.thisLibraryDoesnTContain')}
+          {filtered ? t('library.libraryGrid.noItemsMatchTheCurrent') : t('library.libraryGrid.emptyLibrary')}
         </EmptyState>
       ) : (
         <div ref={listRef} className="[overflow-anchor:none]">

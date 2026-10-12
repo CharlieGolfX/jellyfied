@@ -92,7 +92,7 @@ export function ParentalControls({
 
   return (
     <>
-      <Card title={t('admin.parentalControls.ratings')} description={t('admin.parentalControls.hidesEverythingRatedAboveThe')}>
+      <Card title={t('admin.parentalControls.ratings')} description={t('admin.parentalControls.maxRatingHint')}>
         <Field label={t('admin.parentalControls.highestAllowedRating')} className="max-w-md">
           <Select
             aria-label={t('admin.parentalControls.highestAllowedRating')}
@@ -117,7 +117,7 @@ export function ParentalControls({
           </Select>
         </Field>
         <div className="mt-4">
-          <div className="mb-1 text-sm font-medium">{t('admin.parentalControls.alsoHideItemsThatHave')}</div>
+          <div className="mb-1 text-sm font-medium">{t('admin.parentalControls.hideUnrated')}</div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3">
             {UNRATED.map(([value, label]) => (
               <Checkbox
@@ -133,14 +133,14 @@ export function ParentalControls({
 
       <Card title={t('admin.parentalControls.tags')} description={t('admin.parentalControls.tagsAreSetOnItems')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.parentalControls.onlyShowItemsWithOne')} hint={t('admin.parentalControls.emptyShowsEverythingTheRating')}>
+          <Field label={t('admin.parentalControls.onlyShowItemsWithOne')} hint={t('admin.parentalControls.allowedTagsHint')}>
             <Input
               defaultValue={(policy.AllowedTags ?? []).join(', ')}
               onChange={(e) => onChange('AllowedTags', parseList(e.target.value))}
               placeholder={t('admin.parentalControls.kidsFamily')}
             />
           </Field>
-          <Field label={t('admin.parentalControls.hideItemsWithAnyOf')}>
+          <Field label={t('admin.parentalControls.blockedTags')}>
             <Input
               defaultValue={(policy.BlockedTags ?? []).join(', ')}
               onChange={(e) => onChange('BlockedTags', parseList(e.target.value))}
@@ -208,7 +208,7 @@ export function ParentalControls({
             </li>
           ))}
         </ul>
-        {schedules.length === 0 && <p className="text-sm text-muted">{t('admin.parentalControls.noRestrictionTheUserCan')}</p>}
+        {schedules.length === 0 && <p className="text-sm text-muted">{t('admin.parentalControls.noSchedule')}</p>}
         <Button
           className="mt-3"
           variant="secondary"
@@ -216,7 +216,7 @@ export function ParentalControls({
           icon={<Plus size={15} />}
           onClick={() => onChange('AccessSchedules', [...schedules, { DayOfWeek: 'Everyday', StartHour: 8, EndHour: 20 }])}
         >
-          {t('admin.parentalControls.addATime')}
+          {t('admin.parentalControls.addTime')}
         </Button>
       </Card>
     </>

@@ -235,7 +235,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const played = Boolean(item.UserData?.Played);
   const favorite = Boolean(item.UserData?.IsFavorite);
   // Trailer links come from metadata, so only ever open plain web addresses.
-  const remoteTrailer = item.RemoteTrailers?.find((entry) => entry.Url && /^https?:\/\//i.test(entry.Url))?.Url;
+  const remoteTrailer = item.RemoteTrailers?.find((trailer) => trailer.Url && /^https?:\/\//i.test(trailer.Url))?.Url;
   const localTrailer = trailers.data?.[0];
 
   const menu: MenuItem[] = [...extraMenu];
@@ -283,7 +283,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
         onSelect: () =>
           refresh.mutate(
             { id: item.Id, full: true },
-            { onSuccess: () => toast.success(t('item.common.fullMetadataRefreshQueued')), onError: (e) => toast.error(e) },
+            { onSuccess: () => toast.success(t('item.common.refreshQueued')), onError: (e) => toast.error(e) },
           ),
       },
     );

@@ -34,11 +34,11 @@ export default function LibraryPage() {
   }
 
   const tabParam = params.get('tab') as TabId | null;
-  const tab: TabId = config.tabs.some((entry) => entry.id === tabParam) ? tabParam! : config.tabs[0].id;
+  const tab: TabId = config.tabs.some((option) => option.id === tabParam) ? tabParam! : config.tabs[0].id;
 
-  const setTab = (entry: TabId) => {
+  const setTab = (tabId: TabId) => {
     const next = new URLSearchParams();
-    next.set('tab', entry);
+    next.set('tab', tabId);
     setParams(next, { replace: true });
   };
 
@@ -54,17 +54,17 @@ export default function LibraryPage() {
           </div>
           {config.tabs.length > 1 && (
             <div className="flex gap-1 overflow-x-auto scrollbar-none">
-              {config.tabs.map((entry) => (
+              {config.tabs.map((option) => (
                 <button
-                  key={entry.id}
-                  onClick={() => setTab(entry.id)}
+                  key={option.id}
+                  onClick={() => setTab(option.id)}
                   className={clsx(
                     'relative h-9 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
-                    tab === entry.id ? 'text-fg' : 'text-muted hover:text-fg',
+                    tab === option.id ? 'text-fg' : 'text-muted hover:text-fg',
                   )}
                 >
-                  {entry.label}
-                  {tab === entry.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
+                  {option.label}
+                  {tab === option.id && <span className="absolute inset-x-3 -bottom-[13px] h-[3px] rounded-t bg-accent" />}
                 </button>
               ))}
             </div>

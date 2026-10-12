@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-12
+
 ### Added
 - Chromecast: "Chromecast…" in the "Play on" menu, and a cast button in the player that moves the
   video you are watching to the TV. Works in Chrome, Edge and other Chromium browsers.
@@ -51,7 +53,9 @@ shown in the account menu and on the login screen.
 - Browser tabs and history entries are named after the page.
 - Several accounts can be signed in on one device and switched between without a password. An
   account can be given a PIN that is asked for before switching to it on that device; its
-  sign-in is stored encrypted with the PIN while another account is in use.
+  sign-in is stored encrypted with the PIN while another account is in use. On https and
+  localhost the browser's own cryptography does this (PBKDF2 and AES-GCM), which makes guessing a
+  PIN far slower; a PIN set earlier is moved over the next time it is entered.
 - Server dashboard: Backups (create, list, restore), parental controls in the user editor
   (highest rating, unrated items, tags, access schedule), Branding, Metadata (date added, NFO
   files, chapter images, trickplay) and plugin repositories.
@@ -92,6 +96,8 @@ shown in the account menu and on the login screen.
   `src/i18n/locales/`, with typed keys, placeholders, plural forms and a language setting.
   Only English exists so far.
 - The player's top bar and control bar are components of their own.
+- Text keys that were made from the English sentence have short names that say what they are
+  for (`admin.playback.vaapi`, not `admin.playback.videoAccelerationApiVaApi`).
 - Lint is free of warnings, with every rule an error; Prettier formats the code.
 - Unit tests for the WebSocket client, SyncPlay, signing in and out, and what "Play" does; browser
   tests for search, settings, the dashboard and the metadata editor; all browser tests also run in
@@ -125,5 +131,6 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/CharlieGolfX/jellyplex/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CharlieGolfX/jellyplex/releases/tag/v1.0.0

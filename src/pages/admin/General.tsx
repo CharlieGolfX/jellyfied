@@ -40,7 +40,7 @@ export default function GeneralPage() {
   return (
     <AdminPage
       title={t('admin.general.general')}
-      description={t('admin.general.serverWideSettingsChangesTo')}
+      description={t('admin.general.description')}
       actions={
         <Button variant="primary" loading={save.isPending} onClick={() => save.mutate(draft)}>
           {t('common.saveChanges')}
@@ -49,7 +49,7 @@ export default function GeneralPage() {
     >
       <Card title={t('admin.general.server')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.general.serverName')} hint={t('admin.general.shownToClientsAndOn')}>
+          <Field label={t('admin.general.serverName')} hint={t('admin.general.serverNameHint')}>
             <Input value={draft.ServerName ?? ''} onChange={(e) => set('ServerName', e.target.value)} />
           </Field>
           <Field label={t('admin.general.displayLanguageServerUi')} hint={t('admin.general.usedForTextTheServer')}>
@@ -81,7 +81,7 @@ export default function GeneralPage() {
 
       <Card title={t('common.metadata')}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.general.preferredMetadataLanguage')}>
+          <Field label={t('admin.general.metadataLanguage')}>
             <Select value={draft.PreferredMetadataLanguage ?? ''} onChange={(e) => set('PreferredMetadataLanguage', e.target.value)}>
               {(cultures.data ?? [])
                 .slice()
@@ -113,30 +113,30 @@ export default function GeneralPage() {
       <Card title={t('admin.general.libraryBehaviour')}>
         <div className="divide-y divide-white/5">
           <Switch
-            label={t('admin.general.displayAFolderView')}
-            description={t('admin.general.showPlainMediaFoldersAlongside')}
+            label={t('admin.general.folderView')}
+            description={t('admin.general.folderViewHint')}
             checked={draft.EnableFolderView}
             onChange={(v) => set('EnableFolderView', v)}
           />
           <Switch
-            label={t('admin.general.groupMoviesIntoCollections')}
-            description={t('admin.general.moviesThatBelongToA')}
+            label={t('admin.general.groupMovies')}
+            description={t('admin.general.groupMoviesHint')}
             checked={draft.EnableGroupingMoviesIntoCollections}
             onChange={(v) => set('EnableGroupingMoviesIntoCollections', v)}
           />
           <Switch
-            label={t('admin.general.displaySpecialsWithinTheSeasons')}
+            label={t('admin.general.specialsInSeasons')}
             checked={draft.DisplaySpecialsWithinSeasons}
             onChange={(v) => set('DisplaySpecialsWithinSeasons', v)}
           />
           <Switch
-            label={t('admin.general.includeExternalContentInSuggestions')}
+            label={t('admin.general.externalSuggestions')}
             checked={draft.EnableExternalContentInSuggestions}
             onChange={(v) => set('EnableExternalContentInSuggestions', v)}
           />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.general.libraryMonitorDelaySeconds')} hint={t('admin.general.waitTimeAfterFileChanges')}>
+          <Field label={t('admin.general.monitorDelay')} hint={t('admin.general.waitTimeAfterFileChanges')}>
             <Input
               type="number"
               min={0}
@@ -145,7 +145,7 @@ export default function GeneralPage() {
             />
           </Field>
           {'LibraryScanFanoutConcurrency' in draft && (
-            <Field label={t('admin.general.parallelLibraryScanTasks')} hint={t('admin.general.n0UsesTheNumberOf')}>
+            <Field label={t('admin.general.parallelLibraryScanTasks')} hint={t('admin.general.zeroUsesCores')}>
               <Input
                 type="number"
                 min={0}
@@ -155,7 +155,7 @@ export default function GeneralPage() {
             </Field>
           )}
           {'ParallelImageEncodingLimit' in draft && (
-            <Field label={t('admin.general.parallelImageEncodingLimit')} hint={t('admin.general.n0UsesTheNumberOf')}>
+            <Field label={t('admin.general.imageEncodingLimit')} hint={t('admin.general.zeroUsesCores')}>
               <Input
                 type="number"
                 min={0}
