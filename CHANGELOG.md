@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-12
+
 ### Changed
 - The project is now called Jellyfied, and has a logo of its own: a snowflake, in place of the
   Jellyfin logo. The repository is `CharlieGolfX/jellyfied` and the image
@@ -179,7 +181,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/CharlieGolfX/jellyfied/releases/tag/v1.0.0
