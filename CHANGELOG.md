@@ -19,12 +19,20 @@ shown in the account menu and on the login screen.
 - A show or season sent to a Chromecast continues at the next episode to watch, from where it was
   left, instead of starting at the first episode.
 
+- Spanish (Spain) and Norwegian Bokmål. The language follows the browser, or is chosen under
+  Account settings → Language. A browser set to another kind of Spanish gets the Spanish text, and
+  one set to plain Norwegian gets Bokmål.
+
 ### Changed
+- Dates, numbers, file sizes and durations are written the way the chosen language writes them,
+  not the way the browser's language does.
 - Safari plays transcodes with its own HLS player, so hls.js (about 575 kB) is no longer fetched
   there. hls.js still takes over when an audio delay is set, which Safari's player can't apply,
   and when Safari's player fails on a stream.
 
 ### Fixed
+- Plugins the server reports as "Superseded" are shown with a grey status, as the misspelt
+  "Superceded" of older servers already was.
 - Styled subtitles that can't be drawn in a browser are shown as plain text. They used to be
   burned into the video by the server, despite what the fallback was meant to do.
 

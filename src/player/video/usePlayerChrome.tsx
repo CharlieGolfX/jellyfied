@@ -99,19 +99,21 @@ export function useFullscreen(containerRef: RefObject<HTMLElement | null>, video
 export function useAutoHide() {
   const [visible, setVisible] = useState(true);
   const timer = useRef<number | undefined>(undefined);
-  /** Shows the controls and starts the countdown again. */
-  const poke = useCallback(() => {
-    setVisible(true);
+  const countDown = useCallback(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setVisible(false), 3000);
   }, []);
+  /** Shows the controls and starts the countdown again. */
+  const poke = useCallback(() => {
+    setVisible(true);
+    countDown();
+  }, [countDown]);
   // Start the countdown right away, so the controls also go away when the mouse is never moved
   // (e.g. when the next episode starts by itself).
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- starts a timer; showing the controls is part of that
-    poke();
+    countDown();
     return () => window.clearTimeout(timer.current);
-  }, [poke]);
+  }, [countDown]);
   const hide = useCallback(() => {
     window.clearTimeout(timer.current);
     setVisible(false);
@@ -134,19 +136,16 @@ export function useActiveSegment(segments: MediaSegment[] | undefined, currentTi
     [segments, currentTime],
   );
   const key = segment ? `${segment.Type}-${segment.StartTicks}` : null;
-  const [fresh, setFresh] = useState(false);
-  // oxlint-disable react/set-state-in-effect -- the button's few seconds are a timer that starts with the segment
+  // The segment whose few seconds are over. Forgotten once the video is out of it, so the
+  // button shows by itself again when the same segment comes round another time.
+  const [stale, setStale] = useState<string | null>(null);
+  if (!key && stale) setStale(null);
   useEffect(() => {
     if (!key) return;
-    setFresh(true);
-    const timer = window.setTimeout(() => setFresh(false), SKIP_BUTTON_SECONDS * 1000);
-    return () => {
-      window.clearTimeout(timer);
-      setFresh(false);
-    };
+    const timer = window.setTimeout(() => setStale(key), SKIP_BUTTON_SECONDS * 1000);
+    return () => window.clearTimeout(timer);
   }, [key]);
-  // oxlint-enable react/set-state-in-effect
-  return { segment, fresh };
+  return { segment, fresh: key !== null && stale !== key };
 }
 
 /** Thumbnail shown above the seek bar, cut out of the server's trickplay sheets. Undefined when the video has none. */

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { LogOut, Play, Plus, Users } from 'lucide-react';
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
@@ -14,7 +14,20 @@ import type { VideoPlayerState } from './usePlay';
 import { isPlayPath } from './VideoSession';
 import { t } from '@/i18n';
 
-const SyncPlayContext = createContext<SyncPlayManager | null>(null);
+// The manager lives outside React, for as long as the connection does: the provider creates and
+// disposes of it, and whoever needs it reads it from here and is told when it changes.
+let current: SyncPlayManager | null = null;
+const managerListeners = new Set<() => void>();
+
+function setCurrent(manager: SyncPlayManager | null) {
+  current = manager;
+  managerListeners.forEach((l) => l());
+}
+
+function subscribeToManager(cb: () => void) {
+  managerListeners.add(cb);
+  return () => managerListeners.delete(cb);
+}
 
 const NOT_IN_GROUP: SyncPlaySnapshot = { group: null, hasQueue: false, following: false, playlistItemId: null };
 const noopSubscribe = () => () => {};
@@ -25,20 +38,14 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
   const socket = useSocket();
   const navigate = useNavigate();
   const toast = useToast();
-  const [manager, setManager] = useState<SyncPlayManager | null>(null);
 
   const ctx = useRef({ navigate, toast });
   useLayoutEffect(() => {
     ctx.current = { navigate, toast };
   });
 
-  // The manager lives as long as the connection does, and reaches the rest of the app through state.
-  // oxlint-disable react/set-state-in-effect
   useEffect(() => {
-    if (!api || !socket) {
-      setManager(null);
-      return;
-    }
+    if (!api || !socket) return;
     const m = new SyncPlayManager(api, socket);
     m.onOpen = (req) => {
       const state: VideoPlayerState = {
@@ -58,20 +65,26 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
       else if (n.type === 'error') notify.error(n.message);
       else if (n.type === 'info') notify.info(n.message);
     };
-    setManager(m);
-    return () => m.dispose();
+    setCurrent(m);
+    return () => {
+      m.dispose();
+      if (current === m) setCurrent(null);
+    };
   }, [api, socket]);
-  // oxlint-enable react/set-state-in-effect
 
-  return <SyncPlayContext.Provider value={manager}>{children}</SyncPlayContext.Provider>;
+  return children;
 }
 
 export function useSyncPlayManager(): SyncPlayManager | null {
-  return useContext(SyncPlayContext);
+  return useSyncExternalStore(
+    subscribeToManager,
+    () => current,
+    () => null,
+  );
 }
 
 export function useSyncPlay(): SyncPlaySnapshot {
-  const manager = useContext(SyncPlayContext);
+  const manager = useSyncPlayManager();
   return useSyncExternalStore(manager?.subscribe ?? noopSubscribe, manager?.getSnapshot ?? (() => NOT_IN_GROUP), () => NOT_IN_GROUP);
 }
 

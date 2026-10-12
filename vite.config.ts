@@ -64,9 +64,12 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],
-        exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/api/generated.ts'],
+        exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/api/generated.ts', 'src/test/**'],
         reporter: ['text-summary', 'html', 'json-summary'],
         reportsDirectory: 'coverage',
+        // A floor, a little under what the tests reach today: the run fails when coverage drops
+        // below it. Raise it when tests are added.
+        thresholds: { lines: 29, statements: 28, functions: 16, branches: 21 },
       },
     },
   };

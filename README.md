@@ -392,18 +392,26 @@ tRich('admin.userEdit.deleteConfirm', { name: <strong>{user.Name}</strong> })   
 - Not translated on purpose: messages for developers (`useAuth must be used inside AuthProvider`)
   and product names.
 
-To add a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`)
-with the keys you have translated; missing ones fall back to English. It then appears under
-Account settings → Language by itself, is loaded only when chosen, and is picked automatically
-for browsers set to that language. A unit test checks that no language file has keys or
-placeholders that English lacks. Dates and numbers are still formatted for the browser's
-language, not the chosen one.
+Jellyplex comes in English, Spanish (Spain, `es-ES.json`) and Norwegian Bokmål (`nb.json`). To
+add a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`). It
+then appears under Account settings → Language by itself, is loaded only when chosen, and is
+picked automatically for browsers set to that language; a language that only exists for another
+region is used too (`es-MX` gets `es-ES`). A text that is missing falls back to English while
+the app runs, but a unit test asks every language file to have every text English has, with the
+same placeholders and the plural forms its language needs: a new English text needs its
+translations in the same change.
+
+Dates, numbers, sizes and durations are written the way the chosen language writes them
+(`lib/format` takes the language from `src/i18n`), not the way the browser's language does.
 
 ### Tests
 
 - **Unit tests** ([Vitest](https://vitest.dev)) live next to the code as `*.test.ts(x)`. `npm test`
   runs them once, `npm run test:watch` re-runs them as you edit.
-- `npm run test:coverage` also writes a coverage report to `coverage/`.
+- `npm run test:coverage` also writes a coverage report to `coverage/`, and fails when coverage
+  drops below the floor set in `vite.config.ts` (CI runs this). Raise the floor when you add tests.
+- Hooks are tested by running them in a component (`src/test/renderHook.tsx`), with the server
+  and the browser's media abilities replaced by stand-ins.
 - **Browser tests** ([Playwright](https://playwright.dev)) are in `e2e/`. `npm run test:e2e` builds
   the site and runs `smoke.spec.ts` and `pages.spec.ts` against a mocked Jellyfin API, so no server
   is needed. They run in Chromium, Firefox and WebKit (Safari's engine); `E2E_BROWSERS=chromium`
@@ -422,9 +430,11 @@ language, not the chosen one.
 - **Linting** uses [oxlint](https://oxc.rs/docs/guide/usage/linter) (`npm run lint`), including the
   React hooks and React compiler rules, all as errors. **Formatting** is
   [Prettier](https://prettier.io) (`npm run format`).
-- **API types**: `src/api/types.ts` is written by hand. `npm run generate:api` regenerates
-  `src/api/generated.ts` from a Jellyfin server's OpenAPI document, and `src/api/types.check.ts`
-  makes the type check fail when a hand-written type names a field the server does not have.
+- **API types**: `npm run generate:api` regenerates `src/api/generated.ts` from a Jellyfin
+  server's OpenAPI document. The types the app uses (`src/api/types.ts`) are cut out of those:
+  each lists its fields and takes their types from the generated ones, apart from the few it
+  describes more exactly. A field the server does not have, or a type the server's description
+  rules out, fails the type check.
 - **Screenshots**: `scripts/screenshots.mjs` retakes the pictures in this README from a real library.
 
 GitHub Actions runs all of this except the playback tests on every push and pull request, and
