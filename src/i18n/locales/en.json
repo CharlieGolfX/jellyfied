@@ -952,6 +952,7 @@
     "continueAs": "Continue as {name}",
     "invalidAddress": "Please enter a valid server address.",
     "invalidCredentials": "Invalid username or password.",
+    "licences": "Licences",
     "notJellyfin": "That address did not respond like a Jellyfin server.",
     "password": "Password",
     "quickConnect": "Quick Connect",
@@ -1519,6 +1520,7 @@
   "userMenu": {
     "accountSettings": "Account settings",
     "addAccount": "Add another account",
+    "licences": "Licences",
     "open": "Account menu",
     "signOut": "Sign out",
     "switchTo": "Switch to {name}"

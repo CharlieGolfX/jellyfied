@@ -183,3 +183,13 @@ test('preferences are taken from the account and changes are sent back to it', a
   // What other apps keep in the same place is passed back untouched.
   expect(saved!.CustomPrefs!.chromecastVersion).toBe('stable');
 });
+
+test('the login screen links to the licences of Jellyplex and what it ships with', async ({ page, request }) => {
+  await mockJellyfin(page);
+  await page.goto('/');
+  const link = page.getByRole('link', { name: 'Licences' });
+  await expect(link).toHaveAttribute('href', /licenses\.txt$/);
+  const text = await (await request.get('/licenses.txt')).text();
+  expect(text).toContain('GNU GENERAL PUBLIC LICENSE');
+  expect(text).toContain('hls.js');
+});

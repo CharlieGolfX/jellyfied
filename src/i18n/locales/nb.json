@@ -952,6 +952,7 @@
     "continueAs": "Fortsett som {name}",
     "invalidAddress": "Skriv inn en gyldig serveradresse.",
     "invalidCredentials": "Ugyldig brukernavn eller passord.",
+    "licences": "Lisenser",
     "notJellyfin": "Den adressen svarte ikke som en Jellyfin-server.",
     "password": "Passord",
     "quickConnect": "Quick Connect",
@@ -1519,6 +1520,7 @@
   "userMenu": {
     "accountSettings": "Kontoinnstillinger",
     "addAccount": "Legg til en konto til",
+    "licences": "Lisenser",
     "open": "Kontomeny",
     "signOut": "Logg ut",
     "switchTo": "Bytt til {name}"

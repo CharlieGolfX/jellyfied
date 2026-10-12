@@ -32,11 +32,9 @@ function type(schema, indent = '') {
   } else if (schema.type === 'object' || schema.properties) {
     const inner = `${indent}  `;
     const lines = Object.entries(schema.properties ?? {}).map(([name, prop]) => {
-      const comment = prop.description
-        ? `${inner}/** ${String(prop.description).replace(/\s+/g, ' ').replace(/\*\//g, '* /').trim()} */\n`
-        : '';
-      const required = (schema.required ?? []).includes(name);
-      return `${comment}${inner}${key(name)}${required ? '' : '?'}: ${type(prop, inner)};`;
+      // The server's descriptions of its fields are left out: they are its documentation, under
+      // its licence. The names and types are what the API is.
+      return `${inner}${key(name)}${required ? '' : '?'}: ${type(prop, inner)};`;
     });
     if (schema.additionalProperties) {
       lines.push(`${inner}[key: string]: ${schema.additionalProperties === true ? 'unknown' : type(schema.additionalProperties, inner)};`);
@@ -57,7 +55,6 @@ const out = [
 ];
 for (const name of names) {
   const schema = schemas[name];
-  if (schema.description) out.push(`/** ${String(schema.description).replace(/\s+/g, ' ').replace(/\*\//g, '* /').trim()} */`);
   const body = type(schema);
   out.push(
     body.startsWith('{') && !schema.nullable ? `export interface ${ident(name)} ${body}` : `export type ${ident(name)} = ${body};`,

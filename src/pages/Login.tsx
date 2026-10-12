@@ -6,6 +6,7 @@ import { JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, PublicSystemInfo, QuickConnectResult, UserDto } from '@/api/types';
 import { LAST_SERVER_KEY, useAuth } from '@/auth/AuthProvider';
 import { useGuardedSwitch } from '@/auth/PinPrompt';
+import { appPath } from '@/lib/basePath';
 import { t } from '@/i18n';
 import { APP_VERSION, normalizeServerUrl, runtimeConfig } from '@/config';
 import { Logo } from '@/components/layout/Logo';
@@ -118,7 +119,13 @@ export default function LoginPage() {
             />
           )}
         </div>
-        <p className="mt-6 text-center text-xs text-faint">{t('login.tagline', { version: APP_VERSION })}</p>
+        <p className="mt-6 text-center text-xs text-faint">
+          {t('login.tagline', { version: APP_VERSION })}
+          {' · '}
+          <a href={appPath('/licenses.txt')} target="_blank" rel="noopener" className="underline-offset-2 hover:text-muted hover:underline">
+            {t('login.licences')}
+          </a>
+        </p>
       </div>
     </div>
   );

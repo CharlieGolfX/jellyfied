@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
+// @ts-expect-error -- a plain script without type declarations
+import { thirdPartyNotices } from './scripts/third-party-notices.mjs';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -29,6 +31,20 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/config.js', (_req, res) => {
             res.setHeader('Content-Type', 'application/javascript');
             res.end(`window.JELLYPLEX_CONFIG = ${JSON.stringify({ serverUrl: target ? '/jellyfin' : '', lockServer: false })};`);
+          });
+        },
+      },
+      {
+        // licenses.txt: Jellyplex's licence and the notices of everything shipped with it. The app
+        // links to it, so it is there in development as well.
+        name: 'jellyplex-licences',
+        generateBundle() {
+          this.emitFile({ type: 'asset', fileName: 'licenses.txt', source: thirdPartyNotices() as string });
+        },
+        configureServer(server) {
+          server.middlewares.use('/licenses.txt', (_req, res) => {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.end(thirdPartyNotices() as string);
           });
         },
       },
@@ -60,7 +76,7 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: { exclude: ['jassub'] },
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.{ts,tsx}'],
+      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],

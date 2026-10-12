@@ -6,6 +6,15 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Changed
+- Jellyplex is now licensed under the GNU General Public License, version 3 or later (it was
+  version 2). Two of the libraries it ships with, hls.js and a part of the subtitle engine, can
+  be combined with version 3 but not with version 2.
+
+### Added
+- `licenses.txt`, with the copyright notices and licences of everything Jellyplex ships with,
+  linked from the login screen and the account menu.
+
 ## [1.2.0] - 2026-10-12
 
 ### Added

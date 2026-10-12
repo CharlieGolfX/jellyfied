@@ -536,7 +536,8 @@ privately; see [SECURITY.md](SECURITY.md).
      should come with a test.
   5. Describe what you changed and how you tested it. For UI changes, add a screenshot.
 
-By submitting a contribution you agree that it is licensed under the GPLv2, the same license as the
+By submitting a contribution you agree that it is licensed under the GNU General Public License,
+version 3 or later, the same license as the
 rest of the project.
 
 ## Credits
@@ -544,10 +545,31 @@ rest of the project.
 The Jellyfin logo and colour scheme (purple `#AA5CC3` → blue `#00A4DC`) come from
 [jellyfin/jellyfin-ux](https://github.com/jellyfin/jellyfin-ux). All copyright in that artwork belongs
 to the Jellyfin contributors, and it is licensed under
-[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Jellyplex is an unofficial client
-and is not affiliated with or endorsed by the Jellyfin project.
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+Jellyplex is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
+or by Plex, Inc.; Jellyfin, Plex, Chromecast and AirPlay are trademarks of their owners.
+
+Jellyplex is built on React, TanStack Query, React Router, hls.js, JASSUB (libass), libpgs and
+Lucide, among others. Every build writes `licenses.txt` next to the site, with the copyright
+notices and licence texts of everything it ships; the app links to it from the login screen and
+the account menu, and `node scripts/third-party-notices.mjs` prints it.
 
 ## License
 
-Jellyplex is licensed under the [GNU General Public License v2.0](LICENSE). The Jellyfin artwork
-mentioned under [Credits](#credits) keeps its own CC BY-SA 4.0 license.
+Copyright (C) 2026 CharlieGolfX.
+
+Jellyplex is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License](LICENSE) as published by the Free Software Foundation, either
+version 3 of the License, or (at your option) any later version. It comes without any warranty.
+Versions up to 1.2.0 were released under version 2 of that license.
+
+The Jellyfin artwork mentioned under [Credits](#credits) keeps its own CC BY-SA 4.0 license, and
+the libraries Jellyplex ships with keep theirs (see `licenses.txt`). Some of them (hls.js under
+the Apache License 2.0, and a part of the subtitle engine under the GPL version 3) can be
+combined with version 3 of the GPL but not with version 2, which is why Jellyplex moved to it.
+
+The container image is the Jellyplex site on top of the
+[nginx-unprivileged](https://github.com/nginx/docker-nginx-unprivileged) image, which contains
+nginx and Alpine Linux packages under their own licenses; their source is available from those
+projects. The `licenses` label on the image describes Jellyplex itself.

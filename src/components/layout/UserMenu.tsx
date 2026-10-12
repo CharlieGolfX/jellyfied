@@ -1,4 +1,4 @@
-import { LayoutDashboard, Lock, LogOut, Settings, User, UserPlus, Users } from 'lucide-react';
+import { LayoutDashboard, Lock, LogOut, Scale, Settings, User, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { hasPin } from '@/auth/accountPin';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
@@ -7,6 +7,7 @@ import { Menu } from '@/components/ui/Menu';
 import { Img } from '@/components/ui/States';
 import { APP_NAME, APP_VERSION } from '@/config';
 import { t } from '@/i18n';
+import { appPath } from '@/lib/basePath';
 
 export function Avatar({ userId, tag, name, size = 32 }: { userId: string; tag?: string | null; name?: string; size?: number }) {
   const api = useApi();
@@ -62,6 +63,11 @@ export function UserMenu() {
           },
           { divider: true, label: '' },
           { header: true, label: `${APP_NAME} ${APP_VERSION}` },
+          {
+            label: t('userMenu.licences'),
+            icon: <Scale size={16} />,
+            onSelect: () => void window.open(appPath('/licenses.txt'), '_blank', 'noopener'),
+          },
         ]}
         trigger={({ toggle, open }) => (
           <button
