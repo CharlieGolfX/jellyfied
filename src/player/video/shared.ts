@@ -48,11 +48,6 @@ export interface LoadOptions {
   forceTranscode?: boolean;
   /** Buffer without starting (SyncPlay starts everyone at the same moment). */
   holdStart?: boolean;
-  /**
-   * Hand an HLS stream to the browser's own player instead of hls.js. AirPlay needs that: a video
-   * fed through Media Source Extensions can't be sent to another device.
-   */
-  nativeHls?: boolean;
 }
 
 export const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];

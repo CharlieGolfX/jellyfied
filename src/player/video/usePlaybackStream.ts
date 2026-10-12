@@ -1,11 +1,12 @@
 import type Hls from 'hls.js';
-import { hlsJsSupported } from './hlsSupport';
+import { hlsJsSupported, nativeHlsSupported, playsHlsNatively } from './hlsSupport';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { generateId, isChromium } from '@/api/device';
 import type { BaseItemDto, MediaStream, PlaybackInfoResponse } from '@/api/types';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { errorMessage } from '@/components/ui/Toast';
 import { secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { hasAudioGraph } from '../audioDelay';
 import { useAudioPlayer } from '../AudioPlayerProvider';
 import { buildDeviceProfile, canRenderAss, MAX_BITRATE, type SubtitleMode } from '../deviceProfile';
 import { getSubtitleStyle } from '../subtitleStyle';
@@ -50,6 +51,7 @@ export function usePlaybackStream({
   subtitleDelay,
   inPip,
   airPlay,
+  audioDelayed,
 }: {
   itemId: string;
   item: BaseItemDto | undefined;
@@ -69,6 +71,8 @@ export function usePlaybackStream({
   inPip: boolean;
   /** The picture is being sent to an AirPlay device. */
   airPlay: boolean;
+  /** An audio delay is set. */
+  audioDelayed: boolean;
 }) {
   const api = useApi();
   const { userId } = useSession();
@@ -91,6 +95,9 @@ export function usePlaybackStream({
   const undrawable = useRef(new Set<CanvasFormat>());
   const inPipRef = useLatest(inPip);
   const airPlayRef = useLatest(airPlay);
+  const audioDelayedRef = useLatest(audioDelayed);
+  /** Set when the browser's own HLS player failed during this playback: hls.js takes over. */
+  const nativeHlsFailed = useRef(false);
 
   /** Styled subtitles are shown as plain text: by choice, or because they can't be drawn here. */
   const plainStyled = useCallback(() => !getSubtitleStyle().styled || undrawable.current.has('ass') || !canRenderAss(), []);
@@ -382,8 +389,16 @@ export function usePlaybackStream({
           burnedSub: Boolean(subStream && subStream.DeliveryMethod === 'Encode'),
           subtitleMode,
           transcodeReasons: reasons,
-          // AirPlay only takes a video the browser plays by itself (see LoadOptions.nativeHls).
-          nativeHls: isHls && ((opts.nativeHls ?? airPlayRef.current) || !hlsJsSupported()),
+          nativeHls:
+            isHls &&
+            playsHlsNatively({
+              native: nativeHlsSupported(),
+              hlsJs: hlsJsSupported(),
+              airPlay: airPlayRef.current,
+              // Sound that was once routed through Web Audio stays there for this video element.
+              audioDelayed: audioDelayedRef.current || hasAudioGraph(video),
+              nativeFailed: nativeHlsFailed.current,
+            }),
         };
 
         // Attach the new source.
@@ -472,6 +487,7 @@ export function usePlaybackStream({
       showSubtitle,
       subtitleModeOf,
       airPlayRef,
+      audioDelayedRef,
       syncItemId,
       syncManager,
       videoRef,
@@ -489,15 +505,18 @@ export function usePlaybackStream({
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [subtitleDelay, subtitleKind]);
 
-  // The picture moved to a picture-in-picture window or an AirPlay device, or came back. AirPlay
-  // only takes a video the browser plays by itself, so a transcode that hls.js is feeding is loaded
-  // again through Safari's own HLS player. Neither carries the canvases along that styled and image
-  // subtitles are drawn on, so those are asked for in a form that does travel, and back afterwards.
+  // The picture moved to a picture-in-picture window or an AirPlay device, or came back, or an
+  // audio delay was set. AirPlay only takes a video the browser plays by itself, so a transcode that
+  // hls.js is feeding is loaded again through Safari's own HLS player; the audio delay needs the
+  // opposite (see playsHlsNatively). Neither window nor device carries the canvases along that
+  // styled and image subtitles are drawn on, so those are asked for in a form that does travel,
+  // and back afterwards.
   useEffect(() => {
     const s = streamRef.current;
     const video = videoRef.current;
     if (!s || !video) return;
     const needsNativeHls = airPlay && s.isHls && !s.nativeHls;
+    const needsHlsJs = audioDelayed && !airPlay && s.isHls && s.nativeHls && hlsJsSupported();
     const track = s.subIndex >= 0 ? s.source.MediaStreams?.find((m) => m.Type === 'Subtitle' && m.Index === s.subIndex) : undefined;
     const mode = subtitleModeOf(track);
     const content = subtitleContent(track?.Codec);
@@ -511,8 +530,8 @@ export function usePlaybackStream({
         mediaSourceId: s.source.Id,
         forceTranscode,
       });
-    if (needsNativeHls || needsOtherSubtitles) {
-      reload(needsNativeHls || undefined);
+    if (needsNativeHls || needsHlsJs || needsOtherSubtitles) {
+      reload(needsNativeHls || needsHlsJs || undefined);
       return;
     }
     if (!track || mode === s.subtitleMode || s.burnedSub) return;
@@ -523,7 +542,7 @@ export function usePlaybackStream({
     if (content !== 'styled') return;
     clearSubtitles();
     void showSubtitle(track, loadToken.current, reload);
-  }, [inPip, airPlay, load, maxBitrate, subtitleModeOf, showSubtitle, clearSubtitles, videoRef]);
+  }, [inPip, airPlay, audioDelayed, load, maxBitrate, subtitleModeOf, showSubtitle, clearSubtitles, videoRef]);
 
   // SyncPlay: hand the video element to the group manager for as long as this player is open.
   useEffect(() => {
@@ -648,6 +667,19 @@ export function usePlaybackStream({
       if (!s || hlsRef.current) return; // hls.js reports its own errors
       const mediaError = video.error;
       if (!mediaError) return;
+      if (s.nativeHls && !airPlayRef.current && hlsJsSupported() && !nativeHlsFailed.current) {
+        // The browser's own HLS player gave up on the stream: hls.js copes with more, so try that.
+        nativeHlsFailed.current = true;
+        void load({
+          start: video.currentTime,
+          audioIndex: s.audioIndex,
+          subIndex: s.subIndex,
+          bitrate: maxBitrate,
+          mediaSourceId: s.source.Id,
+          forceTranscode: true,
+        });
+        return;
+      }
       if (s.method !== 'Transcode' && !fallbackTried.current) {
         // Direct play failed (unsupported codec in practice) – fall back to a server transcode.
         fallbackTried.current = true;
@@ -695,7 +727,7 @@ export function usePlaybackStream({
       video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('error', onError);
     };
-  }, [api, itemId, load, maxBitrate, videoRef]);
+  }, [api, itemId, load, maxBitrate, videoRef, airPlayRef]);
 
   // ---- Track switching -----------------------------------------------------
   const sourceStreams = stream?.source.MediaStreams ?? [];

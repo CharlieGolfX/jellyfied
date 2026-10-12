@@ -191,9 +191,11 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     subtitleDelay,
     inPip,
     airPlay: airPlay.active,
+    audioDelayed: audioDelay !== 0,
   });
-  // Safari's own HLS player (iPhone, and AirPlay everywhere) can't route its sound through Web Audio.
-  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (stream.nativeHls || !hlsJsSupported()));
+  // Safari's own HLS player can't route its sound through Web Audio. Where hls.js can play the
+  // stream instead, it takes over once a delay is set; it can't on iPhone, or for AirPlay.
+  const audioDelayAvailable = audioDelaySupported() && !(stream?.isHls && (airPlay.active || !hlsJsSupported()));
   /** The subtitles are drawn here, not burned in, so they can be shifted in time. */
   const subtitleTiming = subtitleKind !== 'none';
 

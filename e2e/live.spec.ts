@@ -327,7 +327,7 @@ test.describe('playback on a real server', () => {
     await expectPlaying(page);
   });
 
-  test('transcodes on request and keeps playing', async ({ page }) => {
+  test('transcodes on request and keeps playing', async ({ page, browserName }) => {
     const [movie] = await items(page, '/Items', { includeItemTypes: 'Movie', recursive: 'true', sortBy: 'SortName', limit: '1' });
     test.skip(!movie, 'the server has no movies');
     const hlsRequests = watchForHls(page);
@@ -346,11 +346,41 @@ test.describe('playback on a real server', () => {
     await page.getByRole('button', { name: '2 Mbps 480p' }).click();
     await expect(page.getByText('Transcode', { exact: true })).toBeVisible({ timeout: 30_000 });
     await expectPlaying(page);
-    // The transcode comes as HLS: now it has been fetched, once.
-    expect(hlsRequests).toHaveLength(1);
+    // The transcode comes as HLS. Safari plays that by itself; elsewhere hls.js has now been fetched, once.
+    expect(hlsRequests).toHaveLength(browserName === 'webkit' ? 0 : 1);
     // Back to the original quality for whoever uses this browser profile next.
     await showControls(page);
     await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Original / Auto' }).click();
+  });
+
+  test('holds the sound back by the audio delay, also for a transcode', async ({ page, browserName }) => {
+    const [movie] = await items(page, '/Items', { includeItemTypes: 'Movie', recursive: 'true', sortBy: 'SortName', limit: '1' });
+    test.skip(!movie, 'the server has no movies');
+    const hlsRequests = watchForHls(page);
+    await page.goto(`/item/${movie.Id}`);
+    await page
+      .getByRole('button', { name: 'Play from beginning' })
+      .or(page.getByRole('button', { name: 'Play', exact: true }))
+      .first()
+      .click();
+    await expectPlaying(page);
+    await showControls(page);
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: '2 Mbps 480p' }).click();
+    await expect(page.getByText('Transcode', { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expectPlaying(page);
+
+    await showControls(page);
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'More audio delay' }).click();
+    await expect(page.getByTestId('audio-delay')).toHaveText('+25 ms');
+    // Safari's own HLS player can't delay its sound, so the stream moves to hls.js there.
+    if (browserName === 'webkit') await expect.poll(() => hlsRequests.length, { timeout: 30_000 }).toBe(1);
+    await expectPlaying(page);
+    await expect(page.getByText('Audio delay isn’t available in this browser.')).toHaveCount(0);
+
+    // Back to the original quality for whoever uses this browser profile next (the menu is still open).
     await page.getByRole('button', { name: 'Original / Auto' }).click();
   });
 

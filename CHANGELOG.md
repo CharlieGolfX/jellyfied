@@ -19,6 +19,11 @@ shown in the account menu and on the login screen.
 - A show or season sent to a Chromecast continues at the next episode to watch, from where it was
   left, instead of starting at the first episode.
 
+### Changed
+- Safari plays transcodes with its own HLS player, so hls.js (about 575 kB) is no longer fetched
+  there. hls.js still takes over when an audio delay is set, which Safari's player can't apply,
+  and when Safari's player fails on a stream.
+
 ### Fixed
 - Styled subtitles that can't be drawn in a browser are shown as plain text. They used to be
   burned into the video by the server, despite what the fallback was meant to do.
