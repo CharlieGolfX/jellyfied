@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    console.error('Jellyplex: a part of the page crashed', error, info.componentStack);
+    console.error('Jellyfied: a part of the page crashed', error, info.componentStack);
   }
 
   reset = () => this.setState({ failed: false, error: null });

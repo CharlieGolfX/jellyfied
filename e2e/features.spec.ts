@@ -279,7 +279,7 @@ test('the interface language can be chosen from the languages there is text for'
   const language = page.getByLabel('Interface language');
   await expect(language.getByRole('option')).toHaveText(['Same as the browser (English)', 'English', /^Español/, 'Norsk bokmål']);
   await language.selectOption('en');
-  expect(await page.evaluate(() => localStorage.getItem('jellyplex.language'))).toBe('en');
+  expect(await page.evaluate(() => localStorage.getItem('jellyfied.language'))).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
@@ -317,14 +317,14 @@ test('an account can be protected with a PIN that is asked for when switching to
   await expect(page.getByText('PIN set')).toBeVisible();
   await expect(form.getByLabel('Current PIN')).toBeVisible();
   // Not stored as it was typed. (The digits alone may turn up inside the random salt or the hash.)
-  expect(await page.evaluate(() => localStorage.getItem('jellyplex.pins'))).not.toContain('"4821"');
+  expect(await page.evaluate(() => localStorage.getItem('jellyfied.pins'))).not.toContain('"4821"');
 
   // A second account signs in on this browser and becomes the current one.
   await page.evaluate(() => {
-    const demo = JSON.parse(localStorage.getItem('jellyplex.session')!);
+    const demo = JSON.parse(localStorage.getItem('jellyfied.session')!);
     const guest = { ...demo, userId: 'user-2', userName: 'guest', accessToken: 'guest-token' };
-    localStorage.setItem('jellyplex.session', JSON.stringify(guest));
-    localStorage.setItem('jellyplex.accounts', JSON.stringify([guest, ...JSON.parse(localStorage.getItem('jellyplex.accounts')!)]));
+    localStorage.setItem('jellyfied.session', JSON.stringify(guest));
+    localStorage.setItem('jellyfied.accounts', JSON.stringify([guest, ...JSON.parse(localStorage.getItem('jellyfied.accounts')!)]));
   });
   await page.goto('/');
   // With someone else using the browser, the protected account's sign-in is nowhere to be read.
@@ -336,15 +336,15 @@ test('an account can be protected with a PIN that is asked for when switching to
   await prompt.getByLabel('PIN').fill('0000');
   await prompt.getByRole('button', { name: 'Switch' }).click();
   await expect(prompt).toContainText('Wrong PIN. 4 tries left.');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).userName)).toBe('guest');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyfied.session')!).userName)).toBe('guest');
 
   await prompt.getByLabel('PIN').fill('4821');
   await prompt.getByRole('button', { name: 'Switch' }).click();
   // Switching reloads the page, which can cut a look at its storage short: look again then.
   await expect
-    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).userName).catch(() => null))
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyfied.session')!).userName).catch(() => null))
     .toBe(USER.name);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyplex.session')!).accessToken)).toBe('mock-token');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('jellyfied.session')!).accessToken)).toBe('mock-token');
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
 });
 
@@ -433,4 +433,17 @@ test.describe('the server dashboard', () => {
       { Name: 'Extras', Url: 'https://example.org/manifest.json', Enabled: true },
     ]);
   });
+});
+
+test('settings saved under the name from before the rename still apply', async ({ page }) => {
+  await mockJellyfin(page);
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('jellyfied.language')) localStorage.setItem('jellyplex.language', 'nb');
+  });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Logg inn' })).toBeVisible();
+  expect(await page.evaluate(() => [localStorage.getItem('jellyfied.language'), localStorage.getItem('jellyplex.language')])).toEqual([
+    'nb',
+    null,
+  ]);
 });

@@ -1,4 +1,4 @@
-// Builds the text of licenses.txt: Jellyplex's own licence, and the copyright notices and licences
+// Builds the text of licenses.txt: Jellyfied's own licence, and the copyright notices and licences
 // of everything that is shipped with it. The build writes it next to the site (see vite.config.ts),
 // and the app links to it from the login screen and the account menu.
 //   node scripts/third-party-notices.mjs      prints it
@@ -54,31 +54,25 @@ export function thirdPartyNotices() {
   const { version } = JSON.parse(read('package.json'));
   const packages = shippedPackages();
   const parts = [
-    `Jellyplex ${version}
+    `Jellyfied ${version}
 Copyright (C) 2026 CharlieGolfX
 
-Jellyplex is free software: you can redistribute it and/or modify it under the terms of the GNU
+Jellyfied is free software: you can redistribute it and/or modify it under the terms of the GNU
 General Public License as published by the Free Software Foundation, either version 3 of the
 License, or (at your option) any later version. It is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 FOR A PARTICULAR PURPOSE. The full licence is at the end of this file.
 
-Source code: https://github.com/CharlieGolfX/jellyplex
+Source code: https://github.com/CharlieGolfX/jellyfied
 
-Jellyplex is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
+Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
 or by Plex, Inc. Jellyfin, Plex, Chromecast and AirPlay are trademarks of their owners.
 
-This file lists what Jellyplex is shipped with, and the licences that come with those parts.
+This file lists what Jellyfied is shipped with, and the licences that come with those parts.
 `,
     section(
       'Artwork and fonts',
-      `Jellyfin logo and icon
-  From https://github.com/jellyfin/jellyfin-ux. All copyright belongs to the Jellyfin
-  contributors. Licensed under the Creative Commons Attribution-ShareAlike 4.0 International
-  License (CC BY-SA 4.0), printed below. The icon is used unchanged; the wordmark is drawn
-  from the same artwork.
-
-Liberation Sans (the fallback font for styled subtitles, shipped with JASSUB)
+      `Liberation Sans (the fallback font for styled subtitles, shipped with JASSUB)
   Digitized data copyright (c) 2010 Google Corporation. Copyright (c) 2012 Red Hat, Inc.
   Licensed under the SIL Open Font License, Version 1.1, printed below.
 
@@ -103,8 +97,7 @@ BlurHash
     ...JASSUB_LICENCES.map((id) => section(`${id} (parts of JASSUB's WebAssembly file)`, licence(id))),
     section('Apache License 2.0 (hls.js, abslink)', licence('Apache-2.0')),
     section('SIL Open Font License 1.1 (Liberation Sans)', licence('OFL-1.1')),
-    section('Creative Commons Attribution-ShareAlike 4.0 International (Jellyfin artwork)', licence('CC-BY-SA-4.0')),
-    section('GNU General Public License, version 3 (Jellyplex, rvfc-polyfill)', read('LICENSE')),
+    section('GNU General Public License, version 3 (Jellyfied, rvfc-polyfill)', read('LICENSE')),
   ];
   return parts.join('\n');
 }

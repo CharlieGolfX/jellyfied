@@ -19,7 +19,7 @@ test.describe('as a regular user', () => {
     await expect(page).toHaveURL(/\/search\?q=mock$/);
     await expect(page.getByRole('heading', { name: /Results for/ })).toContainText('mock');
     await expect(page.getByRole('heading', { name: 'Movies' })).toBeVisible();
-    await expect(page).toHaveTitle('“mock” · Jellyplex');
+    await expect(page).toHaveTitle('“mock” · Jellyfied');
   });
 
   test('"/" jumps to the search box', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('as an administrator', () => {
     await page.getByRole('button', { name: 'Account menu' }).click();
     await page.getByText('Server dashboard').click();
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page).toHaveTitle('Server dashboard · Jellyplex');
+    await expect(page).toHaveTitle('Server dashboard · Jellyfied');
     await expect(page.getByText('Mock Server').first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Users' }).click();

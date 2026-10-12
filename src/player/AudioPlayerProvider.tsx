@@ -95,7 +95,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(() => {
-    const v = Number(localStorage.getItem('jellyplex.volume'));
+    const v = Number(localStorage.getItem('jellyfied.volume'));
     return Number.isFinite(v) && v > 0 && v <= 1 ? v : 1;
   });
   const [muted, setMuted] = useState(false);
@@ -272,7 +272,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     audio.volume = volume;
     audio.muted = muted;
     try {
-      localStorage.setItem('jellyplex.volume', String(volume));
+      localStorage.setItem('jellyfied.volume', String(volume));
     } catch {
       /* ignore */
     }

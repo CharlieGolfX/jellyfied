@@ -54,7 +54,7 @@ export const SUBTITLE_EDGES: { value: SubtitleStyle['edge']; label: string; css:
   },
 ];
 
-const KEY = 'jellyplex.subtitleStyle';
+const KEY = 'jellyfied.subtitleStyle';
 
 function pick<T extends { value: string }>(options: T[], value: unknown, fallback: T['value']): T['value'] {
   return options.some((o) => o.value === value) ? (value as T['value']) : fallback;

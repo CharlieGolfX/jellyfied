@@ -1,3 +1,5 @@
+// Moves what an older version stored under the app's former name, before anything reads it.
+import '@/lib/renamed';
 import './index.css';
 // Applies the saved interface colours before anything is shown.
 import '@/lib/theme';

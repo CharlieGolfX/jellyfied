@@ -7,14 +7,14 @@ export interface RuntimeConfig {
 
 declare global {
   interface Window {
-    JELLYPLEX_CONFIG?: RuntimeConfig;
+    JELLYFIED_CONFIG?: RuntimeConfig;
   }
 }
 
-export const APP_NAME = 'Jellyplex';
+export const APP_NAME = 'Jellyfied';
 export const APP_VERSION = __APP_VERSION__;
 
-const raw: RuntimeConfig = (typeof window !== 'undefined' && window.JELLYPLEX_CONFIG) || {};
+const raw: RuntimeConfig = (typeof window !== 'undefined' && window.JELLYFIED_CONFIG) || {};
 
 /**
  * Normalises a user-entered server address into an absolute base URL without a

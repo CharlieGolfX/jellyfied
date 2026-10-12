@@ -5,7 +5,7 @@ import { onPrefPulled, prefChanged } from './prefsBus';
 /** Clock style for wall-clock times (24-hour by default). Synced with the account (see prefsSync). */
 export type TimeFormat = '24h' | '12h';
 
-const KEY = 'jellyplex.timeFormat';
+const KEY = 'jellyfied.timeFormat';
 
 function read(): TimeFormat {
   try {

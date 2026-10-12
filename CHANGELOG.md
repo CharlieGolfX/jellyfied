@@ -1,18 +1,25 @@
 # Changelog
 
-Notable changes to Jellyplex. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+Notable changes to Jellyfied (called Jellyplex up to version 1.2.0). The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/). The version you are running is
 shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
 ### Changed
-- Jellyplex is now licensed under the GNU General Public License, version 3 or later (it was
+- The project is now called Jellyfied, and has a logo of its own: a snowflake, in place of the
+  Jellyfin logo. The repository is `CharlieGolfX/jellyfied` and the image
+  `ghcr.io/charliegolfx/jellyfied`; the old image name gets no more updates. The environment
+  variables are now `JELLYFIED_…`, and the `JELLYPLEX_…` names keep working. Sign-ins and settings
+  saved in the browser or synced to the account under the old name are carried over.
+- The "Jellyfin blue", "Jellyfin purple" and "Jellyfin dark" colours under Account settings are
+  now named after Jellyfied. The colours are the same.
+- Jellyfied is now licensed under the GNU General Public License, version 3 or later (it was
   version 2). Two of the libraries it ships with, hls.js and a part of the subtitle engine, can
   be combined with version 3 but not with version 2.
 
 ### Added
-- `licenses.txt`, with the copyright notices and licences of everything Jellyplex ships with,
+- `licenses.txt`, with the copyright notices and licences of everything Jellyfied ships with,
   linked from the login screen and the account menu.
 
 ## [1.2.0] - 2026-10-12
@@ -172,7 +179,7 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyplex/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/CharlieGolfX/jellyplex/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/CharlieGolfX/jellyplex/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/CharlieGolfX/jellyplex/releases/tag/v1.0.0
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/CharlieGolfX/jellyfied/releases/tag/v1.0.0

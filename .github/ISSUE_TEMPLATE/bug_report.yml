@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Jellyplex does not work as it should
+description: Something in Jellyfied does not work as it should
 labels: [bug]
 body:
   - type: textarea
@@ -20,9 +20,9 @@ body:
     validations:
       required: true
   - type: input
-    id: jellyplex
+    id: jellyfied
     attributes:
-      label: Jellyplex version
+      label: Jellyfied version
       description: Shown at the bottom of the account menu and on the sign-in screen.
       placeholder: 1.0.0
     validations:
@@ -44,7 +44,7 @@ body:
   - type: dropdown
     id: install
     attributes:
-      label: How do you run Jellyplex?
+      label: How do you run Jellyfied?
       options:
         - Prebuilt image (ghcr.io)
         - Docker Compose, built from source

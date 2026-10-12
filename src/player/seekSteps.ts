@@ -10,7 +10,7 @@ export interface SeekSteps {
 export const DEFAULT_SEEK_STEPS: SeekSteps = { back: 10, forward: 30 };
 export const SEEK_STEP_OPTIONS = [5, 10, 15, 30, 60, 90];
 
-const KEY = 'jellyplex.seekSteps';
+const KEY = 'jellyfied.seekSteps';
 
 function pick(value: unknown, fallback: number): number {
   return SEEK_STEP_OPTIONS.includes(value as number) ? (value as number) : fallback;

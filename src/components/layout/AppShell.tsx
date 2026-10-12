@@ -12,12 +12,12 @@ import { RemoteBar } from '@/player/RemoteBar';
 import { SyncPlayButton } from '@/player/SyncPlayProvider';
 import { useVideoSession } from '@/player/VideoSession';
 import { CardSizeButton } from './CardSizeButton';
-import { JellyfinIcon, Logo } from './Logo';
+import { AppIcon, Logo } from './Logo';
 import { SearchBox } from './SearchBox';
 import { Sidebar } from './Sidebar';
 import { UserMenu } from './UserMenu';
 
-const COLLAPSE_KEY = 'jellyplex.sidebarCollapsed';
+const COLLAPSE_KEY = 'jellyfied.sidebarCollapsed';
 /** How far each page in the history was scrolled, by the key the router gives its history entry. */
 const scrollPositions = new Map<string, number>();
 
@@ -121,10 +121,10 @@ export function AppShell() {
           <MenuIcon size={22} />
         </button>
         <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label={t('common.home')}>
-          <Logo className="h-8" />
+          <Logo className="text-2xl" />
         </Link>
         <Link to="/" className="shrink-0 sm:hidden" aria-label={t('common.home')}>
-          <JellyfinIcon className="h-7 w-7" />
+          <AppIcon className="h-7 w-7" />
         </Link>
         <div className="flex min-w-0 flex-1 justify-center">
           <SearchBox />

@@ -105,7 +105,7 @@ describe('track memory', () => {
   });
 
   it('survives unreadable stored data', () => {
-    localStorage.setItem('jellyplex.trackMemory', '{not json');
+    localStorage.setItem('jellyfied.trackMemory', '{not json');
     expect(recallTracks('show', [audio(1, 'eng')], both)).toEqual({});
     rememberAudioTrack('show', audio(1, 'eng'));
     expect(recallTracks('show', [audio(4, 'eng')], both)).toEqual({ audioIndex: 4 });

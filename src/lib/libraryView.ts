@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 /** How library pages lay their items out. Stored in this browser only. */
 export type LibraryView = 'grid' | 'list';
 
-const KEY = 'jellyplex.libraryView';
+const KEY = 'jellyfied.libraryView';
 
 function read(): LibraryView {
   try {

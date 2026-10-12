@@ -29,7 +29,7 @@ describe('JellyfinApi', () => {
 
   it('identifies itself and sends the token in the Authorization header', () => {
     const header = new JellyfinApi('', 'tok').authorizationHeader();
-    expect(header).toMatch(/^MediaBrowser Client="Jellyplex", Device="[^"]*", DeviceId="[^"]+", Version="[^"]+", Token="tok"$/);
+    expect(header).toMatch(/^MediaBrowser Client="Jellyfied", Device="[^"]*", DeviceId="[^"]+", Version="[^"]+", Token="tok"$/);
     expect(new JellyfinApi('').authorizationHeader()).not.toContain('Token=');
   });
 

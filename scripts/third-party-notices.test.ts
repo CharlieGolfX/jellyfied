@@ -14,18 +14,18 @@ const manifest = JSON.parse(readFileSync(new URL('package.json', root), 'utf8'))
 describe('licenses.txt', () => {
   const text = thirdPartyNotices();
 
-  it("starts with Jellyplex's own licence and where the source is", () => {
+  it("starts with Jellyfied's own licence and where the source is", () => {
     expect(manifest.license).toBe('GPL-3.0-or-later');
-    expect(text).toMatch(/^Jellyplex \d+\.\d+\.\d+\nCopyright \(C\)/);
+    expect(text).toMatch(/^Jellyfied \d+\.\d+\.\d+\nCopyright \(C\)/);
     expect(text).toContain('either version 3 of the\nLicense, or (at your option) any later version');
-    expect(text).toContain('https://github.com/CharlieGolfX/jellyplex');
+    expect(text).toContain('https://github.com/CharlieGolfX/jellyfied');
     expect(readFileSync(new URL('LICENSE', root), 'utf8')).toContain('Version 3, 29 June 2007');
   });
 
   it('names every library the site is shipped with', () => {
     for (const name of Object.keys(manifest.dependencies))
       expect(text, name).toMatch(new RegExp(`^${name.replace(/[/.]/g, '\\$&')} \\d`, 'm'));
-    // Not asked for by Jellyplex itself, but bundled with what it asks for.
+    // Not asked for by Jellyfied itself, but bundled with what it asks for.
     for (const name of ['rvfc-polyfill', 'abslink', 'scheduler']) expect(text).toContain(`\n${name} `);
   });
 
@@ -39,7 +39,6 @@ describe('licenses.txt', () => {
       'SIL OPEN FONT LICENSE',
       'GNU LESSER GENERAL PUBLIC LICENSE',
       'The FreeType Project LICENSE',
-      'Attribution-ShareAlike 4.0 International',
       'GNU GENERAL PUBLIC LICENSE',
       'Copyright (c) 2017 Dailymotion',
       'Liberation Sans',

@@ -5,10 +5,10 @@ import type { AuthenticationResult, UserDto } from '@/api/types';
 import { appPath } from '@/lib/basePath';
 import { clearPin, setPin } from './accountPin';
 
-const SESSION_KEY = 'jellyplex.session';
+const SESSION_KEY = 'jellyfied.session';
 /** Every account signed in on this browser, the current one included, so users can switch without a password (see accountPin). */
-const ACCOUNTS_KEY = 'jellyplex.accounts';
-export const LAST_SERVER_KEY = 'jellyplex.lastServer';
+const ACCOUNTS_KEY = 'jellyfied.accounts';
+export const LAST_SERVER_KEY = 'jellyfied.lastServer';
 
 export interface StoredSession {
   serverUrl: string;

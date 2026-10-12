@@ -7,8 +7,8 @@ import { AuthProvider, loadAccounts, useAuth, type StoredSession } from './AuthP
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const SESSION_KEY = 'jellyplex.session';
-const ACCOUNTS_KEY = 'jellyplex.accounts';
+const SESSION_KEY = 'jellyfied.session';
+const ACCOUNTS_KEY = 'jellyfied.accounts';
 
 const saved = (userId: string, accessToken = `token-${userId}`): StoredSession => ({
   serverUrl: 'http://server:8096',
@@ -97,7 +97,7 @@ describe('AuthProvider', () => {
     expect(auth.session).toMatchObject({ userId: 'ann', userName: 'ann', serverName: 'Home', accessToken: 'token-ann' });
     expect(JSON.parse(localStorage.getItem(SESSION_KEY)!)).toMatchObject({ userId: 'ann' });
     expect(loadAccounts().map((a) => a.userId)).toEqual(['ann']);
-    expect(localStorage.getItem('jellyplex.lastServer')).toBe('http://server:8096');
+    expect(localStorage.getItem('jellyfied.lastServer')).toBe('http://server:8096');
   });
 
   it('keeps the first account when a second one signs in, and lists it as the other account', () => {

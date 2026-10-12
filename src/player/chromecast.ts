@@ -15,7 +15,7 @@ const SDK_URL = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCast
 const RECEIVER_APP_ID = 'F007D354';
 const NAMESPACE = 'urn:x-cast:com.connectsdk';
 /** Set while a cast session is open, so a reloaded page joins it again without being asked. */
-const RESUME_KEY = 'jellyplex.chromecast';
+const RESUME_KEY = 'jellyfied.chromecast';
 
 // The parts of the Cast SDK used here (it has no bundled types and is loaded at run time).
 interface CastSession {

@@ -80,13 +80,13 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - run: docker build -t jellyplex:ci .
+      - run: docker build -t jellyfied:ci .
       # Starts the image against a stand-in server: site, headers, proxy, WebSocket, base path.
-      - run: node docker/test-container.mjs jellyplex:ci
+      - run: node docker/test-container.mjs jellyfied:ci
       - name: Scan the image for known vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: jellyplex:ci
+          image-ref: jellyfied:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'

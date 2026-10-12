@@ -74,7 +74,7 @@ test('a page that crashes leaves the rest of the app working', async ({ page }) 
 test('shows the version in the account menu and signs out', async ({ page }) => {
   await signIn(page);
   await page.getByRole('button', { name: 'Account menu' }).click();
-  await expect(page.getByText(`Jellyplex ${pkg.version}`)).toBeVisible();
+  await expect(page.getByText(`Jellyfied ${pkg.version}`)).toBeVisible();
   await page.getByText('Sign out').click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto('/');
@@ -107,9 +107,9 @@ test('the player uses the chosen skip lengths and lists its keyboard shortcuts',
 
 test('names the browser tab after the page', async ({ page }) => {
   await signIn(page);
-  await expect(page).toHaveTitle('Home · Jellyplex');
+  await expect(page).toHaveTitle('Home · Jellyfied');
   await page.goto('/item/movie-1');
-  await expect(page).toHaveTitle('The Mock Movie · Jellyplex');
+  await expect(page).toHaveTitle('The Mock Movie · Jellyfied');
 });
 
 test('a library can be jumped through by letter, shown as a list, and changed in bulk', async ({ page }) => {
@@ -165,7 +165,7 @@ test('preferences are taken from the account and changes are sent back to it', a
   await page.route('**/jellyfin/DisplayPreferences/**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
-        json: { Id: 'prefs', CustomPrefs: { 'jellyplex.seekSteps': '{"back":5,"forward":90}', chromecastVersion: 'stable' } },
+        json: { Id: 'prefs', CustomPrefs: { 'jellyfied.seekSteps': '{"back":5,"forward":90}', chromecastVersion: 'stable' } },
       });
     } else {
       saved = route.request().postDataJSON() as typeof saved;
@@ -179,12 +179,12 @@ test('preferences are taken from the account and changes are sent back to it', a
   await expect(page.getByLabel('Skip forward')).toHaveValue('90');
 
   await page.getByLabel('Skip forward').selectOption('60');
-  await expect.poll(() => saved?.CustomPrefs?.['jellyplex.seekSteps']).toBe('{"back":5,"forward":60}');
+  await expect.poll(() => saved?.CustomPrefs?.['jellyfied.seekSteps']).toBe('{"back":5,"forward":60}');
   // What other apps keep in the same place is passed back untouched.
   expect(saved!.CustomPrefs!.chromecastVersion).toBe('stable');
 });
 
-test('the login screen links to the licences of Jellyplex and what it ships with', async ({ page, request }) => {
+test('the login screen links to the licences of Jellyfied and what it ships with', async ({ page, request }) => {
   await mockJellyfin(page);
   await page.goto('/');
   const link = page.getByRole('link', { name: 'Licences' });

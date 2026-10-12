@@ -21,7 +21,7 @@ export const PICTURE_ASPECTS: { value: PictureAspect; label: string; ratio?: num
 
 export const MAX_PICTURE_ZOOM = 2;
 
-const FIT_KEY = 'jellyplex.pictureFit';
+const FIT_KEY = 'jellyfied.pictureFit';
 
 export function readPictureFit(): PictureFit {
   try {

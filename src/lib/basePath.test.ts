@@ -8,20 +8,20 @@ describe('base path', () => {
   });
 
   it('is the path of the <base> tag, without the trailing slash', () => {
-    expect(basePathOf('https://example.com/jellyplex/')).toBe('/jellyplex');
+    expect(basePathOf('https://example.com/jellyfied/')).toBe('/jellyfied');
     expect(basePathOf('https://example.com/apps/media/')).toBe('/apps/media');
   });
 
   it('prefixes addresses inside the app', () => {
     expect(appPath('/login', '')).toBe('/login');
-    expect(appPath('/login', '/jellyplex')).toBe('/jellyplex/login');
-    expect(appPath('login', '/jellyplex')).toBe('/jellyplex/login');
+    expect(appPath('/login', '/jellyfied')).toBe('/jellyfied/login');
+    expect(appPath('login', '/jellyfied')).toBe('/jellyfied/login');
   });
 
   it('takes the base path off a browser path, and leaves other paths alone', () => {
-    expect(stripBasePath('/jellyplex/play/abc', '/jellyplex')).toBe('/play/abc');
-    expect(stripBasePath('/jellyplex', '/jellyplex')).toBe('/');
-    expect(stripBasePath('/jellyplexy/play', '/jellyplex')).toBe('/jellyplexy/play');
+    expect(stripBasePath('/jellyfied/play/abc', '/jellyfied')).toBe('/play/abc');
+    expect(stripBasePath('/jellyfied', '/jellyfied')).toBe('/');
+    expect(stripBasePath('/jellyfiedy/play', '/jellyfied')).toBe('/jellyfiedy/play');
     expect(stripBasePath('/play/abc', '')).toBe('/play/abc');
   });
 });

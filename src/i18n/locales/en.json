@@ -54,14 +54,14 @@
       "branding": "Branding",
       "brandingSaved": "Branding saved",
       "customCss": "Custom CSS",
-      "customCssHint": "Jellyplex does not load it: its colours are set under Account settings.",
-      "disclaimerHint": "Shown under the sign-in form, here and in other Jellyfin apps. Jellyplex shows it as plain text; the Jellyfin web interface also accepts HTML.",
+      "customCssHint": "Jellyfied does not load it: its colours are set under Account settings.",
+      "disclaimerHint": "Shown under the sign-in form, here and in other Jellyfin apps. Jellyfied shows it as plain text; the Jellyfin web interface also accepts HTML.",
       "jellyfinWebInterface": "Jellyfin web interface",
       "loginDisclaimer": "Login disclaimer",
       "loginScreen": "Login screen",
       "splashScreen": "Splash screen",
       "splashscreenHint": "Show an image made from the library while the web interface loads.",
-      "webOnlyHint": "These two only affect Jellyfin's own web interface, not Jellyplex.",
+      "webOnlyHint": "These two only affect Jellyfin's own web interface, not Jellyfied.",
       "whatPeopleSeeBeforeThey": "What people see before they sign in."
     },
     "dashboard": {
@@ -781,9 +781,6 @@
     "cardSizeButton": {
       "posterSize": "Poster size"
     },
-    "logo": {
-      "jellyfin": "Jellyfin"
-    },
     "searchBox": {
       "musicVideo": "Music video",
       "seeAllResultsFor": "See all results for “{debounced}”",
@@ -808,9 +805,9 @@
       "forest": "Forest",
       "graphite": "Graphite",
       "green": "Green",
-      "jellyfinBlue": "Jellyfin blue",
-      "jellyfinDark": "Jellyfin dark",
-      "jellyfinPurple": "Jellyfin purple",
+      "jellyfiedBlue": "Jellyfied blue",
+      "jellyfiedDark": "Jellyfied dark",
+      "jellyfiedPurple": "Jellyfied purple",
       "midnightBlue": "Midnight blue",
       "orange": "Orange",
       "pink": "Pink",
@@ -1156,7 +1153,7 @@
     "chapterNumber": "Chapter {number}",
     "chromecast": {
       "cannotPlay": "The Chromecast could not play this.",
-      "localhostUnreachable": "A Chromecast can’t reach a server at “localhost”. Open Jellyplex through an address other devices on your network can use.",
+      "localhostUnreachable": "A Chromecast can’t reach a server at “localhost”. Open Jellyfied through an address other devices on your network can use.",
       "notConnected": "Not connected to a Chromecast.",
       "serverUnreachable": "The Chromecast could not reach the Jellyfin server. It needs an address it can open itself, not localhost."
     },
@@ -1425,7 +1422,7 @@
         "one": "{count} language is available.",
         "other": "{count} languages are available."
       },
-      "description": "The language of Jellyplex itself. Titles and descriptions of your media come from the server.",
+      "description": "The language of Jellyfied itself. Titles and descriptions of your media come from the server.",
       "label": "Interface language",
       "title": "Language"
     },
@@ -1492,15 +1489,15 @@
     "textColour": "Text colour",
     "textEdge": "Text edge",
     "textSize": "Text size",
-    "themeHint": "The accent colour and background of Jellyplex on this device.",
+    "themeHint": "The accent colour and background of Jellyfied on this device.",
     "timeDisplayUpdated": "Time display updated",
     "updatePassword": "Update password",
     "usedForClockTimesSuch": "Used for clock times such as “Ends at” in the player and dates in the dashboard."
   },
   "ui": {
     "crashState": {
-      "crashed": "This page ran into an error and could not be shown. The rest of Jellyplex still works.",
-      "jellyplexWasUpdated": "Jellyplex was updated",
+      "crashed": "This page ran into an error and could not be shown. The rest of Jellyfied still works.",
+      "jellyfiedWasUpdated": "Jellyfied was updated",
       "outdated": "This page belongs to an older version. Reload to get the new one.",
       "reload": "Reload",
       "somethingWentWrong": "Something went wrong",

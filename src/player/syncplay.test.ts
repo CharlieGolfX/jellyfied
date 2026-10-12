@@ -84,11 +84,11 @@ describe('SyncPlayManager: groups', () => {
     expect(manager.inGroup).toBe(true);
     expect(manager.getSnapshot()).toMatchObject({ group, following: true, hasQueue: false });
     expect(listener).toHaveBeenCalled();
-    expect(sessionStorage.getItem('jellyplex.syncPlayGroup')).toBe('g1');
+    expect(sessionStorage.getItem('jellyfied.syncPlayGroup')).toBe('g1');
   });
 
   it('joins the remembered group again when the connection opens', () => {
-    sessionStorage.setItem('jellyplex.syncPlayGroup', 'g1');
+    sessionStorage.setItem('jellyfied.syncPlayGroup', 'g1');
     server.connect();
     expect(post).toHaveBeenCalledWith('/SyncPlay/Join', { GroupId: 'g1' });
   });
@@ -116,14 +116,14 @@ describe('SyncPlayManager: groups', () => {
     server.update('GroupLeft');
     expect(manager.inGroup).toBe(false);
     expect(manager.getSnapshot().group).toBeNull();
-    expect(sessionStorage.getItem('jellyplex.syncPlayGroup')).toBeNull();
+    expect(sessionStorage.getItem('jellyfied.syncPlayGroup')).toBeNull();
   });
 
   it('says so when the group it was in is gone, but stays quiet about a remembered one', () => {
-    sessionStorage.setItem('jellyplex.syncPlayGroup', 'old');
+    sessionStorage.setItem('jellyfied.syncPlayGroup', 'old');
     server.update('GroupDoesNotExist');
     expect(notices).toEqual([]);
-    expect(sessionStorage.getItem('jellyplex.syncPlayGroup')).toBeNull();
+    expect(sessionStorage.getItem('jellyfied.syncPlayGroup')).toBeNull();
 
     server.update('GroupJoined', group);
     server.update('GroupDoesNotExist');

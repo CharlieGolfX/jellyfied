@@ -1,4 +1,4 @@
-# Jellyplex
+# Jellyfied
 
 > [!NOTE]
 > **This project is built entirely by AI.** All of the code, tests and documentation were written
@@ -6,9 +6,12 @@
 > No part of it was written by hand. Keep that in mind when you decide whether to run it, and
 > please report anything that looks wrong.
 
-A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a layout modelled on Plex,
-Jellyfin's own colour scheme and logo, and a full server dashboard for administrators. It runs as a
-small nginx container. Your Jellyfin server is not modified: Jellyplex is just another client.
+A web frontend for an existing [Jellyfin](https://jellyfin.org) server, with a layout modelled on Plex
+and a full server dashboard for administrators. It runs as a
+small nginx container. Your Jellyfin server is not modified: Jellyfied is just another client.
+
+Jellyfied was called Jellyplex up to version 1.2.0. See [Coming from Jellyplex](#coming-from-jellyplex)
+if you are updating an older install.
 
 ![Home page with the featured title and Continue Watching](docs/screenshots/home.jpg)
 
@@ -23,6 +26,7 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   - [Static hosting without Docker](#static-hosting-without-docker)
 - [Configuration](#configuration)
   - [Notes](#notes)
+  - [Coming from Jellyplex](#coming-from-jellyplex)
 - [Keyboard shortcuts (player)](#keyboard-shortcuts-player)
 - [Development](#development)
   - [Translations](#translations)
@@ -135,7 +139,7 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
   moving on to the next episode apply to everyone, and playback is kept in step across devices.
 - Play on another device: pick any Jellyfin app that supports remote control (TV apps, another
   browser tab, …) from the top bar, and what you play is sent there, with a remote-control bar for
-  pause, seek, volume and stop. Jellyplex tabs can be controlled the same way from other apps.
+  pause, seek, volume and stop. Jellyfied tabs can be controlled the same way from other apps.
 - Chromecast (Chrome, Edge and other Chromium browsers): pick "Chromecast…" in the same menu, or
   the cast button in the player to move the video you are watching to the TV.
 - AirPlay (Safari): the AirPlay button in the player sends the video to an Apple TV or another
@@ -180,7 +184,7 @@ small nginx container. Your Jellyfin server is not modified: Jellyplex is just a
 
 ## Installation
 
-Jellyplex needs a running Jellyfin server (10.9 or newer, 10.11 recommended) and Docker. You can
+Jellyfied needs a running Jellyfin server (10.9 or newer, 10.11 recommended) and Docker. You can
 run the [prebuilt image](#prebuilt-image) or build the container from source with
 [Docker Compose](#docker-compose).
 
@@ -189,9 +193,9 @@ run the [prebuilt image](#prebuilt-image) or build the container from source wit
 Images for amd64 and arm64 are published to the GitHub Container Registry:
 
 ```bash
-docker run -d --name jellyplex -p 8080:80 \
+docker run -d --name jellyfied -p 8080:80 \
   -e JELLYFIN_URL=http://192.168.1.10:8096 \
-  --restart unless-stopped ghcr.io/charliegolfx/jellyplex:latest
+  --restart unless-stopped ghcr.io/charliegolfx/jellyfied:latest
 ```
 
 Set `JELLYFIN_URL` to your Jellyfin server as reachable from inside the container (see the table
@@ -213,13 +217,13 @@ This builds the container from source.
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/CharlieGolfX/jellyplex.git
-   cd jellyplex
+   git clone https://github.com/CharlieGolfX/jellyfied.git
+   cd jellyfied
    ```
 
-2. Tell Jellyplex where your Jellyfin server is. The default is a Jellyfin server on the Docker
+2. Tell Jellyfied where your Jellyfin server is. The default is a Jellyfin server on the Docker
    host, port 8096; if that is your setup, skip this step. Otherwise create a `.env` file from the
-   example and set `JELLYFIN_URL` in it, to the address as reachable from inside the Jellyplex
+   example and set `JELLYFIN_URL` in it, to the address as reachable from inside the Jellyfied
    container:
 
    ```bash
@@ -253,12 +257,12 @@ docker compose up -d --build
 ### Building with Docker, without Compose
 
 ```bash
-git clone https://github.com/CharlieGolfX/jellyplex.git
-cd jellyplex
-docker build -t jellyplex .
-docker run -d --name jellyplex -p 8080:80 \
+git clone https://github.com/CharlieGolfX/jellyfied.git
+cd jellyfied
+docker build -t jellyfied .
+docker run -d --name jellyfied -p 8080:80 \
   -e JELLYFIN_URL=http://192.168.1.10:8096 \
-  --restart unless-stopped jellyplex
+  --restart unless-stopped jellyfied
 ```
 
 ### Static hosting without Docker
@@ -270,18 +274,18 @@ cross-origin requests by default.
 
 ## Configuration
 
-Jellyplex is configured with environment variables. With Docker Compose, set them in a `.env`
+Jellyfied is configured with environment variables. With Docker Compose, set them in a `.env`
 file next to `docker-compose.yml` (copy `.env.example`) or edit `docker-compose.yml` directly;
 with plain `docker run`, pass them with `-e`. Changes take effect when the container is recreated.
 
 | Variable                | Default                    | Description |
 | ----------------------- | -------------------------- | ----------- |
-| `JELLYFIN_URL`          | _(empty)_ ¹                | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyplex (no CORS or mixed-content problems, one URL to expose). |
+| `JELLYFIN_URL`          | _(empty)_ ¹                | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyfied (no CORS or mixed-content problems, one URL to expose). |
 | `JELLYFIN_PUBLIC_URL`   | _(empty)_                  | Address the browser should use to reach Jellyfin directly, e.g. `https://jellyfin.example.com`. Overrides the proxy for API and media requests. |
-| `JELLYPLEX_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
-| `JELLYPLEX_BASE_PATH`   | _(empty)_                  | Serve Jellyplex under a path, e.g. `/jellyplex`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyplex/jellyfin`). |
-| `JELLYPLEX_PORT`        | `80`                       | Port nginx listens on inside the container. |
-| `JELLYPLEX_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyplex. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
+| `JELLYFIED_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
+| `JELLYFIED_BASE_PATH`   | _(empty)_                  | Serve Jellyfied under a path, e.g. `/jellyfied`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyfied/jellyfin`). |
+| `JELLYFIED_PORT`        | `80`                       | Port nginx listens on inside the container. |
+| `JELLYFIED_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyfied. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
 
 ¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
 
@@ -292,35 +296,52 @@ Docker Compose additionally understands these:
 
 | Variable                 | Default    | Description |
 | ------------------------ | ---------- | ----------- |
-| `JELLYPLEX_HOST_PORT`    | `8080`     | Port Jellyplex is reachable on. |
-| `JELLYPLEX_BIND_ADDRESS` | `0.0.0.0`  | Address the port is published on. Use `127.0.0.1` to make Jellyplex reachable from the Docker host only, for example when a reverse proxy runs in front of it. |
+| `JELLYFIED_HOST_PORT`    | `8080`     | Port Jellyfied is reachable on. |
+| `JELLYFIED_BIND_ADDRESS` | `0.0.0.0`  | Address the port is published on. Use `127.0.0.1` to make Jellyfied reachable from the Docker host only, for example when a reverse proxy runs in front of it. |
 
 ### Notes
 
-- Real client IPs: in proxy mode Jellyfin sees every request coming from Jellyplex, and shows
+- Real client IPs: in proxy mode Jellyfin sees every request coming from Jellyfied, and shows
   that address for all devices unless it is told to trust it. Two things make the dashboard show
   where people really connect from:
-  1. In Jellyfin, add the address Jellyplex connects from under *Dashboard → Networking → Known
+  1. In Jellyfin, add the address Jellyfied connects from under *Dashboard → Networking → Known
      proxies* and restart Jellyfin: the container's IP or Docker subnet, or, when Jellyfin runs
      on the Docker host, Docker's gateway (`127.0.0.1` with Docker Desktop). If the dashboard
      shows one private address for every device, that is the address to add.
-  2. If a reverse proxy or tunnel sits in front of Jellyplex, it has to be trusted too. Proxies
-     on private addresses are by default; for others, set `JELLYPLEX_TRUSTED_PROXIES`.
+  2. If a reverse proxy or tunnel sits in front of Jellyfied, it has to be trusted too. Proxies
+     on private addresses are by default; for others, set `JELLYFIED_TRUSTED_PROXIES`.
 
-  Jellyplex then passes on one address: the last one in `X-Forwarded-For` that is not a trusted
+  Jellyfied then passes on one address: the last one in `X-Forwarded-For` that is not a trusted
   proxy. With Docker Desktop (macOS, Windows), visitors who reach the published port directly
   still all appear as Docker's gateway, because Docker hides their addresses from the container.
-- HTTPS: put Jellyplex behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
+- HTTPS: put Jellyfied behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
   you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
 - The container serves a health check at `/healthz`.
 - nginx runs as an unprivileged user (uid 101), not as root. Docker lets it listen on port 80
-  anyway; on runtimes that don't (some Kubernetes and rootless setups), set `JELLYPLEX_PORT=8080`
+  anyway; on runtimes that don't (some Kubernetes and rootless setups), set `JELLYFIED_PORT=8080`
   and publish that port instead.
-- The container sends a strict Content-Security-Policy: scripts and styles only from Jellyplex
+- The container sends a strict Content-Security-Policy: scripts and styles only from Jellyfied
   itself, plus WebAssembly (for styled subtitles) and Google's Cast script when Chromecast is used.
 - Under a base path, a reverse proxy in front has to pass the path on unchanged (no stripping).
-- Jellyplex stores only the session tokens of the signed-in accounts and UI preferences in the
+- Jellyfied stores only the session tokens of the signed-in accounts and UI preferences in the
   browser's local storage.
+
+### Coming from Jellyplex
+
+Jellyfied was called Jellyplex up to version 1.2.0. An existing install keeps working:
+
+- **Image:** new versions are published as `ghcr.io/charliegolfx/jellyfied`. The old
+  `ghcr.io/charliegolfx/jellyplex` image stays where it is but gets no more updates, so change the
+  image name to keep receiving them.
+- **Environment variables:** the `JELLYPLEX_…` names are still read where the matching
+  `JELLYFIED_…` one is not set, both by the container and by `docker-compose.yml`.
+- **Browsers:** sign-ins and settings saved under the old name are moved over the first time the
+  new version is opened, and settings synced to the Jellyfin account are carried over too.
+- **Compose:** the service and container are now called `jellyfied`. After pulling the new
+  `docker-compose.yml`, run `docker compose up -d --remove-orphans` once to replace the old
+  container.
+- **Base path:** if you serve it under `/jellyplex`, that path keeps working for as long as you
+  leave the setting as it is.
 
 ## Keyboard shortcuts (player)
 
@@ -362,7 +383,7 @@ npm run test:container        # build the image and test what it serves (needs D
 
 The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
 `JELLYFIN_DEV_URL` if your machine reaches Jellyfin at a different address than the container,
-and `JELLYPLEX_DEV_PORT` to use a port other than 5173.
+and `JELLYFIED_DEV_PORT` to use a port other than 5173.
 
 Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
 The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
@@ -392,7 +413,7 @@ tRich('admin.userEdit.deleteConfirm', { name: <strong>{user.Name}</strong> })   
 - Not translated on purpose: messages for developers (`useAuth must be used inside AuthProvider`)
   and product names.
 
-Jellyplex comes in English, Spanish (Spain, `es-ES.json`) and Norwegian Bokmål (`nb.json`). To
+Jellyfied comes in English, Spanish (Spain, `es-ES.json`) and Norwegian Bokmål (`nb.json`). To
 add a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`). It
 then appears under Account settings → Language by itself, is loaded only when chosen, and is
 picked automatically for browsers set to that language; a language that only exists for another
@@ -446,7 +467,7 @@ scans the container image for known vulnerabilities.
    "Unreleased" entries in `CHANGELOG.md` under it.
 2. Commit, then tag the commit `v1.2.3` and push the tag. The tag has to match `package.json`.
 
-The "Container image" workflow then publishes `ghcr.io/charliegolfx/jellyplex` with that version
+The "Container image" workflow then publishes `ghcr.io/charliegolfx/jellyfied` with that version
 and `latest`, with a build provenance attestation and a bill of materials attached, and creates
 the GitHub release from that version's changelog section. Every push to `main` publishes `edge`.
 
@@ -466,11 +487,11 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 ## Compatibility and limitations
 
-- Jellyfin 10.11 is recommended and is what Jellyplex is tested against. Jellyfin 10.9 and 10.10
+- Jellyfin 10.11 is recommended and is what Jellyfied is tested against. Jellyfin 10.9 and 10.10
   are expected to work, with a few features unavailable: storage statistics need 10.11 and Skip
   Intro needs 10.10 or newer. Seek-bar previews only appear for videos with trickplay images.
 - Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in
-  Jellyplex, and plugin settings pages open in the Jellyfin web UI.
+  Jellyfied, and plugin settings pages open in the Jellyfin web UI.
 - Live TV covers watching channels and recordings. The programme guide grid, and scheduling or
   cancelling recordings (DVR), are not implemented; use the regular Jellyfin web UI for those.
 - Every account signed in on a device can be switched to from that device without a password,
@@ -486,14 +507,14 @@ docker/         container entrypoint that writes config.js and the nginx site
 - "Play on another device" works with apps that are signed in to your Jellyfin server and accept
   remote control.
 - Chromecast uses Jellyfin's own receiver app, which fetches the media from your server itself.
-  The Chromecast therefore has to be able to open the address you use for Jellyplex: it does not
+  The Chromecast therefore has to be able to open the address you use for Jellyfied: it does not
   work when you browse on `localhost`, and a server behind HTTPS needs a certificate the Chromecast
   trusts. The Cast software is loaded from Google (`www.gstatic.com`) the first time you pick
   Chromecast, and not before. A show or season continues at the next episode to watch, as it
   does in the browser; albums and playlists start from their beginning.
 - AirPlay shows the video and plays its sound on the other device. It only carries the picture,
   so while it is in use the server burns the subtitles into the video, which means a transcode.
-  The address you use for Jellyplex has to be reachable from the AirPlay device.
+  The address you use for Jellyfied has to be reachable from the AirPlay device.
 - HEVC and AV1 transcoding has to be switched on in the server: *Dashboard → Playback →
   Transcoding → Allow encoding in HEVC format / AV1 format*. Without it the server transcodes to
   H.264 as before. Files that are already HEVC or AV1 are passed through either way.
@@ -511,10 +532,10 @@ docker/         container entrypoint that writes config.js and the nginx site
 - Audio delay can only make the sound later, not earlier: a browser can't play sound ahead of the
   picture. It is not available in Safari on iPhone and iPad.
 - Streaming quality, poster size, grid or list view and volume are stored per browser. The other
-  preferences are saved with your Jellyfin account, where only Jellyplex reads them.
+  preferences are saved with your Jellyfin account, where only Jellyfied reads them.
 - SyncPlay and remote control use a WebSocket connection. If you put another reverse proxy in front
-  of Jellyplex, make sure it forwards WebSocket upgrades.
-- Which formats play directly depends on the browser. Jellyplex tells the server exactly what the
+  of Jellyfied, make sure it forwards WebSocket upgrades.
+- Which formats play directly depends on the browser. Jellyfied tells the server exactly what the
   current browser can decode, and the server transcodes everything else.
 
 ## Contributing
@@ -522,7 +543,7 @@ docker/         container entrypoint that writes config.js and the nginx site
 Bug reports, feature requests and pull requests are welcome. Security problems are reported
 privately; see [SECURITY.md](SECURITY.md).
 
-- **Bugs:** open an issue and include your Jellyplex version (shown in the account menu), your
+- **Bugs:** open an issue and include your Jellyfied version (shown in the account menu), your
   Jellyfin server version, the browser you use, and the steps
   to reproduce the problem. For playback problems, also say whether the player showed direct play
   or transcode, and include the media info for the file if you can.
@@ -542,15 +563,10 @@ rest of the project.
 
 ## Credits
 
-The Jellyfin logo and colour scheme (purple `#AA5CC3` → blue `#00A4DC`) come from
-[jellyfin/jellyfin-ux](https://github.com/jellyfin/jellyfin-ux). All copyright in that artwork belongs
-to the Jellyfin contributors, and it is licensed under
-[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-
-Jellyplex is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
+Jellyfied is an unofficial client. It is not affiliated with or endorsed by the Jellyfin project
 or by Plex, Inc.; Jellyfin, Plex, Chromecast and AirPlay are trademarks of their owners.
 
-Jellyplex is built on React, TanStack Query, React Router, hls.js, JASSUB (libass), libpgs and
+Jellyfied is built on React, TanStack Query, React Router, hls.js, JASSUB (libass), libpgs and
 Lucide, among others. Every build writes `licenses.txt` next to the site, with the copyright
 notices and licence texts of everything it ships; the app links to it from the login screen and
 the account menu, and `node scripts/third-party-notices.mjs` prints it.
@@ -559,17 +575,16 @@ the account menu, and `node scripts/third-party-notices.mjs` prints it.
 
 Copyright (C) 2026 CharlieGolfX.
 
-Jellyplex is free software: you can redistribute it and/or modify it under the terms of the
+Jellyfied is free software: you can redistribute it and/or modify it under the terms of the
 [GNU General Public License](LICENSE) as published by the Free Software Foundation, either
 version 3 of the License, or (at your option) any later version. It comes without any warranty.
 Versions up to 1.2.0 were released under version 2 of that license.
 
-The Jellyfin artwork mentioned under [Credits](#credits) keeps its own CC BY-SA 4.0 license, and
-the libraries Jellyplex ships with keep theirs (see `licenses.txt`). Some of them (hls.js under
+The libraries Jellyfied ships with keep their own licenses (see `licenses.txt`). Some of them (hls.js under
 the Apache License 2.0, and a part of the subtitle engine under the GPL version 3) can be
-combined with version 3 of the GPL but not with version 2, which is why Jellyplex moved to it.
+combined with version 3 of the GPL but not with version 2, which is why Jellyfied moved to it.
 
-The container image is the Jellyplex site on top of the
+The container image is the Jellyfied site on top of the
 [nginx-unprivileged](https://github.com/nginx/docker-nginx-unprivileged) image, which contains
 nginx and Alpine Linux packages under their own licenses; their source is available from those
-projects. The `licenses` label on the image describes Jellyplex itself.
+projects. The `licenses` label on the image describes Jellyfied itself.

@@ -1,6 +1,6 @@
 /**
- * Where Jellyplex lives on its host: '' at the root, or '/jellyplex' when it is served under a
- * path (JELLYPLEX_BASE_PATH in the container). It comes from the <base> tag in index.html, which
+ * Where Jellyfied lives on its host: '' at the root, or '/jellyfied' when it is served under a
+ * path (JELLYFIED_BASE_PATH in the container). It comes from the <base> tag in index.html, which
  * the container's entrypoint rewrites, so one build works at any path.
  */
 export function basePathOf(baseUri: string): string {

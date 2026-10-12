@@ -21,7 +21,7 @@ interface SeriesMemory {
   subtitle?: TrackSignature | 'off';
 }
 
-const KEY = 'jellyplex.trackMemory';
+const KEY = 'jellyfied.trackMemory';
 /** Shows kept; the least recently changed ones are dropped first. */
 const MAX_SERIES = 300;
 

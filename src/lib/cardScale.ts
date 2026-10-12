@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
  * Global poster/card size. The value is exposed to CSS as `--card-scale` on <html>, so every hub,
  * grid and person row resizes from one setting without re-rendering the whole tree.
  */
-const KEY = 'jellyplex.cardScale';
+const KEY = 'jellyfied.cardScale';
 export const CARD_SCALE_MIN = 0.6;
 export const CARD_SCALE_MAX = 1.8;
 

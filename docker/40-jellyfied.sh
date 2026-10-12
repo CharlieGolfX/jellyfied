@@ -1,41 +1,48 @@
 #!/bin/sh
-# Generates Jellyplex's runtime config and nginx site from environment variables.
+# Generates Jellyfied's runtime config and nginx site from environment variables.
 # Runs automatically via the nginx image's /docker-entrypoint.d hook.
 #
 #   JELLYFIN_URL           Jellyfin address as seen from this container, e.g. http://jellyfin:8096.
 #                          Enables the built-in reverse proxy at /jellyfin (no CORS, single origin).
 #   JELLYFIN_PUBLIC_URL    Optional. Address the *browser* should use instead of the proxy,
 #                          e.g. https://jellyfin.example.com. Overrides the proxy for API calls.
-#   JELLYPLEX_LOCK_SERVER  true/false. Hide "change server" on the login screen (default: true
+#   JELLYFIED_LOCK_SERVER  true/false. Hide "change server" on the login screen (default: true
 #                          when a server is configured).
-#   JELLYPLEX_PORT         Port nginx listens on inside the container (default 80).
-#   JELLYPLEX_BASE_PATH    Optional. Serve Jellyplex under this path, e.g. /jellyplex, for reverse
+#   JELLYFIED_PORT         Port nginx listens on inside the container (default 80).
+#   JELLYFIED_BASE_PATH    Optional. Serve Jellyfied under this path, e.g. /jellyfied, for reverse
 #                          proxies that give every app a path instead of a host name.
-#   JELLYPLEX_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
+#   JELLYFIED_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
 #                          X-Forwarded-For header is believed: a reverse proxy or tunnel in front
-#                          of Jellyplex, and Docker's own gateway. Default "private" (loopback
+#                          of Jellyfied, and Docker's own gateway. Default "private" (loopback
 #                          and the private ranges); "none" trusts nobody.
 #
 # nginx runs as an unprivileged user, so everything written here lives in places that user owns.
 set -eu
 
+# Jellyfied was called Jellyplex up to version 1.2.0. Settings still given under the old names are
+# used where the new one is not set.
+JELLYFIED_LOCK_SERVER="${JELLYFIED_LOCK_SERVER:-${JELLYPLEX_LOCK_SERVER:-}}"
+JELLYFIED_BASE_PATH="${JELLYFIED_BASE_PATH:-${JELLYPLEX_BASE_PATH:-}}"
+[ -n "${JELLYPLEX_TRUSTED_PROXIES:-}" ] && [ "${JELLYFIED_TRUSTED_PROXIES:-private}" = "private" ] && JELLYFIED_TRUSTED_PROXIES="$JELLYPLEX_TRUSTED_PROXIES"
+[ -n "${JELLYPLEX_PORT:-}" ] && [ "${JELLYFIED_PORT:-80}" = "80" ] && JELLYFIED_PORT="$JELLYPLEX_PORT"
+
 HTML_DIR=/usr/share/nginx/html
 CONF=/etc/nginx/conf.d/default.conf
-HEADERS=/tmp/jellyplex-headers.conf
+HEADERS=/tmp/jellyfied-headers.conf
 PROXY_PATH=/jellyfin
 
 JELLYFIN_URL="${JELLYFIN_URL:-}"
 JELLYFIN_PUBLIC_URL="${JELLYFIN_PUBLIC_URL:-}"
-LISTEN_PORT="${JELLYPLEX_PORT:-80}"
+LISTEN_PORT="${JELLYFIED_PORT:-80}"
 
-log() { echo "jellyplex: $*"; }
+log() { echo "jellyfied: $*"; }
 
-# Base path: "/jellyplex" (leading slash, no trailing one), or empty for the root.
-BASE=$(printf '%s' "${JELLYPLEX_BASE_PATH:-}" | sed -e 's:^/*:/:' -e 's:/*$::')
+# Base path: "/jellyfied" (leading slash, no trailing one), or empty for the root.
+BASE=$(printf '%s' "${JELLYFIED_BASE_PATH:-}" | sed -e 's:^/*:/:' -e 's:/*$::')
 [ "$BASE" = "/" ] && BASE=""
 case "$BASE" in
   *[!A-Za-z0-9/._~-]*)
-    log "JELLYPLEX_BASE_PATH may only contain letters, digits and / . _ ~ -; ignoring \"$BASE\""
+    log "JELLYFIED_BASE_PATH may only contain letters, digits and / . _ ~ -; ignoring \"$BASE\""
     BASE=""
     ;;
 esac
@@ -44,7 +51,7 @@ esac
 # forwarding, the peer nginx sees is that middleman; the visitor's address is in X-Forwarded-For.
 # nginx takes the last address in that header that is not itself a trusted proxy, and that is the
 # address it logs and hands to Jellyfin.
-TRUSTED=$(printf '%s' "${JELLYPLEX_TRUSTED_PROXIES:-private}" | tr ',' ' ')
+TRUSTED=$(printf '%s' "${JELLYFIED_TRUSTED_PROXIES:-private}" | tr ',' ' ')
 case "$TRUSTED" in
   private) TRUSTED="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ::1 fc00::/7 fe80::/10" ;;
   none | off | false) TRUSTED="" ;;
@@ -52,7 +59,7 @@ esac
 REAL_IP=""
 for NET in $TRUSTED; do
   case "$NET" in
-    *[!0-9A-Fa-f:./]*) log "JELLYPLEX_TRUSTED_PROXIES: ignoring \"$NET\", not an address or network" ;;
+    *[!0-9A-Fa-f:./]*) log "JELLYFIED_TRUSTED_PROXIES: ignoring \"$NET\", not an address or network" ;;
     *) REAL_IP="${REAL_IP}
     set_real_ip_from ${NET};" ;;
   esac
@@ -79,7 +86,7 @@ else
 fi
 
 if [ -n "$BROWSER_SERVER" ]; then DEFAULT_LOCK=true; else DEFAULT_LOCK=false; fi
-case "$(printf '%s' "${JELLYPLEX_LOCK_SERVER:-$DEFAULT_LOCK}" | tr '[:upper:]' '[:lower:]')" in
+case "$(printf '%s' "${JELLYFIED_LOCK_SERVER:-$DEFAULT_LOCK}" | tr '[:upper:]' '[:lower:]')" in
   1 | true | yes | on) LOCK=true ;;
   *) LOCK=false ;;
 esac
@@ -87,7 +94,7 @@ esac
 js_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/</\\u003c/g'; }
 
 cat >"$HTML_DIR/config.js" <<EOF
-window.JELLYPLEX_CONFIG = {
+window.JELLYFIED_CONFIG = {
   serverUrl: "$(js_escape "$BROWSER_SERVER")",
   lockServer: $LOCK
 };
@@ -95,9 +102,9 @@ EOF
 log "browser server URL: ${BROWSER_SERVER:-<user chooses at login>} (locked: $LOCK)"
 
 # The page finds its scripts, styles and config relative to its <base> tag.
-sed "s|<base href=\"[^\"]*\"|<base href=\"${BASE}/\"|" "$HTML_DIR/index.html" >/tmp/jellyplex-index.html
-cat /tmp/jellyplex-index.html >"$HTML_DIR/index.html"
-rm -f /tmp/jellyplex-index.html
+sed "s|<base href=\"[^\"]*\"|<base href=\"${BASE}/\"|" "$HTML_DIR/index.html" >/tmp/jellyfied-index.html
+cat /tmp/jellyfied-index.html >"$HTML_DIR/index.html"
+rm -f /tmp/jellyfied-index.html
 [ -n "$BASE" ] && log "serving under ${BASE}/"
 
 BASE_BLOCK=""
@@ -154,7 +161,7 @@ if [ -n "$JELLYFIN_URL" ]; then
 
   # Hosts defined in /etc/hosts (e.g. extra_hosts: host.docker.internal:host-gateway) are only
   # visible to the system resolver, so use a static upstream for them. Everything else is
-  # resolved at request time so Jellyplex starts even when Jellyfin is temporarily down.
+  # resolved at request time so Jellyfied starts even when Jellyfin is temporarily down.
   if grep -qE "[[:space:]]${HOST}([[:space:]]|\$)" /etc/hosts 2>/dev/null; then
     # Use the addresses themselves, and only the IPv4 ones when there are any: Docker Desktop also
     # lists an IPv6 address for host.docker.internal that containers usually cannot reach, and nginx
@@ -222,10 +229,10 @@ if [ -n "$JELLYFIN_URL" ]; then
     }"
 fi
 
-# Security headers for everything Jellyplex itself serves. nginx drops inherited add_header lines in
+# Security headers for everything Jellyfied itself serves. nginx drops inherited add_header lines in
 # any location that sets its own, so each location includes this file instead of relying on the
 # server block. The proxied Jellyfin responses only get the server-level headers: the policy below
-# is written for Jellyplex and would break Jellyfin's own web interface.
+# is written for Jellyfied and would break Jellyfin's own web interface.
 #
 # Images, media and API calls may go to any address, because the Jellyfin server can live on
 # another origin (JELLYFIN_PUBLIC_URL, or one typed on the login screen). Scripts cannot, with two
@@ -239,7 +246,7 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-
 EOF
 
 cat >"$CONF" <<EOF
-# Generated by /docker-entrypoint.d/40-jellyplex.sh — edits are overwritten on start.
+# Generated by /docker-entrypoint.d/40-jellyfied.sh — edits are overwritten on start.
 
 map \$http_upgrade \$connection_upgrade {
     default upgrade;
@@ -248,12 +255,12 @@ map \$http_upgrade \$connection_upgrade {
 
 # Access tokens travel in the query string for media elements and the WebSocket (api_key=...), so
 # keep them out of the access log.
-map \$request \$jellyplex_logged_request {
+map \$request \$jellyfied_logged_request {
     "~*^(?<log_head>.*[?&]api_?key=)[^&\s]*(?<log_tail>.*)\$" "\${log_head}***\${log_tail}";
     default \$request;
 }
 
-log_format jellyplex '\$remote_addr - \$remote_user [\$time_local] "\$jellyplex_logged_request" '
+log_format jellyfied '\$remote_addr - \$remote_user [\$time_local] "\$jellyfied_logged_request" '
                      '\$status \$body_bytes_sent "\$http_referer" "\$http_user_agent"';
 
 map \$request_uri \$jellyfin_path {
@@ -271,7 +278,7 @@ server {
     index index.html;
     server_tokens off;
     absolute_redirect off;
-    access_log /var/log/nginx/access.log jellyplex;
+    access_log /var/log/nginx/access.log jellyfied;
 ${REAL_IP}
 
     gzip on;

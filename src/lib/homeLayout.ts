@@ -15,7 +15,7 @@ export interface HomeLayout {
 
 export const DEFAULT_HOME_LAYOUT: HomeLayout = { order: [], hidden: [], banner: true };
 
-const KEY = 'jellyplex.home';
+const KEY = 'jellyfied.home';
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 

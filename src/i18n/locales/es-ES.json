@@ -54,14 +54,14 @@
       "branding": "Personalización",
       "brandingSaved": "Personalización guardada",
       "customCss": "CSS personalizado",
-      "customCssHint": "Jellyplex no lo carga: sus colores se eligen en los ajustes de la cuenta.",
-      "disclaimerHint": "Se muestra bajo el formulario de inicio de sesión, aquí y en otras aplicaciones de Jellyfin. Jellyplex lo muestra como texto sin formato; la interfaz web de Jellyfin también admite HTML.",
+      "customCssHint": "Jellyfied no lo carga: sus colores se eligen en los ajustes de la cuenta.",
+      "disclaimerHint": "Se muestra bajo el formulario de inicio de sesión, aquí y en otras aplicaciones de Jellyfin. Jellyfied lo muestra como texto sin formato; la interfaz web de Jellyfin también admite HTML.",
       "jellyfinWebInterface": "Interfaz web de Jellyfin",
       "loginDisclaimer": "Aviso de inicio de sesión",
       "loginScreen": "Pantalla de inicio de sesión",
       "splashScreen": "Pantalla de bienvenida",
       "splashscreenHint": "Mostrar una imagen hecha a partir de la biblioteca mientras carga la interfaz web.",
-      "webOnlyHint": "Estos dos solo afectan a la interfaz web propia de Jellyfin, no a Jellyplex.",
+      "webOnlyHint": "Estos dos solo afectan a la interfaz web propia de Jellyfin, no a Jellyfied.",
       "whatPeopleSeeBeforeThey": "Lo que se ve antes de iniciar sesión."
     },
     "dashboard": {
@@ -781,9 +781,6 @@
     "cardSizeButton": {
       "posterSize": "Tamaño de los pósteres"
     },
-    "logo": {
-      "jellyfin": "Jellyfin"
-    },
     "searchBox": {
       "musicVideo": "Vídeo musical",
       "seeAllResultsFor": "Ver todos los resultados de «{debounced}»",
@@ -808,9 +805,9 @@
       "forest": "Bosque",
       "graphite": "Grafito",
       "green": "Verde",
-      "jellyfinBlue": "Azul Jellyfin",
-      "jellyfinDark": "Jellyfin oscuro",
-      "jellyfinPurple": "Morado Jellyfin",
+      "jellyfiedBlue": "Azul Jellyfied",
+      "jellyfiedDark": "Jellyfied oscuro",
+      "jellyfiedPurple": "Morado Jellyfied",
       "midnightBlue": "Azul medianoche",
       "orange": "Naranja",
       "pink": "Rosa",
@@ -1156,7 +1153,7 @@
     "chapterNumber": "Capítulo {number}",
     "chromecast": {
       "cannotPlay": "El Chromecast no ha podido reproducir esto.",
-      "localhostUnreachable": "Un Chromecast no puede conectar con un servidor en «localhost». Abre Jellyplex con una dirección que puedan usar otros dispositivos de tu red.",
+      "localhostUnreachable": "Un Chromecast no puede conectar con un servidor en «localhost». Abre Jellyfied con una dirección que puedan usar otros dispositivos de tu red.",
       "notConnected": "No hay conexión con un Chromecast.",
       "serverUnreachable": "El Chromecast no ha podido conectar con el servidor Jellyfin. Necesita una dirección que pueda abrir por sí mismo, no localhost."
     },
@@ -1425,7 +1422,7 @@
         "one": "Hay {count} idioma disponible.",
         "other": "Hay {count} idiomas disponibles."
       },
-      "description": "El idioma del propio Jellyplex. Los títulos y las descripciones de tu contenido vienen del servidor.",
+      "description": "El idioma del propio Jellyfied. Los títulos y las descripciones de tu contenido vienen del servidor.",
       "label": "Idioma de la interfaz",
       "title": "Idioma"
     },
@@ -1492,15 +1489,15 @@
     "textColour": "Color del texto",
     "textEdge": "Borde del texto",
     "textSize": "Tamaño del texto",
-    "themeHint": "El color de acento y el fondo de Jellyplex en este dispositivo.",
+    "themeHint": "El color de acento y el fondo de Jellyfied en este dispositivo.",
     "timeDisplayUpdated": "Formato de hora actualizado",
     "updatePassword": "Actualizar contraseña",
     "usedForClockTimesSuch": "Se usa para las horas, como «Termina a las» en el reproductor, y para las fechas del panel."
   },
   "ui": {
     "crashState": {
-      "crashed": "Esta página ha encontrado un error y no se ha podido mostrar. El resto de Jellyplex sigue funcionando.",
-      "jellyplexWasUpdated": "Jellyplex se ha actualizado",
+      "crashed": "Esta página ha encontrado un error y no se ha podido mostrar. El resto de Jellyfied sigue funcionando.",
+      "jellyfiedWasUpdated": "Jellyfied se ha actualizado",
       "outdated": "Esta página pertenece a una versión anterior. Recarga para obtener la nueva.",
       "reload": "Recargar",
       "somethingWentWrong": "Algo ha salido mal",

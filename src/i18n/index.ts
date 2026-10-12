@@ -33,11 +33,11 @@ export type MessageKey = Keys<typeof en>;
 export type Vars = Record<string, string | number | null | undefined>;
 
 export const FALLBACK = 'en';
-const KEY = 'jellyplex.language';
+const KEY = 'jellyfied.language';
 
 const loaders = import.meta.glob<{ default: Catalogue }>(['./locales/*.json', '!./locales/en.json']);
 const codeOf = (path: string) => path.slice(path.lastIndexOf('/') + 1, -'.json'.length);
-/** The languages Jellyplex has text for. */
+/** The languages Jellyfied has text for. */
 export const LANGUAGES: string[] = [FALLBACK, ...Object.keys(loaders).map(codeOf)].sort();
 
 /** A language's own name for itself: "Deutsch", "Norsk bokmål". */

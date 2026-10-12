@@ -87,7 +87,7 @@ export default function LoginPage() {
       />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <Logo className="h-14" />
+          <Logo className="text-5xl" />
         </div>
         <div className="rounded-xl bg-base-850/90 p-6 shadow-2xl ring-1 ring-white/10 backdrop-blur sm:p-8">
           {checking && !info ? (

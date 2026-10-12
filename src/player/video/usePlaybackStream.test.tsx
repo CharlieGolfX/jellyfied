@@ -330,7 +330,7 @@ describe('switching while playing', () => {
     act(() => result.current.changeQuality(4_000_000));
     await settle();
     expect(asked()[2]).toMatchObject({ MaxStreamingBitrate: 4_000_000, AudioStreamIndex: 7 });
-    expect(localStorage.getItem('jellyplex.maxBitrate')).toBe('4000000');
+    expect(localStorage.getItem('jellyfied.maxBitrate')).toBe('4000000');
     expect(result.current.maxBitrate).toBe(4_000_000);
   });
 

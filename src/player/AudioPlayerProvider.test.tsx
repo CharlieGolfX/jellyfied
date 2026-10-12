@@ -184,13 +184,13 @@ describe('controls', () => {
     act(() => result.current.setVolume(0.4));
     expect(audio.volume).toBe(0.4);
     expect(audio.muted).toBe(false);
-    expect(localStorage.getItem('jellyplex.volume')).toBe('0.4');
+    expect(localStorage.getItem('jellyfied.volume')).toBe('0.4');
     act(() => result.current.setVolume(7));
     expect(result.current.volume).toBe(1);
   });
 
   it('starts with the volume that was kept', () => {
-    localStorage.setItem('jellyplex.volume', '0.25');
+    localStorage.setItem('jellyfied.volume', '0.25');
     expect(start().result.current.volume).toBe(0.25);
   });
 });

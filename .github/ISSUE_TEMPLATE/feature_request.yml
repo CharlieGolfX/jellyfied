@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest something Jellyplex could do
+description: Suggest something Jellyfied could do
 labels: [enhancement]
 body:
   - type: textarea

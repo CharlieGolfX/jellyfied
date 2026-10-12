@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { APP_NAME } from '@/config';
 
-/** "Dune · Jellyplex" for a page, plain "Jellyplex" without one. */
+/** "Dune · Jellyfied" for a page, plain "Jellyfied" without one. */
 export function pageTitle(title?: string | null): string {
   const t = title?.trim();
   return t ? `${t} · ${APP_NAME}` : APP_NAME;

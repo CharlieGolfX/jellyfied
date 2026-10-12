@@ -1,4 +1,4 @@
-// The Jellyfin API models Jellyplex uses, cut out of the ones generated from the server's OpenAPI
+// The Jellyfin API models Jellyfied uses, cut out of the ones generated from the server's OpenAPI
 // document (generated.ts, `npm run generate:api`). A type lists the fields the app reads or writes:
 // first those taken exactly as the server describes them, then those the app relies on being
 // there (the server marks nearly everything optional), then those described more exactly here.

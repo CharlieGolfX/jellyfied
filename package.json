@@ -1,12 +1,12 @@
 {
-  "name": "jellyplex",
+  "name": "jellyfied",
   "private": true,
   "version": "1.2.0",
   "type": "module",
   "description": "A Plex-style web frontend for Jellyfin",
   "license": "GPL-3.0-or-later",
   "author": "CharlieGolfX",
-  "repository": "github:CharlieGolfX/jellyplex",
+  "repository": "github:CharlieGolfX/jellyfied",
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
@@ -22,7 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "generate:api": "node scripts/generate-api-types.mjs",
-    "test:container": "docker build -t jellyplex:ci . && node docker/test-container.mjs jellyplex:ci",
+    "test:container": "docker build -t jellyfied:ci . && node docker/test-container.mjs jellyfied:ci",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
     "preview": "vite preview"
   },

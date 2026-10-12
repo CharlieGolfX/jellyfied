@@ -1,12 +1,12 @@
-// Starts the Jellyplex image against a stand-in Jellyfin server and checks what it serves:
+// Starts the Jellyfied image against a stand-in Jellyfin server and checks what it serves:
 // the site, its headers, the reverse proxy (including a WebSocket), and serving under a base path.
 //
-//   node docker/test-container.mjs [image]      (default image: jellyplex:ci)
+//   node docker/test-container.mjs [image]      (default image: jellyfied:ci)
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import http from 'node:http';
 
-const image = process.argv[2] ?? 'jellyplex:ci';
+const image = process.argv[2] ?? 'jellyfied:ci';
 const PORT = 18097;
 const origin = `http://localhost:${PORT}`;
 let failures = 0;
@@ -36,7 +36,7 @@ const upstreamPort = upstream.address().port;
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8' }).trim();
 
 async function withContainer(env, run) {
-  const name = `jellyplex-test-${process.pid}`;
+  const name = `jellyfied-test-${process.pid}`;
   spawnSync('docker', ['rm', '-f', name], { stdio: 'ignore' });
   docker(
     'run',
@@ -147,7 +147,7 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
 });
 
 console.log(`\n${image}: trusting no proxies`);
-await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYPLEX_TRUSTED_PROXIES: 'none' }, async () => {
+await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIED_TRUSTED_PROXIES: 'none' }, async () => {
   const seen = await fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': '203.0.113.7' } }).then(
     (r) => r.json().then((j) => j.forwardedFor),
     () => null,
@@ -155,25 +155,44 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   check('X-Forwarded-For from the peer is ignored', Boolean(seen) && seen !== '203.0.113.7', seen);
 });
 
-console.log(`\n${image}: under /jellyplex`);
-await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYPLEX_BASE_PATH: '/jellyplex/' }, async () => {
-  const page = await text('/jellyplex/');
-  check('serves the app under the path, pointing at it', page.includes('<base href="/jellyplex/"'));
-  const redirect = await fetch(`${origin}/jellyplex`, { redirect: 'manual' });
-  check('adds the trailing slash', redirect.status === 301 && redirect.headers.get('location') === '/jellyplex/');
-  check('client-side routes work under the path', (await text('/jellyplex/item/abc')).includes('<div id="root">'));
+console.log(`\n${image}: settings under the names from before the rename`);
+await withContainer(
+  {
+    JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`,
+    JELLYPLEX_BASE_PATH: '/old',
+    JELLYPLEX_LOCK_SERVER: 'false',
+    JELLYPLEX_TRUSTED_PROXIES: 'none',
+  },
+  async () => {
+    check('the old base path setting is used', (await text('/old/')).includes('<base href="/old/"'));
+    check('the old lock setting is used', (await text('/old/config.js')).includes('lockServer: false'));
+    const seen = await fetch(`${origin}/old/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': '203.0.113.7' } }).then(
+      (r) => r.json().then((j) => j.forwardedFor),
+      () => null,
+    );
+    check('the old trusted proxies setting is used', Boolean(seen) && seen !== '203.0.113.7', seen);
+  },
+);
+
+console.log(`\n${image}: under /jellyfied`);
+await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIED_BASE_PATH: '/jellyfied/' }, async () => {
+  const page = await text('/jellyfied/');
+  check('serves the app under the path, pointing at it', page.includes('<base href="/jellyfied/"'));
+  const redirect = await fetch(`${origin}/jellyfied`, { redirect: 'manual' });
+  check('adds the trailing slash', redirect.status === 301 && redirect.headers.get('location') === '/jellyfied/');
+  check('client-side routes work under the path', (await text('/jellyfied/item/abc')).includes('<div id="root">'));
   check(
     'config.js is served there and names the proxy under the path',
-    (await text('/jellyplex/config.js')).includes('serverUrl: "/jellyplex/jellyfin"'),
+    (await text('/jellyfied/config.js')).includes('serverUrl: "/jellyfied/jellyfin"'),
   );
   const asset = /assets\/index-[\w-]+\.js/.exec(page)?.[0];
-  check('build assets are served under the path', (await fetch(`${origin}/jellyplex/${asset}`)).status === 200);
-  const proxied = await fetch(`${origin}/jellyplex/jellyfin/Users/Me`).then(
+  check('build assets are served under the path', (await fetch(`${origin}/jellyfied/${asset}`)).status === 200);
+  const proxied = await fetch(`${origin}/jellyfied/jellyfin/Users/Me`).then(
     (r) => r.json(),
     () => null,
   );
   check('the proxy works under the path', proxied?.url === '/Users/Me', JSON.stringify(proxied));
-  check('WebSockets work under the path', (await webSocketPath('/jellyplex/jellyfin/socket?deviceId=d')) === '/socket?deviceId=d');
+  check('WebSockets work under the path', (await webSocketPath('/jellyfied/jellyfin/socket?deviceId=d')) === '/socket?deviceId=d');
 });
 
 upstream.close();

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// By default the tests build Jellyplex and serve it with `vite preview`. Set E2E_BASE_URL to test
+// By default the tests build Jellyfied and serve it with `vite preview`. Set E2E_BASE_URL to test
 // a running instance instead (for example the container on http://localhost:8080).
 const externalUrl = process.env.E2E_BASE_URL;
 const port = 4173;

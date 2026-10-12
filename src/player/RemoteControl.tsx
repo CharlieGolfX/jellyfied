@@ -57,7 +57,7 @@ interface GeneralCommandMessage {
 }
 
 /**
- * Makes this browser tab a target that other Jellyfin apps (and other Jellyplex tabs) can send
+ * Makes this browser tab a target that other Jellyfin apps (and other Jellyfied tabs) can send
  * playback to and control. Renders nothing.
  */
 export function RemoteControlReceiver() {

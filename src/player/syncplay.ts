@@ -85,7 +85,7 @@ function parseTime(iso: string): number {
 const normId = (id: string) => id.replace(/-/g, '').toLowerCase();
 
 /** Remembers the group across a page reload (the server keeps the membership, the page does not). */
-const GROUP_KEY = 'jellyplex.syncPlayGroup';
+const GROUP_KEY = 'jellyfied.syncPlayGroup';
 function storedGroup(): string | null {
   try {
     return sessionStorage.getItem(GROUP_KEY);

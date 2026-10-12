@@ -1,9 +1,9 @@
-// Takes the README screenshots (docs/screenshots) from a running Jellyplex and a real library.
+// Takes the README screenshots (docs/screenshots) from a running Jellyfied and a real library.
 //
 //   npm run build && npm run preview -- --port 4173 &
 //   SHOT_USERNAME=me SHOT_PASSWORD=secret node scripts/screenshots.mjs
 //
-// SHOT_BASE_URL   Jellyplex to photograph (default http://localhost:4173)
+// SHOT_BASE_URL   Jellyfied to photograph (default http://localhost:4173)
 // SHOT_JELLYFIN   Jellyfin address for the browser (default http://localhost:8096); leave empty
 //                 when the instance already knows its server, as the container does
 // SHOT_MOVIE, SHOT_SHOW   titles to use for the detail pages and the player (default: the first found)
@@ -19,7 +19,7 @@ if (jellyfin) {
   await page.route('**/config.js', (route) =>
     route.fulfill({
       contentType: 'application/javascript',
-      body: `window.JELLYPLEX_CONFIG = ${JSON.stringify({ serverUrl: jellyfin, lockServer: true })};`,
+      body: `window.JELLYFIED_CONFIG = ${JSON.stringify({ serverUrl: jellyfin, lockServer: true })};`,
     }),
   );
 }
@@ -37,10 +37,10 @@ await page.getByRole('button', { name: 'Account menu' }).waitFor();
 const api = (path, query = {}) =>
   page.evaluate(
     async (request) => {
-      const s = JSON.parse(localStorage.getItem('jellyplex.session'));
+      const s = JSON.parse(localStorage.getItem('jellyfied.session'));
       const res = await fetch(`${s.serverUrl}${request.path}?${new URLSearchParams({ userId: s.userId, ...request.query })}`, {
         headers: {
-          Authorization: `MediaBrowser Client="Jellyplex", Device="screenshots", DeviceId="screenshots", Version="1", Token="${s.accessToken}"`,
+          Authorization: `MediaBrowser Client="Jellyfied", Device="screenshots", DeviceId="screenshots", Version="1", Token="${s.accessToken}"`,
         },
       });
       return res.json();

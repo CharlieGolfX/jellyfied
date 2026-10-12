@@ -1,6 +1,6 @@
 name: Container image
 
-# Publishes ghcr.io/<owner>/jellyplex:
+# Publishes ghcr.io/<owner>/jellyfied:
 #   push to main  ->  :edge
 #   tag v1.2.3    ->  :1.2.3, :1.2, :1 and :latest, plus a GitHub release with that version's changelog
 on:
@@ -56,7 +56,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
           labels: |
-            org.opencontainers.image.title=Jellyplex
+            org.opencontainers.image.title=Jellyfied
             org.opencontainers.image.description=A Plex-style web frontend for Jellyfin
             org.opencontainers.image.licenses=GPL-3.0-or-later
 
@@ -94,4 +94,4 @@ jobs:
             echo "docker pull ghcr.io/${GITHUB_REPOSITORY,,}:$version"
             echo '```'
           } >> notes.md
-          gh release create "$GITHUB_REF_NAME" --title "Jellyplex $version" --notes-file notes.md --verify-tag
+          gh release create "$GITHUB_REF_NAME" --title "Jellyfied $version" --notes-file notes.md --verify-tag

@@ -17,7 +17,7 @@ import type { StoredSession } from './AuthProvider';
  * does not offer it, so there the same is done with the SHA-256 written out below. A PIN set that
  * way is moved to the stronger form the first time it is entered where that exists.
  */
-const KEY = 'jellyplex.pins';
+const KEY = 'jellyfied.pins';
 /** How often the PIN is hashed over to make one key: what makes a try slow. */
 const ROUNDS = 20_000;
 /** The same for PBKDF2, which the browser runs natively and so can do far more of. */
@@ -46,7 +46,7 @@ export function validPin(pin: string): boolean {
   return /^\d{4,12}$/.test(pin);
 }
 
-// SHA-256, written out because crypto.subtle only exists on https and localhost, and Jellyplex is
+// SHA-256, written out because crypto.subtle only exists on https and localhost, and Jellyfied is
 // often opened over plain http on a home network.
 const K = new Uint32Array(64);
 {

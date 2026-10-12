@@ -54,14 +54,14 @@
       "branding": "Profilering",
       "brandingSaved": "Profilering lagret",
       "customCss": "Egendefinert CSS",
-      "customCssHint": "Jellyplex laster den ikke: fargene velges under Kontoinnstillinger.",
-      "disclaimerHint": "Vises under innloggingsskjemaet, her og i andre Jellyfin-apper. Jellyplex viser den som ren tekst; Jellyfins nettgrensesnitt godtar også HTML.",
+      "customCssHint": "Jellyfied laster den ikke: fargene velges under Kontoinnstillinger.",
+      "disclaimerHint": "Vises under innloggingsskjemaet, her og i andre Jellyfin-apper. Jellyfied viser den som ren tekst; Jellyfins nettgrensesnitt godtar også HTML.",
       "jellyfinWebInterface": "Jellyfins nettgrensesnitt",
       "loginDisclaimer": "Melding ved innlogging",
       "loginScreen": "Innloggingsskjerm",
       "splashScreen": "Oppstartsskjerm",
       "splashscreenHint": "Vis et bilde laget av biblioteket mens nettgrensesnittet lastes.",
-      "webOnlyHint": "Disse to gjelder bare Jellyfins eget nettgrensesnitt, ikke Jellyplex.",
+      "webOnlyHint": "Disse to gjelder bare Jellyfins eget nettgrensesnitt, ikke Jellyfied.",
       "whatPeopleSeeBeforeThey": "Det folk ser før de logger inn."
     },
     "dashboard": {
@@ -781,9 +781,6 @@
     "cardSizeButton": {
       "posterSize": "Plakatstørrelse"
     },
-    "logo": {
-      "jellyfin": "Jellyfin"
-    },
     "searchBox": {
       "musicVideo": "Musikkvideo",
       "seeAllResultsFor": "Vis alle resultater for «{debounced}»",
@@ -808,9 +805,9 @@
       "forest": "Skog",
       "graphite": "Grafitt",
       "green": "Grønn",
-      "jellyfinBlue": "Jellyfin-blå",
-      "jellyfinDark": "Jellyfin mørk",
-      "jellyfinPurple": "Jellyfin-lilla",
+      "jellyfiedBlue": "Jellyfied-blå",
+      "jellyfiedDark": "Jellyfied mørk",
+      "jellyfiedPurple": "Jellyfied-lilla",
       "midnightBlue": "Midnattsblå",
       "orange": "Oransje",
       "pink": "Rosa",
@@ -1156,7 +1153,7 @@
     "chapterNumber": "Kapittel {number}",
     "chromecast": {
       "cannotPlay": "Chromecasten kunne ikke spille av dette.",
-      "localhostUnreachable": "En Chromecast når ikke en server på «localhost». Åpne Jellyplex via en adresse andre enheter på nettverket ditt kan bruke.",
+      "localhostUnreachable": "En Chromecast når ikke en server på «localhost». Åpne Jellyfied via en adresse andre enheter på nettverket ditt kan bruke.",
       "notConnected": "Ikke koblet til en Chromecast.",
       "serverUnreachable": "Chromecasten nådde ikke Jellyfin-serveren. Den trenger en adresse den kan åpne selv, ikke localhost."
     },
@@ -1425,7 +1422,7 @@
         "one": "{count} språk er tilgjengelig.",
         "other": "{count} språk er tilgjengelige."
       },
-      "description": "Språket i selve Jellyplex. Titler og beskrivelser av mediene dine kommer fra serveren.",
+      "description": "Språket i selve Jellyfied. Titler og beskrivelser av mediene dine kommer fra serveren.",
       "label": "Grensesnittspråk",
       "title": "Språk"
     },
@@ -1492,15 +1489,15 @@
     "textColour": "Tekstfarge",
     "textEdge": "Tekstkant",
     "textSize": "Tekststørrelse",
-    "themeHint": "Aksentfargen og bakgrunnen til Jellyplex på denne enheten.",
+    "themeHint": "Aksentfargen og bakgrunnen til Jellyfied på denne enheten.",
     "timeDisplayUpdated": "Tidsvisningen er oppdatert",
     "updatePassword": "Oppdater passord",
     "usedForClockTimesSuch": "Brukes til klokkeslett som «Slutter» i avspilleren og datoer i kontrollpanelet."
   },
   "ui": {
     "crashState": {
-      "crashed": "Denne siden støtte på en feil og kunne ikke vises. Resten av Jellyplex fungerer fortsatt.",
-      "jellyplexWasUpdated": "Jellyplex ble oppdatert",
+      "crashed": "Denne siden støtte på en feil og kunne ikke vises. Resten av Jellyfied fungerer fortsatt.",
+      "jellyfiedWasUpdated": "Jellyfied ble oppdatert",
       "outdated": "Denne siden hører til en eldre versjon. Last inn på nytt for å få den nye.",
       "reload": "Last inn på nytt",
       "somethingWentWrong": "Noe gikk galt",

@@ -193,7 +193,7 @@ export async function mockJellyfin(page: Page, options: MockOptions = {}) {
   await page.route('**/config.js', (route) =>
     route.fulfill({
       contentType: 'application/javascript',
-      body: `window.JELLYPLEX_CONFIG = { serverUrl: "${SERVER}", lockServer: true };`,
+      body: `window.JELLYFIED_CONFIG = { serverUrl: "${SERVER}", lockServer: true };`,
     }),
   );
   // The realtime connection (remote control, SyncPlay): accepted and left silent.

@@ -320,7 +320,7 @@ export function profileFor(c: Capabilities, maxBitrate: number = MAX_BITRATE, op
   }
 
   return {
-    Name: 'Jellyplex Web',
+    Name: 'Jellyfied Web',
     MaxStreamingBitrate: maxBitrate,
     MaxStaticBitrate: 100_000_000,
     MusicStreamingTranscodingBitrate: 384_000,

@@ -94,7 +94,7 @@ export default function SettingsPage() {
   if (user && !config) setConfig(user.Configuration);
 
   const [timeFormat, setTimeFormat] = useTimeFormat();
-  const [bitrate, setBitrate] = useState(() => Number(localStorage.getItem('jellyplex.maxBitrate')) || MAX_BITRATE);
+  const [bitrate, setBitrate] = useState(() => Number(localStorage.getItem('jellyfied.maxBitrate')) || MAX_BITRATE);
   const [seekSteps, setSeekSteps] = useSeekSteps();
   const [syncPrefs, setSyncPrefs] = usePrefsSyncEnabled();
 
@@ -267,7 +267,7 @@ export default function SettingsPage() {
               const v = Number(e.target.value);
               setBitrate(v);
               try {
-                localStorage.setItem('jellyplex.maxBitrate', String(v));
+                localStorage.setItem('jellyfied.maxBitrate', String(v));
               } catch {
                 /* ignore */
               }
@@ -656,7 +656,7 @@ function AccountPinCard() {
   );
 }
 
-/** Picks the language of Jellyplex's own text, from the languages it has been translated to. */
+/** Picks the language of Jellyfied's own text, from the languages it has been translated to. */
 function LanguageCard() {
   const choice = useLanguageChoice();
   return (

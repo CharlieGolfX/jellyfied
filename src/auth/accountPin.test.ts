@@ -17,7 +17,7 @@ describe('sha256', () => {
 });
 
 const stored = () =>
-  (JSON.parse(localStorage.getItem('jellyplex.pins')!) as Record<string, Record<string, unknown>>)['http://jellyfin.test|user-1'];
+  (JSON.parse(localStorage.getItem('jellyfied.pins')!) as Record<string, Record<string, unknown>>)['http://jellyfin.test|user-1'];
 /** As over plain http, where a browser has no `crypto.subtle`. */
 const withoutWebCrypto = () => vi.spyOn(globalThis.crypto, 'subtle', 'get').mockReturnValue(undefined as unknown as SubtleCrypto);
 
@@ -57,7 +57,7 @@ describe.each(['with the browser\u2019s cryptography', 'without it (plain http)'
 
   it('does not keep the access token in a readable form', async () => {
     await setPin(account, '4821', 'token-abc');
-    const raw = localStorage.getItem('jellyplex.pins')!;
+    const raw = localStorage.getItem('jellyfied.pins')!;
     expect(raw).not.toContain('token-abc');
     // Not merely written in another notation either.
     expect(raw).not.toContain(Array.from(new TextEncoder().encode('token-abc'), (b) => b.toString(16)).join(''));
@@ -65,14 +65,14 @@ describe.each(['with the browser\u2019s cryptography', 'without it (plain http)'
 
   it('encrypts differently each time, even for the same PIN and token', async () => {
     await setPin(account, '4821', 'token-abc');
-    const first = localStorage.getItem('jellyplex.pins');
+    const first = localStorage.getItem('jellyfied.pins');
     await setPin(account, '4821', 'token-abc');
-    expect(localStorage.getItem('jellyplex.pins')).not.toBe(first);
+    expect(localStorage.getItem('jellyfied.pins')).not.toBe(first);
   });
 
   it('does not keep the PIN itself', async () => {
     await setPin(account, '4821', 'token-abc');
-    expect(localStorage.getItem('jellyplex.pins')).not.toContain('4821');
+    expect(localStorage.getItem('jellyfied.pins')).not.toContain('4821');
   });
 
   it('locks after too many wrong tries, and opens again later', async () => {
@@ -120,10 +120,10 @@ describe('how the PIN is kept', () => {
 
   it('refuses a token that was changed in storage', async () => {
     await setPin(account, '4821', 'token-abc');
-    const all = JSON.parse(localStorage.getItem('jellyplex.pins')!) as Record<string, { token: string }>;
+    const all = JSON.parse(localStorage.getItem('jellyfied.pins')!) as Record<string, { token: string }>;
     const record = all['http://jellyfin.test|user-1'];
     record.token = record.token.slice(0, -2) + (record.token.endsWith('00') ? '01' : '00');
-    localStorage.setItem('jellyplex.pins', JSON.stringify(all));
+    localStorage.setItem('jellyfied.pins', JSON.stringify(all));
     expect((await checkPin(account, '4821')).ok).toBe(false);
   });
 });

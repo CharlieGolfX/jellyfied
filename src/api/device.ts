@@ -1,4 +1,4 @@
-const DEVICE_ID_KEY = 'jellyplex.deviceId';
+const DEVICE_ID_KEY = 'jellyfied.deviceId';
 
 /** UUID generator that also works on insecure (plain http) origins, where crypto.randomUUID is unavailable. */
 export function generateId(): string {

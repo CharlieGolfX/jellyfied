@@ -6,11 +6,11 @@ import { expect, test, type Page } from '@playwright/test';
  *   E2E_USERNAME, E2E_PASSWORD   account to sign in with
  *   E2E_JELLYFIN_URL             Jellyfin address the browser should use (optional; without it the
  *                                instance under test must already know its server, as the container does)
- *   E2E_BASE_URL                 test a running Jellyplex instead of a fresh build (optional)
+ *   E2E_BASE_URL                 test a running Jellyfied instead of a fresh build (optional)
  *
  * The server needs at least one movie. Tests that need more (a show with two episodes, a video
  * with styled or image subtitles) are skipped when the library has none. The tests change the
- * watched state of what they play, and the account's Jellyplex preferences.
+ * watched state of what they play, and the account's Jellyfied preferences.
  */
 const username = process.env.E2E_USERNAME;
 const password = process.env.E2E_PASSWORD ?? '';
@@ -34,7 +34,7 @@ test.describe('playback on a real server', () => {
       await page.route('**/config.js', (route) =>
         route.fulfill({
           contentType: 'application/javascript',
-          body: `window.JELLYPLEX_CONFIG = ${JSON.stringify({ serverUrl: jellyfinUrl, lockServer: true })};`,
+          body: `window.JELLYFIED_CONFIG = ${JSON.stringify({ serverUrl: jellyfinUrl, lockServer: true })};`,
         }),
       );
     }
@@ -62,7 +62,7 @@ test.describe('playback on a real server', () => {
   async function items(page: Page, path: string, query: Record<string, string>): Promise<Item[]> {
     return page.evaluate(
       async (request) => {
-        const session = JSON.parse(localStorage.getItem('jellyplex.session')!) as {
+        const session = JSON.parse(localStorage.getItem('jellyfied.session')!) as {
           serverUrl: string;
           accessToken: string;
           userId: string;
@@ -70,7 +70,7 @@ test.describe('playback on a real server', () => {
         const params = new URLSearchParams({ userId: session.userId, ...request.query });
         const res = await fetch(`${session.serverUrl}${request.path}?${params}`, {
           headers: {
-            Authorization: `MediaBrowser Client="Jellyplex e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${session.accessToken}"`,
+            Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${session.accessToken}"`,
           },
         });
         return ((await res.json()) as { Items: Item[] }).Items;
@@ -283,7 +283,7 @@ test.describe('playback on a real server', () => {
 
   test('shows styled subtitles as plain text when their styling is switched off', async ({ page }) => {
     // Kept to this browser: the other tests, which may be running on the same account, want the styling.
-    await page.addInitScript(() => localStorage.setItem('jellyplex.syncPrefs', 'off'));
+    await page.addInitScript(() => localStorage.setItem('jellyfied.syncPrefs', 'off'));
     await page.goto('/settings');
     const styling = page.getByRole('switch', { name: 'Keep the styling of styled subtitles' });
     if ((await styling.getAttribute('aria-checked')) === 'true') await styling.click();
@@ -447,17 +447,17 @@ test.describe('playback on a real server', () => {
   test('preferences are stored with the account on the server', async ({ page }) => {
     const stored = () =>
       page.evaluate(async () => {
-        const session = JSON.parse(localStorage.getItem('jellyplex.session')!) as {
+        const session = JSON.parse(localStorage.getItem('jellyfied.session')!) as {
           serverUrl: string;
           accessToken: string;
           userId: string;
         };
-        const res = await fetch(`${session.serverUrl}/DisplayPreferences/usersettings?userId=${session.userId}&client=jellyplex`, {
+        const res = await fetch(`${session.serverUrl}/DisplayPreferences/usersettings?userId=${session.userId}&client=jellyfied`, {
           headers: {
-            Authorization: `MediaBrowser Client="Jellyplex e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${session.accessToken}"`,
+            Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${session.accessToken}"`,
           },
         });
-        return ((await res.json()) as { CustomPrefs?: Record<string, string> }).CustomPrefs?.['jellyplex.seekSteps'] ?? null;
+        return ((await res.json()) as { CustomPrefs?: Record<string, string> }).CustomPrefs?.['jellyfied.seekSteps'] ?? null;
       });
 
     await page.goto('/settings');
@@ -469,7 +469,7 @@ test.describe('playback on a real server', () => {
     // A browser that has never been used takes the value from the account.
     await page.getByLabel('Skip forward').selectOption('90');
     await expect.poll(async () => JSON.parse((await stored()) ?? '{}').forward, { timeout: 15_000 }).toBe(90);
-    await page.evaluate(() => localStorage.removeItem('jellyplex.seekSteps'));
+    await page.evaluate(() => localStorage.removeItem('jellyfied.seekSteps'));
     await page.reload();
     await expect(page.getByLabel('Skip forward')).toHaveValue('90');
     await page.getByLabel('Skip forward').selectOption('30');

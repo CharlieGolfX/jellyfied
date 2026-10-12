@@ -9,7 +9,7 @@ export interface CastTarget {
   userName: string;
 }
 
-const KEY = 'jellyplex.castTarget';
+const KEY = 'jellyfied.castTarget';
 
 function read(): CastTarget | null {
   try {

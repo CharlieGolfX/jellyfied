@@ -12,8 +12,8 @@ export interface Theme {
 export type BackgroundId = 'dark' | 'black' | 'graphite' | 'midnight' | 'plum' | 'forest';
 
 export const ACCENT_PRESETS: { value: string; label: string }[] = [
-  { value: '#00a4dc', label: t('lib.theme.jellyfinBlue') },
-  { value: '#aa5cc3', label: t('lib.theme.jellyfinPurple') },
+  { value: '#00a4dc', label: t('lib.theme.jellyfiedBlue') },
+  { value: '#aa5cc3', label: t('lib.theme.jellyfiedPurple') },
   { value: '#e5a00d', label: t('lib.theme.amber') },
   { value: '#f76b15', label: t('lib.theme.orange') },
   { value: '#e5484d', label: t('lib.theme.red') },
@@ -27,7 +27,7 @@ const STEPS = ['950', '900', '850', '800', '750', '700', '600', '500'] as const;
 const LADDER = [4, 6.5, 9.5, 12.5, 16, 20, 29, 41.5];
 
 export const BACKGROUNDS: { value: BackgroundId; label: string; hue: number; saturation: number; ladder: number[] }[] = [
-  { value: 'dark', label: t('lib.theme.jellyfinDark'), hue: 0, saturation: 0, ladder: LADDER },
+  { value: 'dark', label: t('lib.theme.jellyfiedDark'), hue: 0, saturation: 0, ladder: LADDER },
   { value: 'black', label: t('lib.theme.blackOled'), hue: 0, saturation: 0, ladder: [0, 0, 5, 8.5, 12, 16, 26, 40] },
   { value: 'graphite', label: t('lib.theme.graphite'), hue: 215, saturation: 9, ladder: [8, 11, 14, 17.5, 21, 25, 34, 46] },
   { value: 'midnight', label: t('lib.theme.midnightBlue'), hue: 222, saturation: 32, ladder: LADDER },
@@ -37,7 +37,7 @@ export const BACKGROUNDS: { value: BackgroundId; label: string; hue: number; sat
 
 export const DEFAULT_THEME: Theme = { accent: ACCENT_PRESETS[0].value, background: 'dark' };
 
-const KEY = 'jellyplex.theme';
+const KEY = 'jellyfied.theme';
 
 function backgroundColors(id: BackgroundId): string[] {
   const bg = BACKGROUNDS.find((b) => b.value === id) ?? BACKGROUNDS[0];

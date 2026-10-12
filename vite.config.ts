@@ -14,7 +14,7 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const target = env.JELLYFIN_DEV_URL || env.JELLYFIN_URL;
-  const port = Number(env.JELLYPLEX_DEV_PORT) || 5173;
+  const port = Number(env.JELLYFIED_DEV_PORT || env.JELLYPLEX_DEV_PORT) || 5173;
 
   return {
     // Relative, so the same build can be served at the root or under a path (see index.html's <base>).
@@ -25,19 +25,19 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       {
         // Mirror the container's runtime config so the dev server uses the /jellyfin proxy.
-        name: 'jellyplex-dev-config',
+        name: 'jellyfied-dev-config',
         apply: 'serve',
         configureServer(server) {
           server.middlewares.use('/config.js', (_req, res) => {
             res.setHeader('Content-Type', 'application/javascript');
-            res.end(`window.JELLYPLEX_CONFIG = ${JSON.stringify({ serverUrl: target ? '/jellyfin' : '', lockServer: false })};`);
+            res.end(`window.JELLYFIED_CONFIG = ${JSON.stringify({ serverUrl: target ? '/jellyfin' : '', lockServer: false })};`);
           });
         },
       },
       {
-        // licenses.txt: Jellyplex's licence and the notices of everything shipped with it. The app
+        // licenses.txt: Jellyfied's licence and the notices of everything shipped with it. The app
         // links to it, so it is there in development as well.
-        name: 'jellyplex-licences',
+        name: 'jellyfied-licences',
         generateBundle() {
           this.emitFile({ type: 'asset', fileName: 'licenses.txt', source: thirdPartyNotices() as string });
         },

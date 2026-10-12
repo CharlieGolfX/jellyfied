@@ -6,8 +6,8 @@ import { t } from '@/i18n';
 /** Which of the player's menus is open. */
 export type PlayerPanel = 'none' | 'settings' | 'subtitles' | 'chapters' | 'picture';
 
-export const BITRATE_KEY = 'jellyplex.maxBitrate';
-export const VOLUME_KEY = 'jellyplex.volume';
+export const BITRATE_KEY = 'jellyfied.maxBitrate';
+export const VOLUME_KEY = 'jellyfied.volume';
 
 export const QUALITY_OPTIONS: { label: string; value: number }[] = [
   { label: t('player.video.shared.originalAuto'), value: MAX_BITRATE },

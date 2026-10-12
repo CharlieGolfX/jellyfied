@@ -18,7 +18,7 @@ export function CrashState({ error, onRetry, fullPage }: { error: unknown; onRet
       )}
     >
       <AlertTriangle className="text-danger" size={36} />
-      <h2 className="text-lg font-semibold">{outdated ? t('ui.crashState.jellyplexWasUpdated') : t('ui.crashState.somethingWentWrong')}</h2>
+      <h2 className="text-lg font-semibold">{outdated ? t('ui.crashState.jellyfiedWasUpdated') : t('ui.crashState.somethingWentWrong')}</h2>
       <p className="max-w-md text-sm text-muted">{outdated ? t('ui.crashState.outdated') : t('ui.crashState.crashed')}</p>
       {!outdated && <p className="max-w-md font-mono text-xs break-words text-faint">{errorMessage(error)}</p>}
       <div className="mt-1 flex gap-2">
