@@ -90,8 +90,11 @@ test.describe('a large library', () => {
       await page.waitForTimeout(250);
     }
     await expect(grid).toHaveAttribute('data-total', '260');
-    await page.locator('#main-scroll').evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
-    await expect(card(page, 'Z film 10')).toBeInViewport();
+    // The page only gets its full height once the last titles are laid out: scroll until the end is reached.
+    await expect(async () => {
+      await page.locator('#main-scroll').evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+      await expect(card(page, 'Z film 10')).toBeInViewport({ timeout: 500 });
+    }).toPass({ timeout: 10_000 });
     expect(await mounted()).toBeLessThan(80);
     await expect(card(page, 'A film 01')).toHaveCount(0);
 
