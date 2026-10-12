@@ -19,6 +19,7 @@ const STATUS_TONE: Record<PluginInfo['Status'], 'green' | 'amber' | 'red' | 'gra
   Active: 'green',
   Restart: 'amber',
   Deleted: 'gray',
+  Superseded: 'gray',
   Superceded: 'gray',
   Malfunctioned: 'red',
   NotSupported: 'red',

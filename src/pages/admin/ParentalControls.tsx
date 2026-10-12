@@ -9,7 +9,7 @@ import { Card } from '@/pages/Settings';
 import { parseList } from './shared';
 import { t } from '@/i18n';
 
-const UNRATED: [string, string][] = [
+const UNRATED: [NonNullable<UserPolicy['BlockUnratedItems']>[number], string][] = [
   ['Movie', t('admin.parentalControls.unrated.movies')],
   ['Series', t('admin.parentalControls.unrated.shows')],
   ['Music', t('admin.parentalControls.unrated.music')],

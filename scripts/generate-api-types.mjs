@@ -1,6 +1,6 @@
 // Generates src/api/generated.ts from a Jellyfin server's OpenAPI document: one type per schema.
-// The app's own types (src/api/types.ts) are hand-written and smaller; src/api/types.check.ts
-// compares the two, so a field that is misspelt or no longer exists fails the type check.
+// The app's own types (src/api/types.ts) are cut out of these, so a field that is misspelt, no
+// longer exists or changed its type fails the type check.
 //
 //   npm run generate:api                      (server at http://localhost:8096)
 //   JELLYFIN_URL=http://host:8096 npm run generate:api

@@ -64,7 +64,10 @@ export default function PlaybackPage() {
       <Card title={t('admin.playback.hardwareAcceleration')}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('admin.playback.acceleration')}>
-            <Select value={hw} onChange={(ev) => e('HardwareAccelerationType', ev.target.value)}>
+            <Select
+              value={hw}
+              onChange={(ev) => e('HardwareAccelerationType', ev.target.value as EncodingOptions['HardwareAccelerationType'])}
+            >
               {HW_ACCEL.map((h) => (
                 <option key={h.value} value={h.value}>
                   {h.label}
@@ -153,7 +156,10 @@ export default function PlaybackPage() {
             />
           </Field>
           <Field label={t('admin.playback.encoderPreset')}>
-            <Select value={enc.EncoderPreset ?? ''} onChange={(ev) => e('EncoderPreset', ev.target.value || null)}>
+            <Select
+              value={enc.EncoderPreset ?? ''}
+              onChange={(ev) => e('EncoderPreset', (ev.target.value || null) as EncodingOptions['EncoderPreset'])}
+            >
               {PRESETS.map((p) => (
                 <option key={p} value={p}>
                   {p || t('admin.playback.auto')}
