@@ -56,6 +56,13 @@ describe('matchLanguage', () => {
     expect(matchLanguage(['DE-at'], available)).toBe('de');
   });
 
+  it('serves a language that only exists for another region, and plain Norwegian with Bokmål', () => {
+    expect(matchLanguage(['es-MX'], ['en', 'es-ES', 'nb'])).toBe('es-ES');
+    expect(matchLanguage(['es'], ['en', 'es-ES', 'nb'])).toBe('es-ES');
+    expect(matchLanguage(['no'], ['en', 'es-ES', 'nb'])).toBe('nb');
+    expect(matchLanguage(['nn-NO', 'no-NO'], ['en', 'es-ES', 'nb'])).toBe('nb');
+  });
+
   it('takes the first wanted language there is text for, or English', () => {
     expect(matchLanguage(['fr', 'de'], available)).toBe('de');
     expect(matchLanguage(['fr'], available)).toBe('en');
@@ -67,6 +74,8 @@ describe('languageName', () => {
   it('names a language in that language', () => {
     expect(languageName('en')).toBe('English');
     expect(languageName('de')).toBe('Deutsch');
+    expect(languageName('nb')).toBe('Norsk bokmål');
+    expect(languageName('es-ES')).toMatch(/^Español/);
   });
 });
 
@@ -90,6 +99,40 @@ describe('the language files', () => {
   it('English has no empty texts', () => {
     expect(reference.size).toBeGreaterThan(0);
     expect(JSON.stringify(en)).not.toContain('""');
+  });
+
+  it('there are translations', () => {
+    expect(others.map((path) => path.slice(path.lastIndexOf('/') + 1))).toEqual(['es-ES.json', 'nb.json']);
+  });
+
+  it('the translations have every text English has, and none are empty', () => {
+    for (const path of others) {
+      const translated = texts(files[path].default);
+      expect(
+        [...reference.keys()].filter((key) => !translated.has(key)),
+        `${path}: texts that are missing`,
+      ).toEqual([]);
+      expect(JSON.stringify(files[path].default), `${path}: empty texts`).not.toContain('""');
+    }
+  });
+
+  it('a plural has the forms its language needs', () => {
+    const forms = (node: unknown, path: string, language: string, missing: string[]) => {
+      if (!node || typeof node !== 'object') return;
+      const group = node as Record<string, unknown>;
+      if (typeof group.other === 'string') {
+        // Only the forms whole numbers can select: "many" in Spanish is for millions, which nothing here counts.
+        for (const n of [0, 1, 2, 5, 21, 100]) {
+          const rule = new Intl.PluralRules(language).select(n);
+          if (!(rule in group)) missing.push(`${path} (${rule})`);
+        }
+      } else for (const [key, value] of Object.entries(group)) forms(value, path ? `${path}.${key}` : key, language, missing);
+    };
+    for (const path of Object.keys(files)) {
+      const missing: string[] = [];
+      forms(files[path].default, '', path.slice(path.lastIndexOf('/') + 1, -'.json'.length), missing);
+      expect([...new Set(missing)], `${path}: plural forms that are missing`).toEqual([]);
+    }
   });
 
   it('other languages only have texts English has, with the same placeholders', () => {

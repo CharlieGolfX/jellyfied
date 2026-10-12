@@ -8,7 +8,7 @@ import { CardGrid } from '@/components/media/CardGrid';
 import { Hub } from '@/components/media/Hub';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState, Img } from '@/components/ui/States';
-import { formatDate, plural } from '@/lib/format';
+import { formatDate, formatNumber, plural } from '@/lib/format';
 import { FolderGrid } from '@/pages/library/FolderGrid';
 import { ActionBar, DetailFrame, ExpandableText, MetaLine } from './common';
 import { t } from '@/i18n';
@@ -30,17 +30,9 @@ export function PersonDetails({ item }: { item: BaseItemDto }) {
       header={
         <>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[15px] text-muted">
-            {born && (
-              <span>
-                {t('item.otherDetails.born')} {born}
-              </span>
-            )}
-            {died && (
-              <span>
-                {t('item.otherDetails.died')} {died}
-              </span>
-            )}
-            {total > 0 && <span>{t('item.otherDetails.titlesInLibrary', { count: total, n: total.toLocaleString() })}</span>}
+            {born && <span>{t('item.otherDetails.born', { date: born })}</span>}
+            {died && <span>{t('item.otherDetails.died', { date: died })}</span>}
+            {total > 0 && <span>{t('item.otherDetails.titlesInLibrary', { count: total, n: formatNumber(total) })}</span>}
           </div>
           <div className="pt-2">
             <ActionBar item={item} />

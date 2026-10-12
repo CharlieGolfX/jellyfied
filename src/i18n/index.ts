@@ -50,14 +50,22 @@ export function languageName(code: string): string {
   }
 }
 
-/** The best available language for a list of wanted ones ("nb-NO" is served by "nb"), or English. */
+/** Browsers set to plain "Norwegian" mean Bokmål. */
+const ALIASES: Record<string, string> = { no: 'nb' };
+
+/**
+ * The best available language for a list of wanted ones, or English. "nb-NO" is served by "nb",
+ * and a language that only exists for another region is still that language: "es-MX" gets "es-ES".
+ */
 export function matchLanguage(wanted: readonly string[], available: readonly string[] = LANGUAGES): string {
   for (const want of wanted) {
     const lower = want.toLowerCase();
     const exact = available.find((a) => a.toLowerCase() === lower);
     if (exact) return exact;
-    const base = available.find((a) => a.toLowerCase() === lower.split('-')[0]);
-    if (base) return base;
+    const base = lower.split('-')[0];
+    const language = ALIASES[base] ?? base;
+    const match = available.find((a) => a.toLowerCase() === language) ?? available.find((a) => a.toLowerCase().split('-')[0] === language);
+    if (match) return match;
   }
   return FALLBACK;
 }

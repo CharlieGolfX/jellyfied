@@ -277,10 +277,31 @@ test('the interface language can be chosen from the languages there is text for'
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
   await page.goto('/settings');
   const language = page.getByLabel('Interface language');
-  await expect(language.getByRole('option')).toHaveText(['Same as the browser (English)', 'English']);
+  await expect(language.getByRole('option')).toHaveText(['Same as the browser (English)', 'English', /^Español/, 'Norsk bokmål']);
   await language.selectOption('en');
   expect(await page.evaluate(() => localStorage.getItem('jellyplex.language'))).toBe('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('choosing another language reloads the interface in it, with its way of writing numbers', async ({ page }) => {
+  await mockJellyfin(page, { big: true });
+  await signIn(page);
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  await page.goto('/settings');
+
+  await page.getByLabel('Interface language').selectOption('nb');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'nb');
+  await expect(page.getByRole('heading', { name: 'Kontoinnstillinger' })).toBeVisible();
+  await expect(page.getByLabel('Grensesnittspråk').getByRole('option').first()).toHaveText('Samme som nettleseren (English)');
+  await page.goto('/library/lib-movies?tab=library');
+  await expect(page.getByText('260 elementer')).toBeVisible();
+
+  await page.goto('/settings');
+  await page.getByLabel('Grensesnittspråk').selectOption('es-ES');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
+  await expect(page.getByRole('heading', { name: 'Ajustes de la cuenta' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByText('Añadido recientemente en Movies')).toBeVisible();
 });
 
 test('an account can be protected with a PIN that is asked for when switching to it', async ({ page }) => {

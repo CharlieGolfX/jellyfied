@@ -668,9 +668,12 @@
   },
   "format": {
     "episode": "Episode {number}",
+    "justNow": "just now",
+    "lessThan": "< {time}",
     "never": "Never",
     "season": "Season {number}",
     "special": "Special",
+    "timeLeft": "{time} left",
     "yearToPresent": "{year} – Present"
   },
   "home": {
@@ -726,8 +729,8 @@
       "thisPlaylistIsEmptyUse": "This playlist is empty. Use “Add to playlist” in the menu of a song, album, movie or episode to fill it."
     },
     "otherDetails": {
-      "born": "Born",
-      "died": "Died",
+      "born": "Born {date}",
+      "died": "Died {date}",
       "genre": "Genre",
       "imageUnavailable": "Image unavailable",
       "otherAppearances": "Other Appearances",
@@ -748,7 +751,7 @@
       "moreLikeThis": "More Like This",
       "season": "Season",
       "seasons": "Seasons",
-      "upNext": "Up next:"
+      "upNext": "Up next: {episode}"
     },
     "trackList": {
       "addToQueue": "Add to queue",
@@ -1126,10 +1129,14 @@
     "audioBar": {
       "closePlayer": "Close player",
       "mute": "Mute",
-      "playQueue": "Play queue ·",
+      "playQueue": "Play queue · {count}",
       "queue": "Queue",
       "removeFromQueue": "Remove from queue",
-      "repeat": "Repeat: {repeat}",
+      "repeat": {
+        "all": "Repeat: all",
+        "off": "Repeat: off",
+        "one": "Repeat: this track"
+      },
       "shuffleUpcoming": "Shuffle upcoming",
       "volume": "Volume"
     },
@@ -1192,7 +1199,7 @@
       "muteDevice": "Mute device",
       "nothingPlaying": "Nothing playing",
       "pauseOnDevice": "Pause on device",
-      "playingOn": "Playing on",
+      "playingOn": "Playing on {deviceName}",
       "playOnDevice": "Play on device",
       "stopOnDevice": "Stop on device",
       "stopPlayingOnDevice": "Stop playing on device"
@@ -1250,7 +1257,7 @@
     "video": {
       "indicators": {
         "endOfVideo": "End of video",
-        "endsAt": "Ends at",
+        "endsAt": "Ends at {time}",
         "sleepAtEnd": "Sleep timer: stops when this video ends",
         "sleepTimer": "Sleep timer"
       },
@@ -1275,7 +1282,7 @@
         "picture": "Picture",
         "playbackInfo": "Playback info",
         "quality": "Quality",
-        "reason": "Reason:",
+        "reason": "Reason: {reasons}",
         "resetPicture": "Reset picture",
         "settings": "Settings",
         "showSubtitlesEarlier": "Show subtitles earlier",
@@ -1377,7 +1384,7 @@
     "noResultsTitle": "No results",
     "people": "People",
     "prompt": "Find movies, shows, episodes, music and people.",
-    "resultsFor": "Results for",
+    "resultsFor": "Results for {query}",
     "searchYourLibraries": "Search your libraries",
     "tracks": "Tracks",
     "videos": "Videos"

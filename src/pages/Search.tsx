@@ -10,7 +10,7 @@ import { SEARCH_TYPES } from '@/components/layout/SearchBox';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { usePageTitle } from '@/lib/usePageTitle';
-import { t } from '@/i18n';
+import { t, tRich } from '@/i18n';
 
 const GROUPS: { type: string; title: string }[] = [
   { type: 'Movie', title: t('common.movies') },
@@ -63,7 +63,7 @@ export default function SearchPage() {
   return (
     <div className="space-y-9 py-6 sm:py-8">
       <h1 className="px-4 text-2xl font-bold sm:px-8 lg:px-10">
-        {t('search.resultsFor')} <span className="text-accent">“{q}”</span>
+        {tRich('search.resultsFor', { query: <span className="text-accent">“{q}”</span> })}
       </h1>
       {total === 0 && (
         <EmptyState icon={<SearchIcon size={44} strokeWidth={1.25} />} title={t('search.noResultsTitle')}>

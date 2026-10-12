@@ -390,9 +390,7 @@ export function SettingsMenu({
                 {stream.source.Container?.toUpperCase()}
               </div>
               {stream.transcodeReasons.length > 0 && (
-                <div>
-                  {t('player.video.menus.reason')} {stream.transcodeReasons.join(', ')}
-                </div>
+                <div>{t('player.video.menus.reason', { reasons: stream.transcodeReasons.join(', ') })}</div>
               )}
             </div>
           )}

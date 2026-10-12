@@ -6,18 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
-import { formatRelative } from '@/lib/format';
+import { formatDuration, formatRelative } from '@/lib/format';
 import { Card } from '@/pages/Settings';
 import { AdminPage, StatusPill } from './shared';
 import { t } from '@/i18n';
 
 function duration(start?: string, end?: string): string {
   if (!start || !end) return '';
-  const s = (new Date(end).getTime() - new Date(start).getTime()) / 1000;
-  if (!Number.isFinite(s) || s < 0) return '';
-  if (s < 60) return `${Math.round(s)}s`;
-  if (s < 3600) return `${Math.round(s / 60)} min`;
-  return `${(s / 3600).toFixed(1)} h`;
+  return formatDuration((new Date(end).getTime() - new Date(start).getTime()) / 1000);
 }
 
 function TaskRow({ task }: { task: TaskInfo }) {

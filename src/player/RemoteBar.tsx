@@ -217,7 +217,7 @@ function RemoteBarView({
             </div>
             <div className="truncate text-xs text-muted">
               <Cast size={12} className="mr-1 inline align-[-1px] text-accent" />
-              {t('player.remoteBar.playingOn')} {deviceName}
+              {t('player.remoteBar.playingOn', { deviceName })}
               {client ? ` · ${client}` : ''}
             </div>
           </div>

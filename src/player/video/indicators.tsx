@@ -13,7 +13,7 @@ export function EndsAt({ remaining, speed }: { remaining: number; speed: number 
   const end = new Date(now + (remaining / speed) * 1000);
   return (
     <span className="mr-2 hidden text-sm text-white/70 tabular-nums sm:inline">
-      {t('player.video.indicators.endsAt')} {formatTimeOfDay(end, timeFormat)}
+      {t('player.video.indicators.endsAt', { time: formatTimeOfDay(end, timeFormat) })}
     </span>
   );
 }

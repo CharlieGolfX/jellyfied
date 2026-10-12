@@ -1,6 +1,6 @@
 import type { BaseItemDto } from '@/api/types';
 import { hourCycleOption } from '@/lib/timeFormat';
-import { t } from '@/i18n';
+import { currentLanguage, t } from '@/i18n';
 
 export const TICKS_PER_SECOND = 10_000_000;
 
@@ -23,16 +23,38 @@ export function formatClock(totalSeconds: number): string {
   return `${m}:${ss}`;
 }
 
+/** "1,234" or "1.234": a number the way the interface language writes it. */
+export function formatNumber(n: number, opts?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(currentLanguage(), opts).format(n);
+}
+
+type DurationUnit = 'second' | 'minute' | 'hour';
+/** "52 min", "1 hr": a number with a short unit, in the interface language. */
+const withUnit = (n: number, unit: DurationUnit, opts?: Intl.NumberFormatOptions) =>
+  formatNumber(n, { style: 'unit', unit, unitDisplay: 'short', ...opts });
+
+/** Minutes -> "1 hr 52 min" */
+function hoursAndMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${withUnit(h, 'hour')} ${withUnit(m, 'minute')}`;
+  return h ? withUnit(h, 'hour') : withUnit(m, 'minute');
+}
+
 /** Ticks -> "1 hr 52 min" */
 export function formatRuntime(ticks?: number | null): string {
   if (!ticks) return '';
   const minutes = Math.round(ticks / TICKS_PER_SECOND / 60);
-  if (minutes < 1) return '< 1 min';
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h && m) return `${h} hr ${m} min`;
-  if (h) return `${h} hr`;
-  return `${m} min`;
+  if (minutes < 1) return t('format.lessThan', { time: withUnit(1, 'minute') });
+  return hoursAndMinutes(minutes);
+}
+
+/** How long something took, from seconds: "40 sec", "12 min", "1.5 hr". */
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '';
+  if (seconds < 60) return withUnit(Math.round(seconds), 'second');
+  if (seconds < 3600) return withUnit(Math.round(seconds / 60), 'minute');
+  return withUnit(seconds / 3600, 'hour', { maximumFractionDigits: 1 });
 }
 
 export function formatRemaining(item: BaseItemDto): string {
@@ -40,7 +62,7 @@ export function formatRemaining(item: BaseItemDto): string {
   const pos = item.UserData?.PlaybackPositionTicks ?? 0;
   if (!total || !pos) return '';
   const minutes = Math.max(1, Math.round((total - pos) / TICKS_PER_SECOND / 60));
-  return minutes >= 60 ? `${Math.floor(minutes / 60)} hr ${minutes % 60} min left` : `${minutes} min left`;
+  return t('format.timeLeft', { time: hoursAndMinutes(minutes) });
 }
 
 export function formatBytes(bytes?: number | null, decimals = 1): string {
@@ -48,13 +70,14 @@ export function formatBytes(bytes?: number | null, decimals = 1): string {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : decimals)} ${units[i]}`;
+  const digits = i === 0 ? 0 : decimals;
+  return `${formatNumber(bytes / 1024 ** i, { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${units[i]}`;
 }
 
 export function formatBitrate(bps?: number | null): string {
   if (!bps) return '';
-  if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(1)} Mbps`;
-  return `${Math.round(bps / 1000)} kbps`;
+  if (bps >= 1_000_000) return `${formatNumber(bps / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mbps`;
+  return `${formatNumber(Math.round(bps / 1000))} kbps`;
 }
 
 export function formatDate(iso?: string | null, opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium' }): string {
@@ -62,7 +85,7 @@ export function formatDate(iso?: string | null, opts: Intl.DateTimeFormatOptions
   const d = new Date(iso);
   // Exactly zero (1 January 1970) is how a missing date is stored for some files.
   if (Number.isNaN(d.getTime()) || d.getTime() === 0 || d.getFullYear() < 1900) return '';
-  return d.toLocaleDateString(undefined, opts);
+  return d.toLocaleDateString(currentLanguage(), opts);
 }
 
 export function formatDateTime(iso?: string | null): string {
@@ -70,7 +93,7 @@ export function formatDateTime(iso?: string | null): string {
   const d = new Date(iso);
   // Exactly zero (1 January 1970) is how a missing date is stored for some files.
   if (Number.isNaN(d.getTime()) || d.getTime() === 0 || d.getFullYear() < 1900) return '';
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', ...hourCycleOption() });
+  return d.toLocaleString(currentLanguage(), { dateStyle: 'medium', timeStyle: 'short', ...hourCycleOption() });
 }
 
 export function formatRelative(iso?: string | null): string {
@@ -78,8 +101,8 @@ export function formatRelative(iso?: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime()) || d.getFullYear() < 1900) return t('format.never');
   const diff = (Date.now() - d.getTime()) / 1000;
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-  if (Math.abs(diff) < 60) return 'just now';
+  const rtf = new Intl.RelativeTimeFormat(currentLanguage(), { numeric: 'auto' });
+  if (Math.abs(diff) < 60) return t('format.justNow');
   if (Math.abs(diff) < 3600) return rtf.format(-Math.round(diff / 60), 'minute');
   if (Math.abs(diff) < 86400) return rtf.format(-Math.round(diff / 3600), 'hour');
   if (Math.abs(diff) < 86400 * 30) return rtf.format(-Math.round(diff / 86400), 'day');
@@ -125,7 +148,7 @@ export type CountKind =
 
 /** "1 item", "2,340 items": a number with the word for what it counts, in the right form for the number. */
 export function plural(n: number, kind: CountKind): string {
-  return t(`count.${kind}`, { count: n, n: n.toLocaleString() });
+  return t(`count.${kind}`, { count: n, n: formatNumber(n) });
 }
 
 export function playedPercent(item: BaseItemDto): number {

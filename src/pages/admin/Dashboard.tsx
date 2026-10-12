@@ -21,7 +21,7 @@ import { Field, Input } from '@/components/ui/Form';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
-import { episodeLabel, formatBitrate, formatBytes, formatClock, formatRelative, ticksToSeconds } from '@/lib/format';
+import { episodeLabel, formatBitrate, formatBytes, formatClock, formatNumber, formatRelative, ticksToSeconds } from '@/lib/format';
 import { Card } from '@/pages/Settings';
 import { AdminPage, StatusPill } from './shared';
 import { t } from '@/i18n';
@@ -200,7 +200,7 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value?: 
     <div className="flex items-center gap-3 rounded-lg bg-base-800/70 p-4 ring-1 ring-white/5">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-accent">{icon}</div>
       <div>
-        <div className="text-xl font-bold tabular-nums">{value?.toLocaleString() ?? '—'}</div>
+        <div className="text-xl font-bold tabular-nums">{value != null ? formatNumber(value) : '—'}</div>
         <div className="text-xs text-muted">{label}</div>
       </div>
     </div>

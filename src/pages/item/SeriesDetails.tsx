@@ -11,7 +11,7 @@ import { useAudioPlayer } from '@/player/AudioPlayerProvider';
 import type { VideoPlayerState } from '@/player/usePlay';
 import { ActionBar, CastHub, CreditsList, DetailFrame, ExpandableText, MetaLine } from './common';
 import { EpisodeRow } from './EpisodeList';
-import { t } from '@/i18n';
+import { t, tRich } from '@/i18n';
 
 export function SeriesDetails({ item }: { item: BaseItemDto }) {
   const seasons = useSeasons(item.Id);
@@ -31,10 +31,13 @@ export function SeriesDetails({ item }: { item: BaseItemDto }) {
           </div>
           {next && (
             <div className="text-sm text-muted">
-              {t('item.seriesDetails.upNext')}{' '}
-              <Link to={`/item/${next.Id}`} className="font-medium text-fg hover:text-accent hover:underline">
-                {episodeLabel(next)} · {next.Name}
-              </Link>
+              {tRich('item.seriesDetails.upNext', {
+                episode: (
+                  <Link to={`/item/${next.Id}`} className="font-medium text-fg hover:text-accent hover:underline">
+                    {episodeLabel(next)} · {next.Name}
+                  </Link>
+                ),
+              })}
             </div>
           )}
           <ExpandableText text={item.Overview} className="max-w-4xl pt-1" />

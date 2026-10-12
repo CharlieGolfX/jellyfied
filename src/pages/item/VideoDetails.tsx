@@ -26,7 +26,7 @@ function StreamSelect({
 }) {
   return (
     <label className="flex min-w-0 items-center gap-3 text-sm">
-      <span className="w-20 shrink-0 font-medium text-faint">{label}</span>
+      <span className="w-24 shrink-0 font-medium text-faint">{label}</span>
       {options.length > 1 ? (
         <select
           value={value}

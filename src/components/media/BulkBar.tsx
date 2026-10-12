@@ -6,7 +6,7 @@ import type { BaseItemDto } from '@/api/types';
 import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
-import { plural } from '@/lib/format';
+import { formatNumber, plural } from '@/lib/format';
 import { supportsWatchedState } from '@/player/usePlay';
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections } from './AddToCollection';
 import { AddToPlaylistDialog, supportsPlaylists } from './Playlists';
@@ -82,7 +82,7 @@ export function BulkBar({ allItems }: { allItems: BaseItemDto[] }) {
     setBusy(false);
     void qc.invalidateQueries({ queryKey: [MEDIA] });
     if (result.failed) toast.error(t('media.bulkBar.couldNotBeChanged', { items: plural(result.failed, 'item') }));
-    if (result.done) toast.success(t(`media.bulkBar.done.${done}`, { count: result.done, n: result.done.toLocaleString() }));
+    if (result.done) toast.success(t(`media.bulkBar.done.${done}`, { count: result.done, n: formatNumber(result.done) }));
     selection.clear();
   };
 

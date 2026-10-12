@@ -65,9 +65,7 @@ export function AudioBar() {
       {showQueue && (
         <div className="animate-pop-in absolute right-2 bottom-full mb-2 flex max-h-[60vh] w-96 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-base-750 shadow-2xl ring-1 ring-black/40">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <span className="font-semibold">
-              {t('player.audioBar.playQueue')} {player.queue.length}
-            </span>
+            <span className="font-semibold">{t('player.audioBar.playQueue', { count: player.queue.length })}</span>
             <div className="flex gap-1">
               <button
                 onClick={player.shuffleQueue}
@@ -127,7 +125,7 @@ export function AudioBar() {
           <button
             onClick={player.cycleRepeat}
             className={clsx('hidden rounded-full p-2 sm:block', player.repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-fg')}
-            title={t('player.audioBar.repeat', { repeat: player.repeat })}
+            title={t(`player.audioBar.repeat.${player.repeat}`)}
           >
             {player.repeat === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
           </button>

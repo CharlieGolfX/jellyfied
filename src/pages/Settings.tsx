@@ -459,7 +459,7 @@ function SubtitleAppearanceCard() {
       <div className="grid gap-4 sm:grid-cols-2">
         {select('size', t('settings.textSize'), SUBTITLE_SIZES)}
         {select('color', t('settings.textColour'), SUBTITLE_COLORS)}
-        {select('background', 'Background', SUBTITLE_BACKGROUNDS)}
+        {select('background', t('settings.background'), SUBTITLE_BACKGROUNDS)}
         {select('edge', t('settings.textEdge'), SUBTITLE_EDGES)}
       </div>
       <div className="mt-3 border-t border-white/5 pt-2">

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { currentLanguage } from '@/i18n';
 import { onPrefPulled, prefChanged } from './prefsBus';
 
 /** Clock style for wall-clock times (24-hour by default). Synced with the account (see prefsSync). */
@@ -58,7 +59,7 @@ export function hourCycleOption(format: TimeFormat = current): Pick<Intl.DateTim
 
 /** "21:45" or "9:45 PM", depending on the user's setting. */
 export function formatTimeOfDay(date: Date, format: TimeFormat = current): string {
-  return date.toLocaleTimeString([], {
+  return date.toLocaleTimeString(currentLanguage(), {
     hour: format === '12h' ? 'numeric' : '2-digit',
     minute: '2-digit',
     ...hourCycleOption(format),
