@@ -1308,6 +1308,7 @@
         "exitFullScreen": "Avslutt fullskjerm",
         "forwardSeconds": "{forward} sekunder frem",
         "fullScreen": "Fullskjerm",
+        "goTo": "Gå til {name}",
         "minimizePlayer": "Minimer avspilleren",
         "mute": "Demp",
         "unmute": "Slå på lyden",

@@ -1308,6 +1308,7 @@
         "exitFullScreen": "Salir de pantalla completa",
         "forwardSeconds": "Avanzar {forward} segundos",
         "fullScreen": "Pantalla completa",
+        "goTo": "Ir a {name}",
         "minimizePlayer": "Minimizar el reproductor",
         "mute": "Silenciar",
         "unmute": "Activar el sonido",

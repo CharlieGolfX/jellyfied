@@ -105,6 +105,16 @@ test('the player uses the chosen skip lengths and lists its keyboard shortcuts',
   await expect(page).toHaveURL(/\/play\/movie-1$/);
 });
 
+test("the player's title opens its page and keeps playing in the mini player", async ({ page }) => {
+  await signIn(page);
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  await page.goto('/play/movie-1');
+  // The mock server has no playable media, so the error panel covers the bars: click the title directly.
+  await page.getByRole('button', { name: 'The Mock Movie', exact: true }).dispatchEvent('click');
+  await expect(page).toHaveURL(/\/item\/movie-1$/);
+  await expect(page.getByRole('button', { name: 'Expand' })).toBeVisible();
+});
+
 test('names the browser tab after the page', async ({ page }) => {
   await signIn(page);
   await expect(page).toHaveTitle('Home · Jellyfied');

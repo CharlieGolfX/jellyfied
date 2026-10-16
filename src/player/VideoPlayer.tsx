@@ -29,7 +29,7 @@ import { EndsAt, SleepIndicator } from './video/indicators';
 import { ChaptersMenu, PictureMenu, SettingsMenu, SubtitlesMenu } from './video/menus';
 import { hlsJsSupported } from './video/hlsSupport';
 import { MiniOverlay } from './video/MiniOverlay';
-import { ControlBar, TopBar } from './video/PlayerBars';
+import { ControlBar, TopBar, type TitlePart } from './video/PlayerBars';
 import { pipSupported, readNumber, SEGMENT_LABELS, VOLUME_KEY, type PlayerPanel } from './video/shared';
 import { ShortcutsHelp } from './video/ShortcutsHelp';
 import { UpNextCard } from './video/UpNextCard';
@@ -551,6 +551,28 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
         ? String(item.ProductionYear)
         : '';
 
+  // The same, in pieces that lead to their pages: the show, its season and the episode, or the film.
+  const itemPage = (id?: string | null) => (id ? `/item/${id}` : undefined);
+  const titleParts: TitlePart =
+    item?.Type === 'Episode'
+      ? { label: item.SeriesName ?? '', to: itemPage(item.SeriesId) }
+      : { label: item?.Name ?? '', to: itemPage(item?.Id) };
+  const subtitleParts: TitlePart[] = [];
+  if (item?.Type === 'Episode') {
+    const s = item.ParentIndexNumber;
+    const e = item.IndexNumber;
+    if (s !== undefined && s !== null) subtitleParts.push({ label: `S${s}`, to: itemPage(item.SeasonId) });
+    const episode = [
+      e !== undefined && e !== null ? `E${e}${item.IndexNumberEnd ? `-${item.IndexNumberEnd}` : ''}` : '',
+      item.Name ?? '',
+    ].filter(Boolean);
+    if (episode.length) subtitleParts.push({ label: episode.join(' · '), to: itemPage(item.Id) });
+  } else if (item?.ProductionYear) {
+    subtitleParts.push({ label: String(item.ProductionYear) });
+  }
+  /** Opens a page in place of the full-screen player, which carries on in the mini player. */
+  const openPage = (to: string) => navigate(to, { replace: true });
+
   return (
     <div
       ref={containerRef}
@@ -675,9 +697,10 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
           <TopBar
             visible={showControls}
-            title={title ?? ''}
-            subtitle={subtitle}
+            title={titleParts}
+            subtitle={subtitleParts}
             group={inSync ? sync.group : null}
+            onNavigate={openPage}
             onMinimize={minimize}
             onExit={exit}
           />

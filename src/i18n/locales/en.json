@@ -1308,6 +1308,7 @@
         "exitFullScreen": "Exit full screen",
         "forwardSeconds": "Forward {forward} seconds",
         "fullScreen": "Full screen",
+        "goTo": "Go to {name}",
         "minimizePlayer": "Minimize player",
         "mute": "Mute",
         "unmute": "Unmute",

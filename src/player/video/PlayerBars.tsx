@@ -24,20 +24,51 @@ import { ControlButton } from './controls';
 import { TRICKPLAY_PREVIEW_WIDTH } from './shared';
 import { t } from '@/i18n';
 
+/** A piece of what is playing, shown in the top bar: a link when it has a page of its own. */
+export interface TitlePart {
+  label: string;
+  /** The page it leads to, e.g. `/item/<id>`. */
+  to?: string;
+}
+
 const barVisibility = (visible: boolean) => (visible ? 'opacity-100' : 'pointer-events-none opacity-0');
 
-/** The strip along the top of the full-screen player: back, what is playing, minimise and stop. */
+/** Text for a piece of the title, as a link to its page when it has one. */
+function TitleLink({ part, onNavigate }: { part: TitlePart; onNavigate: (to: string) => void }) {
+  if (!part.to) return <>{part.label}</>;
+  const to = part.to;
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(to)}
+      className="max-w-full truncate text-left hover:underline focus-visible:underline"
+      title={t('player.video.playerBars.goTo', { name: part.label })}
+    >
+      {part.label}
+    </button>
+  );
+}
+
+/**
+ * The strip along the top of the full-screen player: back, what is playing, minimise and stop.
+ * The pieces of what is playing that have a page (the film or show, its season and episode)
+ * open that page, with the video carrying on in the mini player.
+ */
 export function TopBar({
   visible,
   title,
   subtitle,
   group,
+  onNavigate,
   onMinimize,
   onExit,
 }: {
   visible: boolean;
-  title: string;
-  subtitle?: string;
+  title: TitlePart;
+  /** Shown under the title, separated by dots. */
+  subtitle?: TitlePart[];
+  /** Opens a page and leaves the full-screen player. */
+  onNavigate: (to: string) => void;
   /** The SyncPlay group this playback is part of, if any. */
   group?: { GroupName: string; Participants: string[] } | null;
   onMinimize: () => void;
@@ -59,8 +90,19 @@ export function TopBar({
         <ArrowLeft size={26} />
       </button>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-lg font-semibold">{title}</div>
-        {subtitle && <div className="truncate text-sm text-white/70">{subtitle}</div>}
+        <div className="truncate text-lg font-semibold">
+          <TitleLink part={title} onNavigate={onNavigate} />
+        </div>
+        {subtitle && subtitle.length > 0 && (
+          <div className="truncate text-sm text-white/70">
+            {subtitle.map((part, i) => (
+              <span key={i}>
+                {i > 0 && ' · '}
+                <TitleLink part={part} onNavigate={onNavigate} />
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {group && (
         <span
