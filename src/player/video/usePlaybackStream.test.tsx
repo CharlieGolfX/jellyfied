@@ -17,7 +17,7 @@ const m = vi.hoisted(() => ({
   ass: vi.fn(),
   pgs: vi.fn(),
   vobSub: vi.fn(),
-  hls: [] as { url?: string; config: { startPosition: number }; destroyed: boolean }[],
+  hls: [] as { url?: string; config: { startPosition: number }; destroyed: boolean; emit: (data: object) => void }[],
 }));
 
 vi.mock('@/auth/AuthProvider', () => ({
@@ -45,15 +45,19 @@ vi.mock('./subtitleRenderers', async (original) => ({
   createVobSubSubtitles: m.vobSub,
 }));
 vi.mock('hls.js', () => ({
+  ErrorDetails: { BUFFER_APPEND_NO_PROGRESS: 'bufferAppendNoProgress' },
   ErrorTypes: { MEDIA_ERROR: 'mediaError', NETWORK_ERROR: 'networkError' },
   Events: { ERROR: 'hlsError' },
   default: class {
     entry: (typeof m.hls)[number];
+    onError: (event: string, data: object) => void = () => {};
     constructor(config: { startPosition: number }) {
-      this.entry = { config, destroyed: false };
+      this.entry = { config, destroyed: false, emit: (data) => this.onError('hlsError', data) };
       m.hls.push(this.entry);
     }
-    on() {}
+    on(_event: string, handler: (event: string, data: object) => void) {
+      this.onError = handler;
+    }
     loadSource(url: string) {
       this.entry.url = url;
     }
@@ -112,6 +116,7 @@ interface InfoRequest {
   SubtitleStreamIndex?: number;
   AudioStreamIndex?: number;
   EnableDirectPlay: boolean;
+  AllowVideoStreamCopy: boolean;
   MaxStreamingBitrate: number;
   DeviceProfile: ProfileOptions & { bitrate: number };
 }
@@ -278,6 +283,35 @@ describe('starting a video', () => {
     await settle();
     expect(result.current.stream?.nativeHls).toBe(false);
     expect(result.current.error).toBeNull();
+  });
+
+  it('has the server encode the video when the browser shows none of the copied video it is given', async () => {
+    serverAnswers(TRANSCODE);
+    await start();
+    expect(asked()[0].AllowVideoStreamCopy).toBe(true);
+    video.currentTime = 10.3;
+    const noProgress = (sn: number, parent = 'main') =>
+      act(() => m.hls.at(-1)!.emit({ details: 'bufferAppendNoProgress', fatal: false, parent, frag: { sn } }));
+    // One part going wrong, even more than once, is not enough; nor is the audio track.
+    noProgress(1);
+    noProgress(1);
+    noProgress(2, 'audio');
+    await settle();
+    expect(asked()).toHaveLength(1);
+
+    noProgress(2);
+    await settle();
+    expect(asked()).toHaveLength(2);
+    expect(asked()[1].AllowVideoStreamCopy).toBe(false);
+    expect(m.hls).toHaveLength(2);
+    expect(m.hls[1].config.startPosition).toBeCloseTo(10.3);
+
+    // Once is enough: the next stream asked for during this playback is encoded too.
+    noProgress(1);
+    noProgress(2);
+    await settle();
+    expect(asked()).toHaveLength(2);
+    expect(asked().every((r, i) => r.AllowVideoStreamCopy === (i === 0))).toBe(true);
   });
 
   it('asks for a transcode when the file turns out not to play, and shows the error if that fails too', async () => {

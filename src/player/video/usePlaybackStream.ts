@@ -98,6 +98,11 @@ export function usePlaybackStream({
   const audioDelayedRef = useLatest(audioDelayed);
   /** Set when the browser's own HLS player failed during this playback: hls.js takes over. */
   const nativeHlsFailed = useRef(false);
+  /**
+   * Set when the browser could not take the file's own video, copied into a stream, during this
+   * playback: the server encodes the video from then on.
+   */
+  const videoCopyFailed = useRef(false);
 
   /** Styled subtitles are shown as plain text: by choice, or because they can't be drawn here. */
   const plainStyled = useCallback(() => !getSubtitleStyle().styled || undrawable.current.has('ass') || !canRenderAss(), []);
@@ -311,7 +316,7 @@ export function usePlaybackStream({
           EnableDirectPlay: !opts.forceTranscode,
           EnableDirectStream: !opts.forceTranscode,
           EnableTranscoding: true,
-          AllowVideoStreamCopy: true,
+          AllowVideoStreamCopy: !videoCopyFailed.current,
           AllowAudioStreamCopy: true,
           DeviceProfile: buildDeviceProfile(opts.bitrate, {
             subtitles: subtitleMode,
@@ -414,7 +419,7 @@ export function usePlaybackStream({
         const start = Math.max(0, opts.start);
         if (isHls && !active.nativeHls) {
           // Fetched now, the first time a stream needs it: files that play directly never do.
-          const { default: HlsPlayer, ErrorTypes, Events } = await import('hls.js');
+          const { default: HlsPlayer, ErrorDetails, ErrorTypes, Events } = await import('hls.js');
           if (token !== loadToken.current) return;
           const hls = new HlsPlayer({
             // A live broadcast starts at its newest part.
@@ -427,8 +432,23 @@ export function usePlaybackStream({
           });
           hlsRef.current = hls;
           let mediaRecoveries = 0;
+          /** Parts the browser took without any of their picture showing up in what it has buffered. */
+          const unbuffered = new Set<number | string>();
           hls.on(Events.ERROR, (_e, data) => {
-            if (!data.fatal || token !== loadToken.current) return;
+            if (token !== loadToken.current) return;
+            // The browser takes parts of the stream, but none of the picture in them shows up in what
+            // it has buffered. Firefox does this with HEVC copied from an "open GOP" file, for every
+            // part after the first. hls.js would skip each one and fetch on and on; the server
+            // encoding the video instead gives parts that each start on a clean picture.
+            if (data.details === ErrorDetails.BUFFER_APPEND_NO_PROGRESS && data.parent === 'main' && data.frag) {
+              unbuffered.add(data.frag.sn);
+              if (unbuffered.size >= 2 && !videoCopyFailed.current) {
+                videoCopyFailed.current = true;
+                void loadRef.current?.({ ...opts, start: video.currentTime || start, subIndex, audioIndex });
+              }
+              return;
+            }
+            if (!data.fatal) return;
             if (data.type === ErrorTypes.MEDIA_ERROR && mediaRecoveries < 2) {
               mediaRecoveries++;
               hls.recoverMediaError();
