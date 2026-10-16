@@ -6,6 +6,19 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-16
+
+### Added
+- In the full-screen player, the title, show name, season and episode at the top are links:
+  they open that film, show, season or episode page, and the video carries on in the mini player.
+
+### Fixed
+- Some HEVC videos stopped after the first few seconds in Firefox and kept buffering, while the
+  whole video was downloaded in the background. These are files whose video the server copies
+  into the stream as it is, encoded with "open GOP" (common for x265 releases), which Firefox
+  can't play past the first part of. The player now notices this and has the server encode the
+  video instead, from the same position.
+
 ## [1.3.1] - 2026-10-12
 
 ### Changed
@@ -191,7 +204,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.1.0...v1.2.0
