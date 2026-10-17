@@ -24,7 +24,7 @@ describe('JellyfinApi', () => {
   it('only puts the token in the URL when asked to (media elements)', () => {
     const api = new JellyfinApi('http://host:8096', 'tok');
     expect(api.url('/Videos/1/stream', { static: true })).not.toContain('tok');
-    expect(api.url('/Videos/1/stream', { static: true }, true)).toBe('http://host:8096/Videos/1/stream?static=true&api_key=tok');
+    expect(api.url('/Videos/1/stream', { static: true }, true)).toBe('http://host:8096/Videos/1/stream?static=true&ApiKey=tok');
   });
 
   it('identifies itself and sends the token in the Authorization header', () => {

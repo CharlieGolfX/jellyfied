@@ -124,6 +124,10 @@
     },
     "devices": {
       "cannotRemoveCurrent": "You can’t remove the device you are using",
+      "deviceCount": {
+        "one": "{count} device",
+        "other": "{count} devices"
+      },
       "deviceFallback": "The device",
       "devices": "Devices",
       "everyDeviceExceptThisOne": "Every device except this one will need to sign in again.",
@@ -134,7 +138,19 @@
       "signOut": "Sign out",
       "signOutAllOtherDevices": "Sign out all other devices?",
       "signOutAllOthers": "Sign out all others",
-      "willBeSignedOut": "{name} will be signed out."
+      "signOutUser": "Sign out a user",
+      "signOutUserEverywhere": "Sign out {name} everywhere?",
+      "signOutUserHint": "Signs the user out of every device and ends their sessions. They can sign in again.",
+      "signOutUserTitle": "Sign out a user",
+      "userDevicesSignedOut": {
+        "one": "{name} will be signed out of {count} device.",
+        "other": "{name} will be signed out of {count} devices."
+      },
+      "willBeSignedOut": "{name} will be signed out.",
+      "yourOtherDevicesSignedOut": {
+        "one": "You will be signed out of {count} other device. This one stays signed in.",
+        "other": "You will be signed out of {count} other devices. This one stays signed in."
+      }
     },
     "folderPicker": {
       "noSubfolders": "No subfolders.",

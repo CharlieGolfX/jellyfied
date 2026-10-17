@@ -7,6 +7,8 @@ shown in the account menu and on the login screen.
 ## [Unreleased]
 
 ### Added
+- Administrators can sign a user out of all their devices from Dashboard › Devices, which also
+  ends their sessions. Signing yourself out this way keeps the device you are on.
 - A server status button in the top bar for administrators, next to the dashboard and account
   buttons. It shows how many streams are playing, and opens a menu with what is playing across
   the whole server, running library scans and other tasks, and whether a newer Jellyfin or
@@ -22,6 +24,10 @@ shown in the account menu and on the login screen.
   checks every request with Jellyfin.
 
 ### Changed
+- Works with Jellyfin 12. Jellyfin 12 no longer accepts the access token as "api_key" in addresses
+  (unless its legacy authorization is turned back on), which broke the live connection (SyncPlay,
+  remote control) and playing video and music. Jellyfied now sends it as "ApiKey", which Jellyfin
+  10.11 accepts too. A photo's neighbours stay those of its own folder on Jellyfin 12.
 - Dialogs are named by their title for screen readers.
 
 ### Fixed

@@ -58,7 +58,7 @@ describe('JellyfinSocket', () => {
     const url = new URL(last().url);
     expect(url.protocol).toBe('ws:');
     expect(url.pathname).toBe('/jellyfin/socket');
-    expect(url.searchParams.get('api_key')).toBe('tok');
+    expect(url.searchParams.get('ApiKey')).toBe('tok');
     expect(url.searchParams.get('deviceId')).toBe('dev-1');
     socket.close();
   });

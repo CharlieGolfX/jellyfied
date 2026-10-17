@@ -193,7 +193,7 @@ The posters and descriptions are what the Jellyfin server fetched for them from
 
 ## Installation
 
-Jellyfied needs a running Jellyfin server (10.9 or newer, 10.11 recommended) and Docker. You can
+Jellyfied needs a running Jellyfin server (10.9 or newer, 10.11 or 12 recommended) and Docker. You can
 run the [prebuilt image](#prebuilt-image) or build the container from source with
 [Docker Compose](#docker-compose).
 
@@ -484,7 +484,7 @@ docker/         container entrypoint that writes config.js and the nginx site
 
 ## Compatibility and limitations
 
-- Jellyfin 10.11 is recommended and is what Jellyfied is tested against. Jellyfin 10.9 and 10.10
+- Jellyfin 10.11 and 12 are supported; the automated tests run against 10.11. Jellyfin 10.9 and 10.10
   are expected to work, with a few features unavailable: storage statistics need 10.11 and Skip
   Intro needs 10.10 or newer. Seek-bar previews only appear for videos with trickplay images.
 - Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in

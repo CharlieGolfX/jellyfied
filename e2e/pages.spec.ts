@@ -123,6 +123,59 @@ test.describe('as an administrator', () => {
     await expect(panel).toHaveCount(0);
   });
 
+  test('a user can be signed out of all their devices', async ({ page }) => {
+    const thisDevice = await page.evaluate(() => localStorage.getItem('jellyfied.deviceId'));
+    const device = (Id: string, Name: string, user: [string, string]) => ({
+      Id,
+      Name,
+      AppName: 'Jellyfied',
+      AppVersion: '1.4.0',
+      LastUserId: user[0],
+      LastUserName: user[1],
+      DateLastActivity: '2026-10-17T20:00:00.0000000Z',
+    });
+    const anna: [string, string] = ['user-2', 'anna'];
+    const demo: [string, string] = ['user-1', 'demo'];
+    const removed: string[] = [];
+    await page.route('**/jellyfin/Devices*', (route) => {
+      const req = route.request();
+      if (req.method() === 'DELETE') {
+        removed.push(new URL(req.url()).searchParams.get('id') ?? '');
+        return route.fulfill({ status: 204 });
+      }
+      return route.fulfill({
+        json: {
+          Items: [
+            device(thisDevice!, 'This browser', demo),
+            device('demo-phone', 'Phone', demo),
+            device('anna-tv', 'TV', anna),
+            device('anna-laptop', 'Laptop', anna),
+          ],
+        },
+      });
+    });
+    await page.goto('/admin/devices');
+    await page.getByRole('button', { name: 'Sign out a user' }).click();
+    const picker = page.getByRole('dialog', { name: 'Sign out a user' });
+    await expect(picker.getByRole('button', { name: /demo/ })).toContainText('2 devices');
+    await picker.getByRole('button', { name: /anna/ }).click();
+
+    const confirm = page.getByRole('dialog', { name: 'Sign out anna everywhere?' });
+    await expect(confirm).toContainText('anna will be signed out of 2 devices.');
+    await confirm.getByRole('button', { name: 'Sign out' }).click();
+    await expect.poll(() => removed.sort()).toEqual(['anna-laptop', 'anna-tv']);
+
+    // Signing yourself out everywhere keeps the device you are on.
+    removed.length = 0;
+    await page.getByRole('button', { name: 'Sign out a user' }).click();
+    await picker.getByRole('button', { name: /demo/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Sign out demo everywhere?' })).toContainText(
+      'You will be signed out of 1 other device. This one stays signed in.',
+    );
+    await page.getByRole('dialog', { name: 'Sign out demo everywhere?' }).getByRole('button', { name: 'Sign out' }).click();
+    await expect.poll(() => removed).toEqual(['demo-phone']);
+  });
+
   test('general settings load from the server and are saved back', async ({ page }) => {
     await page.goto('/admin/general');
     await expect(page.getByRole('heading', { name: 'General' })).toBeVisible();

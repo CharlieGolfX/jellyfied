@@ -86,7 +86,8 @@ export class JellyfinApi {
   /** Absolute URL for an API path. Adds the access token when `withAuth` is set (for media elements). */
   url(path: string, query?: Query, withAuth = false): string {
     const q: Query = { ...query };
-    if (withAuth && this.accessToken) q.api_key = this.accessToken;
+    // "ApiKey": Jellyfin 12 ignores the older "api_key" unless its legacy authorization is turned on.
+    if (withAuth && this.accessToken) q.ApiKey = this.accessToken;
     return `${this.serverUrl}${path.startsWith('/') ? path : `/${path}`}${buildQuery(q)}`;
   }
 

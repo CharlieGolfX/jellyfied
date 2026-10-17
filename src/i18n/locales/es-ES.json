@@ -124,6 +124,10 @@
     },
     "devices": {
       "cannotRemoveCurrent": "No puedes quitar el dispositivo que estás usando",
+      "deviceCount": {
+        "one": "{count} dispositivo",
+        "other": "{count} dispositivos"
+      },
       "deviceFallback": "El dispositivo",
       "devices": "Dispositivos",
       "everyDeviceExceptThisOne": "Todos los dispositivos, salvo este, tendrán que volver a iniciar sesión.",
@@ -134,7 +138,19 @@
       "signOut": "Cerrar sesión",
       "signOutAllOtherDevices": "¿Cerrar sesión en todos los demás dispositivos?",
       "signOutAllOthers": "Cerrar sesión en todos los demás",
-      "willBeSignedOut": "Se cerrará la sesión de {name}."
+      "signOutUser": "Cerrar la sesión de un usuario",
+      "signOutUserEverywhere": "¿Cerrar la sesión de {name} en todas partes?",
+      "signOutUserHint": "Cierra la sesión del usuario en todos sus dispositivos y termina sus sesiones. Podrá volver a iniciar sesión.",
+      "signOutUserTitle": "Cerrar la sesión de un usuario",
+      "userDevicesSignedOut": {
+        "one": "Se cerrará la sesión de {name} en {count} dispositivo.",
+        "other": "Se cerrará la sesión de {name} en {count} dispositivos."
+      },
+      "willBeSignedOut": "Se cerrará la sesión de {name}.",
+      "yourOtherDevicesSignedOut": {
+        "one": "Se cerrará tu sesión en {count} dispositivo más. Este seguirá con la sesión iniciada.",
+        "other": "Se cerrará tu sesión en {count} dispositivos más. Este seguirá con la sesión iniciada."
+      }
     },
     "folderPicker": {
       "noSubfolders": "No hay subcarpetas.",

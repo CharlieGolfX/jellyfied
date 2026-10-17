@@ -1,10 +1,10 @@
-import { Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Trash2, UserX } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DeviceInfo, ItemsResult } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
-import { ConfirmDialog } from '@/components/ui/Modal';
+import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
@@ -16,15 +16,22 @@ export default function DevicesPage() {
   const api = useApi();
   const toast = useToast();
   const qc = useQueryClient();
-  const [deleting, setDeleting] = useState<DeviceInfo | 'all' | null>(null);
+  const [deleting, setDeleting] = useState<DeviceInfo | 'all' | UserDevices | null>(null);
+  const [pickingUser, setPickingUser] = useState(false);
   const devices = useQuery({
     queryKey: ['admin', 'devices'],
     queryFn: () => api.get<ItemsResult<DeviceInfo>>('/Devices'),
   });
 
   const remove = useMutation({
-    mutationFn: async (target: DeviceInfo | 'all') => {
-      const list = target === 'all' ? (devices.data?.Items ?? []).filter((d) => d.Id !== api.deviceId) : [target];
+    mutationFn: async (target: DeviceInfo | 'all' | UserDevices) => {
+      const list =
+        target === 'all'
+          ? (devices.data?.Items ?? []).filter((d) => d.Id !== api.deviceId)
+          : isUserDevices(target)
+            ? target.devices.filter((d) => d.Id !== api.deviceId)
+            : [target];
+      // Removing a device also ends the sessions on it.
       for (const d of list) await api.delete('/Devices', { id: d.Id });
     },
     onSuccess: () => {
@@ -38,17 +45,25 @@ export default function DevicesPage() {
   const items = [...(devices.data?.Items ?? [])].sort(
     (a, b) => new Date(b.DateLastActivity ?? 0).getTime() - new Date(a.DateLastActivity ?? 0).getTime(),
   );
+  const users = useMemo(() => devicesByUser(items, api.deviceId), [items, api.deviceId]);
 
   return (
     <AdminPage
       title={t('admin.devices.devices')}
       description={t('admin.devices.everyDeviceThatHasSigned')}
       actions={
-        items.length > 1 && (
-          <Button variant="outline" icon={<Trash2 size={16} />} onClick={() => setDeleting('all')}>
-            {t('admin.devices.signOutAllOthers')}
-          </Button>
-        )
+        <>
+          {users.some((u) => u.removable > 0) && (
+            <Button variant="outline" icon={<UserX size={16} />} onClick={() => setPickingUser(true)}>
+              {t('admin.devices.signOutUser')}
+            </Button>
+          )}
+          {items.length > 1 && (
+            <Button variant="outline" icon={<Trash2 size={16} />} onClick={() => setDeleting('all')}>
+              {t('admin.devices.signOutAllOthers')}
+            </Button>
+          )}
+        </>
       }
     >
       {devices.isLoading ? (
@@ -87,13 +102,42 @@ export default function DevicesPage() {
           })}
         </div>
       )}
+      <Modal open={pickingUser} onClose={() => setPickingUser(false)} title={t('admin.devices.signOutUserTitle')} size="sm">
+        <p className="mb-3 text-sm text-muted">{t('admin.devices.signOutUserHint')}</p>
+        <div className="-mx-2">
+          {users.map((u) => (
+            <button
+              key={u.userId}
+              disabled={u.removable === 0}
+              onClick={() => {
+                setPickingUser(false);
+                setDeleting(u);
+              }}
+              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-white/10 disabled:opacity-50 disabled:hover:bg-transparent"
+            >
+              <span className="min-w-0 flex-1 truncate font-medium">{u.name}</span>
+              <span className="shrink-0 text-xs text-muted">{t('admin.devices.deviceCount', { count: u.devices.length })}</span>
+            </button>
+          ))}
+        </div>
+      </Modal>
       <ConfirmDialog
         open={deleting !== null}
-        title={deleting === 'all' ? t('admin.devices.signOutAllOtherDevices') : t('admin.devices.removeDeviceTitle')}
+        title={
+          deleting === 'all'
+            ? t('admin.devices.signOutAllOtherDevices')
+            : isUserDevices(deleting)
+              ? t('admin.devices.signOutUserEverywhere', { name: deleting.name })
+              : t('admin.devices.removeDeviceTitle')
+        }
         message={
           deleting === 'all'
             ? t('admin.devices.everyDeviceExceptThisOne')
-            : t('admin.devices.willBeSignedOut', { name: deleting?.Name ?? t('admin.devices.deviceFallback') })
+            : isUserDevices(deleting)
+              ? deleting.removable < deleting.devices.length
+                ? t('admin.devices.yourOtherDevicesSignedOut', { count: deleting.removable })
+                : t('admin.devices.userDevicesSignedOut', { name: deleting.name, count: deleting.removable })
+              : t('admin.devices.willBeSignedOut', { name: deleting?.Name ?? t('admin.devices.deviceFallback') })
         }
         confirmLabel={t('admin.devices.signOut')}
         danger
@@ -103,4 +147,28 @@ export default function DevicesPage() {
       />
     </AdminPage>
   );
+}
+
+/** One user's devices: whoever signed in on them last, which is who their sign-in belongs to. */
+interface UserDevices {
+  userId: string;
+  name: string;
+  devices: DeviceInfo[];
+  /** How many of them can be signed out: all, except the device this page is open on. */
+  removable: number;
+}
+
+const isUserDevices = (v: DeviceInfo | 'all' | UserDevices | null): v is UserDevices =>
+  typeof v === 'object' && v !== null && 'devices' in v;
+
+export function devicesByUser(devices: DeviceInfo[], thisDevice: string): UserDevices[] {
+  const users = new Map<string, UserDevices>();
+  for (const d of devices) {
+    if (!d.LastUserId) continue;
+    const user = users.get(d.LastUserId) ?? { userId: d.LastUserId, name: d.LastUserName || d.LastUserId, devices: [], removable: 0 };
+    user.devices.push(d);
+    if (d.Id !== thisDevice) user.removable++;
+    users.set(d.LastUserId, user);
+  }
+  return [...users.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

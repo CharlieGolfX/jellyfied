@@ -124,6 +124,10 @@
     },
     "devices": {
       "cannotRemoveCurrent": "Du kan ikke fjerne enheten du bruker",
+      "deviceCount": {
+        "one": "{count} enhet",
+        "other": "{count} enheter"
+      },
       "deviceFallback": "Enheten",
       "devices": "Enheter",
       "everyDeviceExceptThisOne": "Alle enheter unntatt denne må logge inn på nytt.",
@@ -134,7 +138,19 @@
       "signOut": "Logg ut",
       "signOutAllOtherDevices": "Logge ut alle andre enheter?",
       "signOutAllOthers": "Logg ut alle andre",
-      "willBeSignedOut": "{name} blir logget ut."
+      "signOutUser": "Logg ut en bruker",
+      "signOutUserEverywhere": "Logge ut {name} overalt?",
+      "signOutUserHint": "Logger brukeren ut av alle enheter og avslutter øktene deres. De kan logge inn igjen.",
+      "signOutUserTitle": "Logg ut en bruker",
+      "userDevicesSignedOut": {
+        "one": "{name} blir logget ut av {count} enhet.",
+        "other": "{name} blir logget ut av {count} enheter."
+      },
+      "willBeSignedOut": "{name} blir logget ut.",
+      "yourOtherDevicesSignedOut": {
+        "one": "Du blir logget ut av {count} annen enhet. Denne forblir innlogget.",
+        "other": "Du blir logget ut av {count} andre enheter. Denne forblir innlogget."
+      }
     },
     "folderPicker": {
       "noSubfolders": "Ingen undermapper.",

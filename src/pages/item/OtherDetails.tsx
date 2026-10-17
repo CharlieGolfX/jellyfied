@@ -91,7 +91,7 @@ export function FolderDetails({ item }: { item: BaseItemDto }) {
   const shape = item.Type === 'PhotoAlbum' ? 'square' : item.CollectionType === 'homevideos' ? 'landscape' : 'poster';
   // The first photo in the folder, to start a slideshow from.
   const firstPhoto = useItems(
-    { parentId: item.Id, includeItemTypes: 'Photo', sortBy: 'SortName', sortOrder: 'Ascending', limit: 1, fields: [] },
+    { parentId: item.Id, includeItemTypes: 'Photo', recursive: false, sortBy: 'SortName', sortOrder: 'Ascending', limit: 1, fields: [] },
     { key: ['first-photo', item.Id] },
   ).data?.Items[0];
   return (
@@ -163,6 +163,8 @@ export function PhotoViewer({ item }: { item: BaseItemDto }) {
     {
       parentId: item.ParentId ?? undefined,
       includeItemTypes: 'Photo',
+      // Only this folder's photos (Jellyfin 12 looks in subfolders of a library unless told not to).
+      recursive: false,
       sortBy: 'SortName',
       sortOrder: 'Ascending',
       limit: 2000,

@@ -274,7 +274,7 @@ map \$http_upgrade \$connection_upgrade {
     ''      close;
 }
 
-# Access tokens travel in the query string for media elements and the WebSocket (api_key=...), so
+# Access tokens travel in the query string for media elements and the WebSocket (ApiKey=...), so
 # keep them out of the access log.
 map \$request \$jellyfied_logged_request {
     "~*^(?<log_head>.*[?&]api_?key=)[^&\s]*(?<log_tail>.*)\$" "\${log_head}***\${log_tail}";

@@ -35,7 +35,8 @@ export class JellyfinSocket {
     // serverUrl may be a path such as "/jellyfin" (proxy mode) or an absolute address.
     const base = new URL(`${this.api.serverUrl}/socket`, window.location.href);
     base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    base.searchParams.set('api_key', this.api.accessToken ?? '');
+    // "ApiKey": Jellyfin 12 ignores the older "api_key" unless its legacy authorization is turned on.
+    base.searchParams.set('ApiKey', this.api.accessToken ?? '');
     base.searchParams.set('deviceId', this.api.deviceId);
     return base.toString();
   }

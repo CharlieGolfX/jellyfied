@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { disclaimerText } from '@/pages/Login';
+import { devicesByUser } from './Devices';
 import { parseWidths } from './Metadata';
 import { hourLabel, ratingLevels } from './ParentalControls';
 
@@ -45,5 +46,17 @@ describe('disclaimerText', () => {
   it('drops markup and keeps the words', () => {
     expect(disclaimerText('<b>Private</b> server.<script>alert(1)</script>')).toBe('Private server.alert(1)');
     expect(disclaimerText(null)).toBe('');
+  });
+});
+
+describe('devicesByUser', () => {
+  const device = (Id: string, LastUserId?: string, LastUserName?: string) => ({ Id, Name: Id, LastUserId, LastUserName });
+
+  it('groups devices by who they belong to, and never counts the one in use as one to sign out', () => {
+    const users = devicesByUser([device('a', 'u2', 'ben'), device('mine', 'u1', 'ann'), device('b', 'u1', 'ann'), device('c')], 'mine');
+    expect(users.map((u) => [u.name, u.devices.map((d) => d.Id), u.removable])).toEqual([
+      ['ann', ['mine', 'b'], 1],
+      ['ben', ['a'], 1],
+    ]);
   });
 });

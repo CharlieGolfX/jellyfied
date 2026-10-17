@@ -144,14 +144,14 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   check('encoded characters in a path reach the server unchanged', encoded?.url === '/base/Items/a%20b%2Fc', JSON.stringify(encoded));
   check(
     'WebSockets go through the proxy',
-    (await webSocketPath('/jellyfin/socket?api_key=secret-token&deviceId=d')) === '/base/socket?api_key=secret-token&deviceId=d',
+    (await webSocketPath('/jellyfin/socket?ApiKey=secret-token&deviceId=d')) === '/base/socket?ApiKey=secret-token&deviceId=d',
   );
 
   // The line for a WebSocket is written when it closes.
   await new Promise((r) => setTimeout(r, 1500));
   const logs = spawnSync('docker', ['logs', name], { encoding: 'utf8' });
   const log = logs.stdout + logs.stderr;
-  check('access tokens are kept out of the access log', log.includes('api_key=***') && !log.includes('secret-token'));
+  check('access tokens are kept out of the access log', log.includes('ApiKey=***') && !log.includes('secret-token'));
 });
 
 console.log(`\n${image}: trusting no proxies`);
