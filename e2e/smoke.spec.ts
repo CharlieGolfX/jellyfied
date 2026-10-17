@@ -203,3 +203,23 @@ test('the login screen links to the licences of Jellyfied and what it ships with
   expect(text).toContain('GNU GENERAL PUBLIC LICENSE');
   expect(text).toContain('hls.js');
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  // iOS zooms in on a field with smaller text when it is tapped, and the app stays zoomed in after.
+  test('text fields are large enough that tapping them does not zoom the page', async ({ browserName, page }) => {
+    test.skip(browserName === 'firefox', 'Firefox has no phone emulation');
+    const fontSizes = () =>
+      page
+        .locator('input:not([type=checkbox]):not([type=radio]):not([type=range])')
+        .evaluateAll((fields) => fields.map((f) => parseFloat(getComputedStyle(f).fontSize)));
+    await page.goto('/');
+    await expect(page.getByLabel('Username')).toBeVisible();
+    for (const size of await fontSizes()) expect(size).toBeGreaterThanOrEqual(16);
+
+    await signIn(page);
+    await expect(page.getByRole('searchbox', { name: 'Search' })).toBeVisible();
+    for (const size of await fontSizes()) expect(size).toBeGreaterThanOrEqual(16);
+  });
+});

@@ -13,6 +13,10 @@ shown in the account menu and on the login screen.
   Jellyfied release is out (looked up on GitHub at most every six hours) or the server needs a
   restart.
 
+### Fixed
+- On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
+  a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
+
 ## [1.4.0] - 2026-10-16
 
 ### Added
