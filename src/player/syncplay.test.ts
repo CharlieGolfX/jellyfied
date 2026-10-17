@@ -49,6 +49,7 @@ let notices: SyncPlayNotice[];
 beforeEach(() => {
   vi.useFakeTimers();
   sessionStorage.clear();
+  localStorage.clear();
   post = vi.fn().mockResolvedValue(undefined);
   // The clock check and the group lookup both go through get(); neither answer matters here.
   get = vi.fn().mockResolvedValue({ ...group, Participants: ['ann', 'bob'] });
@@ -216,5 +217,50 @@ describe('SyncPlayManager: queue', () => {
     manager.rejoinPlayback();
     expect(opened).toHaveLength(1);
     expect(post).toHaveBeenCalledWith('/SyncPlay/SetIgnoreWait', { IgnoreWait: false });
+  });
+});
+
+describe('SyncPlayManager: tabs of one browser', () => {
+  /** Two tabs: one session on the server, which sends each message to only one of them. */
+  let tabs: { manager: SyncPlayManager; server: ReturnType<typeof fakeSocket>; opened: SyncPlayOpenRequest[] }[];
+  const settle = () => new Promise((r) => setTimeout(r, 20));
+
+  beforeEach(() => {
+    vi.useRealTimers();
+    manager.dispose();
+    tabs = [0, 1].map(() => {
+      const tabServer = fakeSocket();
+      const tab = new SyncPlayManager({ post, get } as unknown as JellyfinApi, tabServer.socket);
+      const tabOpened: SyncPlayOpenRequest[] = [];
+      tab.onOpen = (r) => tabOpened.push(r);
+      return { manager: tab, server: tabServer, opened: tabOpened };
+    });
+  });
+
+  afterEach(() => tabs.forEach((t) => t.manager.dispose()));
+
+  it('are all in the group, whichever of them the server told', async () => {
+    await tabs[0].manager.createGroup('Movie night');
+    tabs[1].server.update('GroupJoined', group);
+    await settle();
+    expect(tabs.map((t) => t.manager.getSnapshot().group?.GroupName)).toEqual(['Movie night', 'Movie night']);
+  });
+
+  it('play along in the tab where SyncPlay was used, whichever of them the server told', async () => {
+    await tabs[0].manager.createGroup('Movie night');
+    tabs[1].server.update('GroupJoined', group);
+    tabs[1].server.update('PlayQueue', queue());
+    await settle();
+    expect(tabs[0].opened.map((r) => r.itemId)).toEqual(['item-1']);
+    expect(tabs[1].opened).toEqual([]);
+  });
+
+  it('lets a tab opened later know about the group', async () => {
+    tabs[0].server.update('GroupJoined', group);
+    await settle();
+    const later = new SyncPlayManager({ post, get } as unknown as JellyfinApi, fakeSocket().socket);
+    await settle();
+    expect(later.getSnapshot()).toMatchObject({ group: { GroupName: 'Movie night' }, following: false });
+    later.dispose();
   });
 });

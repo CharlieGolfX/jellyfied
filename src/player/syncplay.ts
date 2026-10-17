@@ -111,6 +111,37 @@ function storeGroup(id: string | null) {
   }
 }
 
+/**
+ * The tabs of one browser are one member of the group. Jellyfin ties the live connection to the
+ * sign-in's device, so they share a session, and the server sends that session's messages to only
+ * one of its connections, whichever was active last. Each tab passes what it gets on to the others.
+ * Only one of them plays along: the one where SyncPlay was last used.
+ */
+type TabMessage =
+  | { kind: 'update'; data: GroupUpdate }
+  | { kind: 'command'; data: SyncCommand }
+  | { kind: 'hello' }
+  | { kind: 'state'; group: SyncPlayGroup; queue: QueueUpdate | null };
+
+const PLAYING_TAB_KEY = 'jellyfied.syncPlayTab';
+
+function playingTab(): string | null {
+  try {
+    return localStorage.getItem(PLAYING_TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setPlayingTab(id: string | null) {
+  try {
+    if (id) localStorage.setItem(PLAYING_TAB_KEY, id);
+    else localStorage.removeItem(PLAYING_TAB_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export class SyncPlayManager {
   private snapshot: SyncPlaySnapshot = EMPTY;
   private readonly listeners = new Set<() => void>();
@@ -144,21 +175,87 @@ export class SyncPlayManager {
   onNotice: ((notice: SyncPlayNotice) => void) | null = null;
 
   private readonly api: JellyfinApi;
+  private readonly tabs: BroadcastChannel | null;
+  private readonly tabId = Math.random().toString(36).slice(2);
 
   constructor(api: JellyfinApi, socket: JellyfinSocket) {
     this.api = api;
+    this.tabs = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(`jellyfied.syncPlay.${api.userId ?? ''}`);
+    if (this.tabs) this.tabs.onmessage = (e: MessageEvent<TabMessage>) => this.fromTab(e.data);
+    const leaving = () => {
+      if (playingTab() === this.tabId) setPlayingTab(null);
+    };
+    window.addEventListener('pagehide', leaving);
     this.unsubscribe.push(
-      socket.on<GroupUpdate>('SyncPlayGroupUpdate', (u) => this.handleUpdate(u)),
-      socket.on<SyncCommand>('SyncPlayCommand', (c) => this.handleCommand(c)),
+      () => window.removeEventListener('pagehide', leaving),
+      socket.on<GroupUpdate>('SyncPlayGroupUpdate', (u) => {
+        this.toTabs({ kind: 'update', data: u });
+        this.handleUpdate(u, true);
+      }),
+      socket.on<SyncCommand>('SyncPlayCommand', (c) => {
+        this.toTabs({ kind: 'command', data: c });
+        this.handleCommand(c);
+      }),
       // After a page reload, pick the group up again.
       socket.onOpen(() => {
         const id = storedGroup();
         if (id && !this.inGroup) void this.joinGroup(id).catch(() => storeGroup(null));
       }),
     );
+    // A new tab: another one may already be in a group, which then is this tab's too.
+    this.toTabs({ kind: 'hello' });
+  }
+
+  private toTabs(message: TabMessage) {
+    try {
+      this.tabs?.postMessage(message);
+    } catch {
+      /* closed */
+    }
+  }
+
+  private fromTab(m: TabMessage) {
+    switch (m.kind) {
+      case 'update':
+        this.handleUpdate(m.data, false);
+        break;
+      case 'command':
+        this.handleCommand(m.data);
+        break;
+      case 'hello':
+        if (this.snapshot.group) this.toTabs({ kind: 'state', group: this.snapshot.group, queue: this.queue });
+        break;
+      case 'state':
+        if (this.inGroup) return;
+        storeGroup(m.group.GroupId);
+        this.queue = m.queue;
+        this.startTimeSync();
+        this.update({ group: m.group, hasQueue: Boolean(this.currentQueueItem()), following: false, playlistItemId: null });
+        break;
+    }
+  }
+
+  /** This tab is where SyncPlay is used now: it is the one that plays along. */
+  private claimPlayback() {
+    setPlayingTab(this.tabId);
+  }
+
+  /**
+   * Whether this tab opens the player for the group. Another tab's message only counts for the
+   * tab that plays along; a message from the server makes the tab that got it play along when no
+   * tab does yet.
+   */
+  private playsAlong(direct: boolean): boolean {
+    const tab = playingTab();
+    if (tab === this.tabId) return true;
+    if (tab || !direct) return false;
+    this.claimPlayback();
+    return true;
   }
 
   dispose() {
+    this.tabs?.close();
+    if (playingTab() === this.tabId) setPlayingTab(null);
     this.unsubscribe.forEach((u) => u());
     this.stopTimeSync();
     this.releaseVideo();
@@ -240,11 +337,13 @@ export class SyncPlayManager {
 
   /** Creates a group, open to everyone or, with `invite`, only shown to the creator and the users invited. */
   async createGroup(name: string, invite?: { creatorId: string; userIds: string[] }) {
+    this.claimPlayback();
     this.startTimeSync();
     await this.api.post('/SyncPlay/New', { GroupName: invite ? inviteName(name, invite.creatorId, invite.userIds) : name });
   }
 
   async joinGroup(groupId: string) {
+    this.claimPlayback();
     this.startTimeSync();
     await this.api.post('/SyncPlay/Join', { GroupId: groupId });
   }
@@ -272,7 +371,7 @@ export class SyncPlayManager {
     }
   }
 
-  private handleUpdate(u: GroupUpdate) {
+  private handleUpdate(u: GroupUpdate, direct: boolean) {
     switch (u.Type) {
       case 'GroupJoined': {
         const group = fromServer(u.Data as SyncPlayGroup);
@@ -310,7 +409,7 @@ export class SyncPlayManager {
         break;
       }
       case 'PlayQueue':
-        this.handleQueue(u.Data as QueueUpdate);
+        this.handleQueue(u.Data as QueueUpdate, direct);
         break;
     }
   }
@@ -322,7 +421,7 @@ export class SyncPlayManager {
     return q && q.PlayingItemIndex >= 0 ? (q.Playlist[q.PlayingItemIndex] ?? null) : null;
   }
 
-  private handleQueue(q: QueueUpdate) {
+  private handleQueue(q: QueueUpdate, direct: boolean) {
     if (!this.inGroup) return;
     this.queue = q;
     const current = this.currentQueueItem();
@@ -331,6 +430,7 @@ export class SyncPlayManager {
     if (!['NewPlaylist', 'SetCurrentItem', 'NextItem', 'PreviousItem'].includes(q.Reason)) return;
     // Already on this entry (e.g. the server re-sent the queue): nothing to open.
     if (this.video && this.playlistItemId === current.PlaylistItemId) return;
+    if (!this.playsAlong(direct)) return;
     this.open(current, q);
   }
 
@@ -347,6 +447,7 @@ export class SyncPlayManager {
 
   /** Start something new for the whole group. */
   async setQueue(itemIds: string[], startIndex: number, startPositionTicks: number) {
+    this.claimPlayback();
     window.clearTimeout(this.detachTimer);
     if (!this.snapshot.following) {
       this.update({ following: true });
@@ -363,6 +464,7 @@ export class SyncPlayManager {
   rejoinPlayback() {
     const current = this.currentQueueItem();
     if (!current || !this.queue) return;
+    this.claimPlayback();
     window.clearTimeout(this.detachTimer);
     this.update({ following: true });
     void this.api.post('/SyncPlay/SetIgnoreWait', { IgnoreWait: false }).catch(() => {});

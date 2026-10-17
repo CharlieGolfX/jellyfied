@@ -27,6 +27,11 @@ shown in the account menu and on the login screen.
 ### Fixed
 - On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
   a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
+- With Jellyfied open in more than one tab or window, creating or joining a SyncPlay group could
+  seem to do nothing, and the group stayed in the list to join. Jellyfin counts the tabs of one
+  browser as one member and tells only one of them about the group. The tabs now pass SyncPlay's
+  messages on to each other, so every tab shows the group, and the tab where SyncPlay was last
+  used is the one that plays along.
 - The SyncPlay picker was missing for members whose sign-in uses another address for the same
   Jellyfin server, such as its direct address. The app now compares the servers' ids. In the
   player, the group's badge opens the picker, and the picker leaves full screen so it can be seen.
