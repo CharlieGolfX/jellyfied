@@ -30,7 +30,7 @@ import {
   type PickerSpin,
   type PickerState,
 } from './syncplayPickerApi';
-import { useSyncPlay } from './SyncPlayProvider';
+import { useSyncPlay, useSyncPlayManager } from './SyncPlayProvider';
 import { useLocalPlay } from './usePlay';
 
 const COLORS = ['#00a4dc', '#aa5cc3', '#e0a020', '#3dbb6b', '#e5484d', '#3b9eff', '#ef7b30', '#14a89a'];
@@ -405,6 +405,19 @@ export function SyncPlayPicker() {
       setShowing(null);
     }
   }, [groupId]);
+
+  // Deleted by its creator: leave it. Jellyfin ends the group once its last member is gone.
+  const manager = useSyncPlayManager();
+  const closedBy = state?.closed ?? null;
+  const left = useRef<string | null>(null);
+  useEffect(() => {
+    if (!closedBy || !groupId || !manager || left.current === groupId) return;
+    left.current = groupId;
+    setPickerOpen(false);
+    if (closedBy !== state?.me) toast.info(t('player.picker.deletedBy', { name: closedBy }));
+    void manager.leaveGroup().catch((err) => toast.error(err));
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [closedBy, groupId, manager]);
 
   // Whoever is alone in a new group made it, and keeps the right to spin by hand.
   const claim = state && !state.claimed && state.participants.length === 1;

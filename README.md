@@ -140,7 +140,7 @@ The posters and descriptions are what the Jellyfin server fetched for them from
 - SyncPlay: create or join a group from the top bar and watch together. Play, pause, seek and
   moving on to the next episode apply to everyone, and playback is kept in step across devices.
   A group can be open to everyone on the server or for the people you pick, who are asked in a
-  popup whether to join.
+  popup whether to join. Its creator can delete it, which makes everyone in it leave.
 - SyncPlay picker: in a group, everyone can suggest films, shows and episodes (from the picker's
   search or an item's menu) and give one vote to each of the others' suggestions. The suggestions
   make up a wheel where more votes mean a bigger slice. When everyone has said they're ready, or
@@ -525,6 +525,9 @@ docker/         container entrypoint that writes config.js and the nginx site
   (`JELLYFIN_URL`), since that is the server it checks callers against. Members using other
   Jellyfin apps can't suggest, vote or say they're ready, so with them in the group the creator
   spins the wheel by hand. A show that wins starts where the member starting it left off.
+- Jellyfin has no way to end a SyncPlay group for everyone, so deleting one goes through the
+  picker's state too (and needs the container): Jellyfied members leave within a few seconds, and
+  the group ends once nobody is left. Members on other Jellyfin apps stay in it until they leave.
 - Subtitle appearance applies to plain text subtitles. Styled (ASS/SSA) subtitles keep the look
   their author gave them unless you switch that off under Account settings, and PGS and VobSub
   subtitles are pictures.

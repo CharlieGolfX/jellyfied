@@ -7,6 +7,8 @@ shown in the account menu and on the login screen.
 ## [Unreleased]
 
 ### Added
+- The creator of a SyncPlay group can delete it from the SyncPlay menu. Everyone in it using
+  Jellyfied leaves within a few seconds and is told why; Jellyfin then ends the empty group.
 - Administrators can sign a user out of all their devices from Dashboard › Devices, which also
   ends their sessions. Signing yourself out this way keeps the device you are on.
 - A server status button in the top bar for administrators, next to the dashboard and account

@@ -126,8 +126,13 @@ async function handle(opts) {
   };
   let extra = {};
 
+  // Deleted by its creator: Jellyfin can't end a group for everyone, so its Jellyfied members leave
+  // when they read this.
+  const closedBy = store.get(gid + '|closed') || null;
+
   if (opts.method === 'POST') {
     const body = opts.body || {};
+    if (closedBy && body.action !== 'close') return fail(409, 'closed', 'The group was deleted');
     const itemId = normId(body.itemId);
     const open = suggestions(state);
     switch (body.action) {
@@ -172,6 +177,10 @@ async function handle(opts) {
         state = spin(store, gid, state, open, me.Name, now, random);
         break;
       }
+      case 'close':
+        if (host(state, participants) !== me.Name) return fail(403, 'notCreator', 'Only the creator can delete the group');
+        store.add(gid + '|closed', me.Name);
+        break;
       case 'start':
         // After the wheel stops, every member asks; the first one starts the winner for the group.
         extra = { go: store.add(gid + '|started|' + Number(body.round), me.Name) };
@@ -183,7 +192,8 @@ async function handle(opts) {
 
   // Once everyone in the group is ready, the wheel spins by itself.
   const ready = (name) => state.users.some((u) => u.name === name && u.r === state.round);
-  if (suggestions(state).length && participants.every(ready)) {
+  const closed = store.get(gid + '|closed') || null;
+  if (!closed && suggestions(state).length && participants.every(ready)) {
     state = spin(store, gid, state, suggestions(state), null, now, random);
   }
 
@@ -209,6 +219,7 @@ async function handle(opts) {
           voted: myVotes.indexOf(s.id) >= 0,
         })),
         spin: last,
+        closed,
       },
       extra,
     ),

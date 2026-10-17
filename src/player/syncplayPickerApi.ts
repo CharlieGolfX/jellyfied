@@ -45,6 +45,8 @@ export interface PickerState {
   participants: { name: string; ready: boolean }[];
   suggestions: PickerSuggestion[];
   spin: PickerSpin | null;
+  /** Who deleted the group, once it is deleted: its Jellyfied members then leave it. */
+  closed: string | null;
   /** Server clock minus this browser's, in ms. Set when the answer arrives. */
   clockOffset: number;
 }
@@ -56,6 +58,7 @@ export type PickerAction =
   | { action: 'vote'; itemId: string; on: boolean }
   | { action: 'ready'; on: boolean }
   | { action: 'spin' }
+  | { action: 'close' }
   | { action: 'start'; round: number };
 
 /**

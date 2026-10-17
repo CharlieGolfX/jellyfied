@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Check, Dices, Lock, LogOut, Play, Plus, Users } from 'lucide-react';
+import { Check, Dices, Lock, LogOut, Play, Plus, Trash2, Users } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -7,13 +7,14 @@ import { generateId } from '@/api/device';
 import type { UserDto } from '@/api/types';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/layout/UserMenu';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { useSocket } from '@/realtime/RealtimeProvider';
 import { getActiveVideo } from './activePlayer';
 import { SyncPlayManager, type SyncPlaySnapshot } from './syncplay';
 import { canSeeGroup } from './syncplayInviteList';
-import { setPickerOpen, usePicker } from './syncplayPickerApi';
+import { setPickerOpen, usePicker, usePickerAction } from './syncplayPickerApi';
 import type { VideoPlayerState } from './usePlay';
 import { isPlayPath } from './VideoSession';
 import { t } from '@/i18n';
@@ -235,6 +236,10 @@ export function SyncPlayButton() {
 
   const groups = useSyncPlayGroups(open && !sync.group, 3000);
   const picker = usePicker(false);
+  const pickerAction = usePickerAction();
+  const [deleting, setDeleting] = useState(false);
+  // The creator, while in the group (otherwise whoever is longest in it), may delete it for everyone.
+  const canDelete = Boolean(picker.available && picker.data && picker.data.host === picker.data.me);
   // Closing the menu drops a half-filled form.
   if (!open && creating) setCreating(false);
 
@@ -359,6 +364,18 @@ export function SyncPlayButton() {
               >
                 <LogOut size={16} className="shrink-0 text-muted" /> {t('player.syncPlayProvider.leaveGroup')}
               </button>
+              {canDelete && (
+                <button
+                  className={row}
+                  disabled={busy}
+                  onClick={() => {
+                    setOpen(false);
+                    setDeleting(true);
+                  }}
+                >
+                  <Trash2 size={16} className="shrink-0 text-red-400" /> {t('player.syncPlayProvider.deleteGroup')}
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -411,6 +428,24 @@ export function SyncPlayButton() {
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={deleting}
+        title={t('player.syncPlayProvider.deleteGroupTitle')}
+        message={t('player.syncPlayProvider.deleteGroupMessage')}
+        confirmLabel={t('player.syncPlayProvider.deleteGroup')}
+        danger
+        loading={busy}
+        onClose={() => setDeleting(false)}
+        onConfirm={() =>
+          void run(async () => {
+            // Every Jellyfied member leaves when they read this; then this browser leaves too.
+            await pickerAction.mutateAsync({ action: 'close' });
+            await manager.leaveGroup();
+            setDeleting(false);
+            toast.success(t('player.syncPlayProvider.groupDeleted'));
+          })
+        }
+      />
     </div>
   );
 }

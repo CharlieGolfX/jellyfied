@@ -144,6 +144,33 @@ test.describe('the SyncPlay picker', () => {
     await expect(demoPicker).toHaveCount(0);
   });
 
+  test('the creator can delete the group, and everyone using Jellyfied leaves it', async ({ browser }) => {
+    const store = memoryStore();
+    const demo = await member(browser, store, { id: 'user-1', name: 'demo' });
+    const anna = await member(browser, store, { id: 'user-2', name: 'anna' });
+    const left: string[] = [];
+    for (const [name, page] of [
+      ['demo', demo],
+      ['anna', anna],
+    ] as const)
+      page.on('request', (r) => r.method() === 'POST' && r.url().endsWith('/SyncPlay/Leave') && left.push(name));
+
+    // Only the creator (demo, first in the group) is offered it.
+    await anna.getByRole('button', { name: 'SyncPlay' }).click();
+    await expect(anna.getByRole('button', { name: 'Leave group' })).toBeVisible();
+    await expect(anna.getByRole('button', { name: 'Delete group' })).toHaveCount(0);
+    await anna.keyboard.press('Escape');
+
+    await demo.getByRole('button', { name: 'SyncPlay' }).click();
+    await demo.getByRole('button', { name: 'Delete group' }).click();
+    const confirm = demo.getByRole('dialog', { name: 'Delete this group?' });
+    await confirm.getByRole('button', { name: 'Delete group' }).click();
+    await expect(demo.getByText('Group deleted')).toBeVisible();
+
+    await expect(anna.getByText('demo deleted the SyncPlay group')).toBeVisible({ timeout: 10_000 });
+    await expect.poll(() => [...new Set(left)].sort(), { timeout: 10_000 }).toEqual(['anna', 'demo']);
+  });
+
   test('the group badge in the player opens it too', async ({ browser }) => {
     const queue = {
       Reason: 'NewPlaylist',

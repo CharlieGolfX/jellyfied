@@ -15,6 +15,7 @@ interface Body {
   participants: { name: string; ready: boolean }[];
   suggestions: { id: string; by: string; votes: number; mine: boolean; voted: boolean }[];
   spin: { round: number; winner: string; by: string | null; entries: { id: string; weight: number }[] } | null;
+  closed: string | null;
 }
 
 function memoryStore() {
@@ -135,5 +136,18 @@ describe('the SyncPlay picker', () => {
     expect((await as('ann', 'POST', { action: 'spin' })).status).toBe(409);
     await as('ann', 'POST', { action: 'ready', on: true });
     expect((await as('bob', 'POST', { action: 'ready', on: true })).body.spin).toBeNull();
+  });
+
+  it('can be deleted by its creator only, after which it takes nothing more', async () => {
+    members = ['ann'];
+    await as('ann', 'POST', { action: 'claim' });
+    members = ['ann', 'bob'];
+    await as('bob', 'POST', { action: 'suggest', itemId: MOVIE });
+    expect((await as('bob', 'POST', { action: 'close' })).status).toBe(403);
+    expect((await as('bob')).body.closed).toBeNull();
+
+    expect((await as('ann', 'POST', { action: 'close' })).body.closed).toBe('ann');
+    expect((await as('bob')).body.closed).toBe('ann');
+    expect((await as('bob', 'POST', { action: 'ready', on: true })).status).toBe(409);
   });
 });
