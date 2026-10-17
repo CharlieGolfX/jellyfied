@@ -796,6 +796,15 @@
         "track": "Spor",
         "video": "Video"
       }
+    },
+    "serverStatus": {
+      "activity": "Serveraktivitet",
+      "installed": "Installert: {version}",
+      "scanning": "Skanner biblioteker",
+      "title": "Serverstatus",
+      "upToDate": "Alt er oppdatert",
+      "updateTo": "{name} {version} er tilgjengelig",
+      "updates": "Oppdateringer"
     }
   },
   "lib": {

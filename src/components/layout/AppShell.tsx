@@ -14,6 +14,7 @@ import { useVideoSession } from '@/player/VideoSession';
 import { CardSizeButton } from './CardSizeButton';
 import { AppIcon, Logo } from './Logo';
 import { SearchBox } from './SearchBox';
+import { ServerStatusButton } from './ServerStatusButton';
 import { Sidebar } from './Sidebar';
 import { UserMenu } from './UserMenu';
 
@@ -142,6 +143,7 @@ export function AppShell() {
               <LayoutDashboard size={20} />
             </Link>
           )}
+          {isAdmin && <ServerStatusButton />}
           <UserMenu />
         </div>
       </header>

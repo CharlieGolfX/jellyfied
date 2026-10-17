@@ -204,6 +204,18 @@ export async function mockJellyfin(page: Page, options: MockOptions = {}) {
     const { status = 200, body } = answer(route, options);
     return route.fulfill({ status, contentType: 'application/json', body: body === undefined ? '' : JSON.stringify(body) });
   });
+  // The update check in the server status menu: never the real GitHub. Set up last, so the
+  // server's route above (whose address also has "/jellyfin/" in it) does not take it.
+  await page.route('https://api.github.com/repos/**/releases/latest', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(
+        route.request().url().includes('/jellyfin/jellyfin/')
+          ? { tag_name: 'v10.11.5', html_url: 'https://github.com/jellyfin/jellyfin/releases/tag/v10.11.5' }
+          : { tag_name: 'v99.0.0', html_url: 'https://github.com/CharlieGolfX/jellyfied/releases/tag/v99.0.0' },
+      ),
+    }),
+  );
 }
 
 export async function signIn(page: Page) {

@@ -6,6 +6,13 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Added
+- A server status button in the top bar for administrators, next to the dashboard and account
+  buttons. It shows how many streams are playing, and opens a menu with what is playing across
+  the whole server, running library scans and other tasks, and whether a newer Jellyfin or
+  Jellyfied release is out (looked up on GitHub at most every six hours) or the server needs a
+  restart.
+
 ## [1.4.0] - 2026-10-16
 
 ### Added

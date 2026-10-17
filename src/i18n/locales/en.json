@@ -796,6 +796,15 @@
         "track": "Track",
         "video": "Video"
       }
+    },
+    "serverStatus": {
+      "activity": "Server activity",
+      "installed": "Installed: {version}",
+      "scanning": "Scanning libraries",
+      "title": "Server status",
+      "upToDate": "Everything is up to date",
+      "updateTo": "{name} {version} is available",
+      "updates": "Updates"
     }
   },
   "lib": {

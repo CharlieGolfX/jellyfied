@@ -47,6 +47,7 @@ test.describe('as a regular user', () => {
   });
 
   test('the server dashboard is closed to regular users', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Server status' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Account menu' }).click();
     await expect(page.getByText('Server dashboard')).toHaveCount(0);
     await page.keyboard.press('Escape');
@@ -79,6 +80,47 @@ test.describe('as an administrator', () => {
     await page.getByRole('link', { name: 'Users' }).click();
     await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
     await expect(page.getByRole('main').getByText('demo').first()).toBeVisible();
+  });
+
+  test('the server status menu shows what is playing, scanning and can be updated', async ({ page }) => {
+    await page.route('**/Sessions?*', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            Id: 'session-1',
+            UserName: 'demo',
+            DeviceName: 'Living room',
+            NowPlayingItem: { Id: 'movie-1', Name: 'The Mock Movie', Type: 'Movie', ProductionYear: 2020, RunTimeTicks: 60e8 },
+            PlayState: { PositionTicks: 15e8, PlayMethod: 'DirectPlay' },
+          },
+        ]),
+      }),
+    );
+    await page.route('**/ScheduledTasks?*', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { Id: 'task-1', Key: 'RefreshLibrary', Name: 'Scan Media Library', State: 'Running', CurrentProgressPercentage: 42 },
+        ]),
+      }),
+    );
+    await page.reload();
+
+    const button = page.getByRole('button', { name: 'Server status' });
+    await expect(button).toContainText('1');
+    await button.click();
+    const panel = page.getByRole('dialog', { name: 'Server status' });
+    await expect(panel.getByText('Now Playing (1)')).toBeVisible();
+    await expect(panel.getByRole('link', { name: /The Mock Movie/ })).toBeVisible();
+    await expect(panel.getByText('Scanning libraries')).toBeVisible();
+    await expect(panel.getByText('42%')).toBeVisible();
+    await expect(panel.getByRole('link', { name: /Jellyfin 10\.11\.5 is available/ })).toBeVisible();
+    await expect(panel.getByRole('link', { name: /Jellyfied 99\.0\.0 is available/ })).toBeVisible();
+
+    await panel.getByRole('link', { name: 'Server dashboard' }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+    await expect(panel).toHaveCount(0);
   });
 
   test('general settings load from the server and are saved back', async ({ page }) => {

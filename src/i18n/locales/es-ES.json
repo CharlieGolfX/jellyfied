@@ -796,6 +796,15 @@
         "track": "Pista",
         "video": "Vídeo"
       }
+    },
+    "serverStatus": {
+      "activity": "Actividad del servidor",
+      "installed": "Instalada: {version}",
+      "scanning": "Escaneando bibliotecas",
+      "title": "Estado del servidor",
+      "upToDate": "Todo está actualizado",
+      "updateTo": "{name} {version} está disponible",
+      "updates": "Actualizaciones"
     }
   },
   "lib": {
