@@ -6,7 +6,10 @@ import { APP_NAME } from '@/config';
 const SNOWFLAKE =
   'M256,256L256,36M196,62L256,122L316,62M212,146L256,190L300,146M256,256L446.5,146M394,107L372,189L454,211M329.3,162.9L313.2,223L373.3,239.1M256,256L446.5,366M454,301L372,323L394,405M373.3,272.9L313.2,289L329.3,349.1M256,256L256,476M316,450L256,390L196,450M300,366L256,322L212,366M256,256L65.5,366M118,405L140,323L58,301M182.7,349.1L198.8,289L138.7,272.9M256,256L65.5,146M58,211L140,189L118,107M138.7,239.1L198.8,223L182.7,162.9';
 
-/** The Jellyfied snowflake on its own. */
+/**
+ * The Jellyfied snowflake on its own, in the accent colour the user picked: from a light tint of it
+ * to the colour itself (with the default accent, the same light blue to blue as the favicon).
+ */
 export function AppIcon({ className, label = APP_NAME }: { className?: string; label?: string | null }) {
   const id = useId();
   return (
@@ -19,8 +22,8 @@ export function AppIcon({ className, label = APP_NAME }: { className?: string; l
     >
       <defs>
         <linearGradient id={id} x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#a5e9ff" />
-          <stop offset="1" stopColor="#00a4dc" />
+          <stop offset="0" style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 35%, white)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--color-accent)' }} />
         </linearGradient>
       </defs>
       <path d={SNOWFLAKE} fill="none" stroke={`url(#${id})`} strokeWidth="34" strokeLinecap="round" strokeLinejoin="round" />

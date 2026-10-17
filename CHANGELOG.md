@@ -24,6 +24,7 @@ shown in the account menu and on the login screen.
   checks every request with Jellyfin.
 
 ### Changed
+- The snowflake in the logo takes the accent colour chosen under Account settings.
 - Works with Jellyfin 12. Jellyfin 12 no longer accepts the access token as "api_key" in addresses
   (unless its legacy authorization is turned back on), which broke the live connection (SyncPlay,
   remote control) and playing video and music. Jellyfied now sends it as "ApiKey", which Jellyfin

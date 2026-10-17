@@ -283,6 +283,26 @@ test('the interface language can be chosen from the languages there is text for'
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
+test('the logo takes the accent colour the user picks', async ({ page }) => {
+  await mockJellyfin(page);
+  await signIn(page);
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  const logoColours = () =>
+    page
+      .getByRole('banner')
+      .locator('svg stop')
+      .evaluateAll((stops) => stops.map((s) => getComputedStyle(s).stopColor));
+  const blue = await logoColours();
+  expect(blue[1]).toBe('rgb(0, 164, 220)');
+
+  await page.goto('/settings');
+  await page.getByRole('radio', { name: 'Red' }).click();
+  const red = await logoColours();
+  expect(red[1]).toBe('rgb(229, 72, 77)');
+  // The light end is a tint of the same colour.
+  expect(red[0]).not.toBe(blue[0]);
+});
+
 test('choosing another language reloads the interface in it, with its way of writing numbers', async ({ page }) => {
   await mockJellyfin(page, { big: true });
   await signIn(page);
