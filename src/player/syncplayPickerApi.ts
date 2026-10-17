@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, type JellyfinApi } from '@/api/client';
+import { ApiError, JellyfinApi } from '@/api/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { runtimeConfig } from '@/config';
 import { t, type MessageKey } from '@/i18n';
@@ -60,10 +60,26 @@ export type PickerAction =
 
 /**
  * The picker only works against the server the container proxies: it checks the caller's token with
- * that server, so a token for any other server must never be sent to it.
+ * that server, so a token for any other server must never be sent to it. A session saved under
+ * another address of that same server (its direct address, say) is fine: the two report one server id.
  */
-export function pickerSupported(api: JellyfinApi | null): boolean {
-  return Boolean(api && runtimeConfig.serverUrl && api.serverUrl === runtimeConfig.serverUrl);
+export function usePickerSupported(): boolean {
+  const { api } = useAuth();
+  const sameAddress = Boolean(api && runtimeConfig.serverUrl && api.serverUrl === runtimeConfig.serverUrl);
+  const { data: sameServer } = useQuery({
+    queryKey: ['syncplay-picker-server', api?.serverUrl],
+    queryFn: async () => {
+      const [proxied, own] = await Promise.all([
+        new JellyfinApi(runtimeConfig.serverUrl).get<{ Id?: string }>('/System/Info/Public'),
+        api!.get<{ Id?: string }>('/System/Info/Public'),
+      ]);
+      return Boolean(proxied?.Id && proxied.Id === own?.Id);
+    },
+    enabled: Boolean(api && runtimeConfig.serverUrl) && !sameAddress,
+    staleTime: Infinity,
+    retry: 1,
+  });
+  return sameAddress || sameServer === true;
 }
 
 export const normId = (id: string) => id.replace(/-/g, '').toLowerCase();
@@ -96,7 +112,7 @@ export function usePicker(fast: boolean) {
   const { api } = useAuth();
   const sync = useSyncPlay();
   const groupId = sync.group?.GroupId;
-  const supported = pickerSupported(api);
+  const supported = usePickerSupported();
   const query = useQuery({
     queryKey: pickerKey(groupId),
     queryFn: () => request(api!, groupId!),

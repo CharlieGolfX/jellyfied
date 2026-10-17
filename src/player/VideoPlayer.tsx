@@ -21,6 +21,7 @@ import { pictureStyle, readPictureFit, storePictureFit, type PictureAspect, type
 import { clearSleepTimer, getSleepTimer, onSleepTimerFired, useSleepTimer } from './sleepTimer';
 import { SubtitleOverlay } from './SubtitleOverlay';
 import { useSyncPlay, useSyncPlayManager } from './SyncPlayProvider';
+import { setPickerOpen, usePickerSupported } from './syncplayPickerApi';
 import type { VideoPlayerState } from './usePlay';
 import { useWakeLock } from './useWakeLock';
 import { isPlayPath, useVideoSession } from './VideoSession';
@@ -84,6 +85,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
   const sync = useSyncPlay();
   const syncItemId = navState.syncPlaylistItemId;
   const inSync = Boolean(syncItemId) && sync.following && sync.playlistItemId === syncItemId;
+  const pickerSupported = usePickerSupported();
 
   const [volume, setVolume] = useState(() => Math.min(1, readNumber(VOLUME_KEY, 1)));
   const [muted, setMuted] = useState(false);
@@ -699,7 +701,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
             visible={showControls}
             title={titleParts}
             subtitle={subtitleParts}
-            group={inSync ? sync.group : null}
+            group={sync.group}
+            onOpenPicker={sync.group && pickerSupported ? () => setPickerOpen(true) : undefined}
             onNavigate={openPage}
             onMinimize={minimize}
             onExit={exit}

@@ -4,10 +4,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { cardImage, imageSrc } from '@/api/images';
 import type { BaseItemDto, ItemsResult } from '@/api/types';
-import { useApi, useAuth, useSession } from '@/auth/AuthProvider';
+import { useApi, useSession } from '@/auth/AuthProvider';
 import type { MenuItem } from '@/components/ui/Menu';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Spinner } from '@/components/ui/Spinner';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { t } from '@/i18n';
@@ -16,7 +17,7 @@ import {
   finalRotation,
   markSpinSeen,
   normId,
-  pickerSupported,
+  usePickerSupported,
   setPickerOpen,
   slicePath,
   SPIN_MS,
@@ -453,11 +454,24 @@ export function SyncPlayPicker() {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [showing]);
 
-  if (!state) return null;
+  // A window over a full-screen video would never be seen.
+  useEffect(() => {
+    if (open && document.fullscreenElement) void document.exitFullscreen?.().catch(() => {});
+  }, [open]);
+
+  if (!picker.available) return null;
 
   return (
     <Modal open={open} onClose={() => setPickerOpen(false)} title={t('player.picker.title')} size="xl">
-      <PickerBody state={state} showing={showing} elapsed={elapsed} />
+      {state ? (
+        <PickerBody state={state} showing={showing} elapsed={elapsed} />
+      ) : picker.error ? (
+        <p className="py-6 text-center text-sm text-muted">{(picker.error as Error).message}</p>
+      ) : (
+        <div className="flex justify-center py-10 text-accent">
+          <Spinner size={24} />
+        </div>
+      )}
     </Modal>
   );
 }
@@ -466,11 +480,11 @@ const SUGGESTABLE = ['Movie', 'Series', 'Episode'];
 
 /** "Suggest for SyncPlay" for an item's menu, while in a group. */
 export function useSuggestMenuItem(item: BaseItemDto): MenuItem | null {
-  const { api } = useAuth();
   const sync = useSyncPlay();
   const toast = useToast();
   const act = usePickerAction();
-  if (!sync.group || !pickerSupported(api) || !SUGGESTABLE.includes(item.Type)) return null;
+  const supported = usePickerSupported();
+  if (!sync.group || !supported || !SUGGESTABLE.includes(item.Type)) return null;
   return {
     label: t('player.picker.suggestThis'),
     icon: <Dices size={16} />,

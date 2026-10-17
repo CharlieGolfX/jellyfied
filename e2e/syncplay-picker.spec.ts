@@ -25,19 +25,18 @@ function memoryStore() {
 
 type Store = ReturnType<typeof memoryStore>;
 
-async function member(browser: Browser, store: Store, who: { id: string; name: string }) {
+/** What the group's server says once a member's connection is up: that they joined, and maybe more. */
+type GroupUpdate = { Type: string; Data: unknown };
+
+async function member(browser: Browser, store: Store, who: { id: string; name: string }, more: GroupUpdate[] = []) {
   const page = await (await browser.newContext()).newPage();
   await mockJellyfin(page, {
     as: who,
-    // Joined to the group as soon as the connection is up.
     onSocket: (ws) =>
-      setTimeout(
-        () =>
-          ws.send(
-            JSON.stringify({ MessageType: 'SyncPlayGroupUpdate', Data: { GroupId: GROUP.GroupId, Type: 'GroupJoined', Data: GROUP } }),
-          ),
-        300,
-      ),
+      setTimeout(() => {
+        for (const update of [{ Type: 'GroupJoined', Data: GROUP }, ...more])
+          ws.send(JSON.stringify({ MessageType: 'SyncPlayGroupUpdate', Data: { GroupId: GROUP.GroupId, ...update } }));
+      }, 300),
   });
   await page.route(/\/jellyfin\/Items(\?|\/[0-9a-f]{32})/, (route) => {
     const url = new URL(route.request().url());
@@ -143,5 +142,21 @@ test.describe('the SyncPlay picker', () => {
     await expect(demoPicker.getByTestId('picker-winner')).toHaveText('Alpha Film', { timeout: 15_000 });
     await expect.poll(() => queued, { timeout: 15_000 }).toEqual([[FILM.Id]]);
     await expect(demoPicker).toHaveCount(0);
+  });
+
+  test('the group badge in the player opens it too', async ({ browser }) => {
+    const queue = {
+      Reason: 'NewPlaylist',
+      LastUpdate: new Date().toISOString(),
+      Playlist: [{ ItemId: FILM.Id, PlaylistItemId: 'entry-1' }],
+      PlayingItemIndex: 0,
+      StartPositionTicks: 0,
+      IsPlaying: false,
+    };
+    const demo = await member(browser, memoryStore(), { id: 'user-1', name: 'demo' }, [{ Type: 'PlayQueue', Data: queue }]);
+    await expect(demo).toHaveURL(/\/play\//, { timeout: 10_000 });
+    // The fake server has no video to play, and the player's message about that covers the badge.
+    await demo.getByRole('button', { name: 'Pick what to watch' }).dispatchEvent('click');
+    await expect(demo.getByRole('dialog', { name: 'What shall we watch?' })).toBeVisible();
   });
 });

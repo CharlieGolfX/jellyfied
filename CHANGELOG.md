@@ -27,6 +27,9 @@ shown in the account menu and on the login screen.
 ### Fixed
 - On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
   a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
+- The SyncPlay picker was missing for members whose sign-in uses another address for the same
+  Jellyfin server, such as its direct address. The app now compares the servers' ids. In the
+  player, the group's badge opens the picker, and the picker leaves full screen so it can be seen.
 
 ## [1.4.0] - 2026-10-16
 

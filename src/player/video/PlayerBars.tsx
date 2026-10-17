@@ -59,6 +59,7 @@ export function TopBar({
   title,
   subtitle,
   group,
+  onOpenPicker,
   onNavigate,
   onMinimize,
   onExit,
@@ -71,6 +72,8 @@ export function TopBar({
   onNavigate: (to: string) => void;
   /** The SyncPlay group this playback is part of, if any. */
   group?: { GroupName: string; Participants: string[] } | null;
+  /** Opens the SyncPlay picker, where the container has one. */
+  onOpenPicker?: () => void;
   onMinimize: () => void;
   onExit: () => void;
 }) {
@@ -104,15 +107,27 @@ export function TopBar({
           </div>
         )}
       </div>
-      {group && (
-        <span
-          data-testid="syncplay-badge"
-          className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent sm:flex"
-          title={t('player.video.playerBars.watchingWith', { names: group.Participants.join(', ') })}
-        >
-          <Users size={15} /> {group.GroupName} · {group.Participants.length}
-        </span>
-      )}
+      {group &&
+        (onOpenPicker ? (
+          <button
+            data-testid="syncplay-badge"
+            onClick={onOpenPicker}
+            className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent hover:bg-white/20"
+            aria-label={t('player.picker.open')}
+            title={`${t('player.video.playerBars.watchingWith', { names: group.Participants.join(', ') })} · ${t('player.picker.open')}`}
+          >
+            <Users size={15} />
+            <span className="hidden sm:inline">{group.GroupName} ·</span> {group.Participants.length}
+          </button>
+        ) : (
+          <span
+            data-testid="syncplay-badge"
+            className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm text-accent sm:flex"
+            title={t('player.video.playerBars.watchingWith', { names: group.Participants.join(', ') })}
+          >
+            <Users size={15} /> {group.GroupName} · {group.Participants.length}
+          </span>
+        ))}
       <button
         onClick={onMinimize}
         className="rounded-full p-2 text-white hover:bg-white/15"
