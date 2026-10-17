@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JellyfinApi } from '@/api/client';
 import type { JellyfinSocket } from '@/realtime/socket';
 import { SyncPlayManager, type SyncPlayGroup, type SyncPlayNotice, type SyncPlayOpenRequest } from './syncplay';
+import { inviteName } from './syncplayInviteList';
 
 /** A socket that only remembers who listens, so the test can play the server. */
 function fakeSocket() {
@@ -75,6 +76,23 @@ describe('SyncPlayManager: groups', () => {
     expect(post).toHaveBeenCalledWith('/SyncPlay/New', { GroupName: 'Movie night' });
     await manager.joinGroup('g1');
     expect(post).toHaveBeenCalledWith('/SyncPlay/Join', { GroupId: 'g1' });
+  });
+
+  it('writes who is invited into the name of an invite-only group', async () => {
+    await manager.createGroup('Movie night', { creatorId: 'aaaaaaaa-1', userIds: ['bbbbbbbb-2'] });
+    expect(post).toHaveBeenCalledWith('/SyncPlay/New', { GroupName: inviteName('Movie night', 'aaaaaaaa-1', ['bbbbbbbb-2']) });
+  });
+
+  it('shows the plain name of an invite-only group, with who it is for', async () => {
+    const invited = { ...group, GroupName: inviteName('Movie night', 'aaaaaaaa', ['bbbbbbbb']) };
+    get.mockResolvedValueOnce([invited, { ...group, GroupId: 'g2' }]);
+    const groups = await manager.listGroups();
+    expect(groups.map((g) => [g.GroupName, g.Invite])).toEqual([
+      ['Movie night', { creator: 'aaaaaaaa', invited: ['bbbbbbbb'] }],
+      ['Movie night', null],
+    ]);
+    server.update('GroupJoined', invited);
+    expect(manager.getSnapshot().group).toMatchObject({ GroupName: 'Movie night', Invite: { creator: 'aaaaaaaa' } });
   });
 
   it('is in the group once the server confirms, follows it, and remembers it for a reload', () => {

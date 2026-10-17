@@ -12,6 +12,17 @@ shown in the account menu and on the login screen.
   the whole server, running library scans and other tasks, and whether a newer Jellyfin or
   Jellyfied release is out (looked up on GitHub at most every six hours) or the server needs a
   restart.
+- SyncPlay groups can be invite-only. Whoever creates a group picks whether everyone on the
+  server can join it or only the users they choose. Invited users are asked in a popup whether to
+  join, and others don't see the group in Jellyfied. Other Jellyfin apps still list every group.
+- A picker for SyncPlay groups. Members suggest films, shows and episodes and vote on each other's
+  suggestions (one vote each, never for their own). A wheel, where more votes make a bigger slice,
+  spins once everyone is ready, or when the group's creator spins it, and what it picks starts
+  for the whole group. Suggestions and votes are kept by the container (nginx with njs), which
+  checks every request with Jellyfin.
+
+### Changed
+- Dialogs are named by their title for screen readers.
 
 ### Fixed
 - On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping

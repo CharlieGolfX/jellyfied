@@ -14,6 +14,8 @@ import SearchPage from '@/pages/Search';
 import FavoritesPage from '@/pages/Favorites';
 import NotFoundPage from '@/pages/NotFound';
 import { RemoteControlReceiver } from '@/player/RemoteControl';
+import { SyncPlayInvites } from '@/player/SyncPlayInvites';
+import { SyncPlayPicker } from '@/player/SyncPlayPicker';
 import { PlayRoute, useVideoSession } from '@/player/VideoSession';
 import { LiveUpdates } from '@/realtime/LiveUpdates';
 import { t } from '@/i18n';
@@ -66,6 +68,8 @@ function PlayerHost() {
       <RemoteControlReceiver />
       <LiveUpdates />
       <PrefsSync />
+      <SyncPlayInvites />
+      <SyncPlayPicker />
       {session && (
         <ErrorBoundary resetKey={session.key} fallback={() => <PlayerCrash />}>
           <Suspense fallback={null}>

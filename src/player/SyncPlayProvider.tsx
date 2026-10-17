@@ -1,15 +1,19 @@
 import clsx from 'clsx';
-import { LogOut, Play, Plus, Users } from 'lucide-react';
+import { Check, Dices, Lock, LogOut, Play, Plus, Users } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
-import { useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import type { UserDto } from '@/api/types';
+import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import { Avatar } from '@/components/layout/UserMenu';
 import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { useSocket } from '@/realtime/RealtimeProvider';
 import { getActiveVideo } from './activePlayer';
 import { SyncPlayManager, type SyncPlaySnapshot } from './syncplay';
+import { canSeeGroup } from './syncplayInviteList';
+import { setPickerOpen, usePicker } from './syncplayPickerApi';
 import type { VideoPlayerState } from './usePlay';
 import { isPlayPath } from './VideoSession';
 import { t } from '@/i18n';
@@ -88,6 +92,126 @@ export function useSyncPlay(): SyncPlaySnapshot {
   return useSyncExternalStore(manager?.subscribe ?? noopSubscribe, manager?.getSnapshot ?? (() => NOT_IN_GROUP), () => NOT_IN_GROUP);
 }
 
+/** The groups the user may see, shared by the menu and the invitation popup. */
+export function useSyncPlayGroups(enabled: boolean, refetchInterval: number) {
+  const manager = useSyncPlayManager();
+  const session = useSession();
+  return useQuery({
+    queryKey: ['syncplay-groups'],
+    queryFn: () => manager!.listGroups(),
+    enabled: enabled && Boolean(manager),
+    refetchInterval,
+    staleTime: 0,
+    select: (groups) => groups.filter((g) => canSeeGroup(g.Invite ?? null, session.userId)),
+  });
+}
+
+/** Everyone on the server who can sign in, to invite to a group. */
+export function useServerUsers(enabled = true) {
+  const api = useApi();
+  return useQuery({
+    queryKey: ['users', 'enabled'],
+    queryFn: () => api.get<UserDto[]>('/Users', { isDisabled: false }),
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+/** Picks between a group for everyone and one for chosen users, then creates it. */
+function CreateGroupForm({
+  busy,
+  onCreate,
+  onCancel,
+}: {
+  busy: boolean;
+  onCreate: (userIds: string[] | null) => void;
+  onCancel: () => void;
+}) {
+  const session = useSession();
+  const [inviteOnly, setInviteOnly] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const users = useServerUsers(inviteOnly);
+  const others = (users.data ?? []).filter((u) => u.Id !== session.userId);
+  const toggle = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const option = 'flex w-full items-center gap-3 px-4 py-1.5 text-left text-sm hover:bg-white/10';
+
+  return (
+    <div className="pb-1" data-testid="syncplay-create">
+      <div className="px-4 pt-1 pb-1 text-xs font-medium text-muted" id="syncplay-who">
+        {t('player.syncPlayProvider.whoCanJoin')}
+      </div>
+      <div role="radiogroup" aria-labelledby="syncplay-who">
+        {[false, true].map((value) => (
+          <button
+            key={String(value)}
+            role="radio"
+            aria-checked={inviteOnly === value}
+            className={option}
+            onClick={() => setInviteOnly(value)}
+          >
+            <span
+              className={clsx(
+                'flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-2',
+                inviteOnly === value ? 'ring-accent' : 'ring-white/30',
+              )}
+            >
+              {inviteOnly === value && <span className="h-2 w-2 rounded-full bg-accent" />}
+            </span>
+            {value ? t('player.syncPlayProvider.onlyPeopleIInvite') : t('player.syncPlayProvider.everyoneOnTheServer')}
+          </button>
+        ))}
+      </div>
+      {inviteOnly && (
+        <div className="mx-4 mt-1 max-h-52 overflow-y-auto rounded-md bg-base-950/40 py-1 ring-1 ring-white/5">
+          {users.isLoading ? (
+            <div className="flex justify-center py-3 text-accent">
+              <Spinner size={18} />
+            </div>
+          ) : users.isError ? (
+            <p className="px-3 py-2 text-xs text-danger">{t('player.syncPlayProvider.usersFailed')}</p>
+          ) : others.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-faint">{t('player.syncPlayProvider.noOtherUsers')}</p>
+          ) : (
+            others.map((u) => (
+              <button
+                key={u.Id}
+                role="checkbox"
+                aria-checked={picked.has(u.Id)}
+                onClick={() => toggle(u.Id)}
+                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-white/10"
+              >
+                <Avatar userId={u.Id} tag={u.PrimaryImageTag} name={u.Name} size={22} />
+                <span className="min-w-0 flex-1 truncate">{u.Name}</span>
+                <Check size={15} className={clsx('shrink-0', picked.has(u.Id) ? 'text-accent' : 'invisible')} />
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      {inviteOnly && <p className="px-4 pt-1.5 text-[11px] leading-snug text-faint">{t('player.syncPlayProvider.inviteOnlyNote')}</p>}
+      <div className="flex justify-end gap-2 px-4 pt-2">
+        <button className="rounded-md px-3 py-1.5 text-sm text-muted hover:bg-white/10 hover:text-fg" onClick={onCancel}>
+          {t('common.cancel')}
+        </button>
+        <button
+          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
+          disabled={busy || (inviteOnly && picked.size === 0)}
+          onClick={() => onCreate(inviteOnly ? [...picked] : null)}
+        >
+          {t('player.syncPlayProvider.create')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const STATE_LABEL: Record<string, string> = {
   Idle: t('player.syncPlayProvider.nothingPlaying'),
   Waiting: t('player.syncPlayProvider.waitingForEveryone'),
@@ -104,17 +228,15 @@ export function SyncPlayButton() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const access = user?.Policy?.SyncPlayAccess ?? 'CreateAndJoinGroups';
 
-  const groups = useQuery({
-    queryKey: ['syncplay-groups'],
-    queryFn: () => manager!.listGroups(),
-    enabled: open && Boolean(manager) && !sync.group,
-    refetchInterval: 3000,
-    staleTime: 0,
-  });
+  const groups = useSyncPlayGroups(open && !sync.group, 3000);
+  const picker = usePicker(false);
+  // Closing the menu drops a half-filled form.
+  if (!open && creating) setCreating(false);
 
   useEffect(() => {
     if (!open) return;
@@ -174,8 +296,14 @@ export function SyncPlayButton() {
                 <div className="truncate font-semibold" data-testid="syncplay-group-name">
                   {sync.group.GroupName}
                 </div>
-                <div className="text-xs text-muted" data-testid="syncplay-state">
+                <div className="flex items-center gap-1.5 text-xs text-muted" data-testid="syncplay-state">
                   {STATE_LABEL[sync.group.State] ?? sync.group.State}
+                  {sync.group.Invite && (
+                    <>
+                      <span className="text-faint">·</span>
+                      <Lock size={11} /> {t('player.syncPlayProvider.inviteOnly')}
+                    </>
+                  )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5" data-testid="syncplay-participants">
                   {sync.group.Participants.map((p, i) => (
@@ -188,6 +316,26 @@ export function SyncPlayButton() {
                   {sync.hasQueue ? t('player.syncPlayProvider.playPauseAndSeekApply') : t('player.syncPlayProvider.emptyHint')}
                 </p>
               </div>
+              {picker.available && (
+                <button
+                  className={row}
+                  onClick={() => {
+                    setPickerOpen(true);
+                    setOpen(false);
+                  }}
+                >
+                  <Dices size={16} className="shrink-0 text-accent" />
+                  <span className="min-w-0 flex-1">{t('player.picker.open')}</span>
+                  {picker.data && picker.data.suggestions.length > 0 && (
+                    <span className="shrink-0 text-xs text-muted tabular-nums">
+                      {t('player.picker.readyCount', {
+                        ready: picker.data.participants.filter((p) => p.ready).length,
+                        total: picker.data.participants.length,
+                      })}
+                    </span>
+                  )}
+                </button>
+              )}
               {sync.hasQueue && !sync.following && (
                 <button
                   className={row}
@@ -214,16 +362,25 @@ export function SyncPlayButton() {
             </>
           ) : (
             <>
-              {access === 'CreateAndJoinGroups' && (
-                <button
-                  className={row}
-                  disabled={busy}
-                  onClick={() => void run(() => manager.createGroup(`${user?.Name ?? session.userName}'s group`))}
-                >
-                  <Plus size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.createGroup')}
-                </button>
-              )}
-              {groups.isLoading ? (
+              {access === 'CreateAndJoinGroups' &&
+                (creating ? (
+                  <CreateGroupForm
+                    busy={busy}
+                    onCancel={() => setCreating(false)}
+                    onCreate={(userIds) =>
+                      void run(async () => {
+                        const name = `${user?.Name ?? session.userName}'s group`;
+                        await manager.createGroup(name, userIds ? { creatorId: session.userId, userIds } : undefined);
+                        setCreating(false);
+                      })
+                    }
+                  />
+                ) : (
+                  <button className={row} disabled={busy} onClick={() => setCreating(true)}>
+                    <Plus size={16} className="shrink-0 text-accent" /> {t('player.syncPlayProvider.createGroup')}
+                  </button>
+                ))}
+              {creating ? null : groups.isLoading ? (
                 <div className="flex justify-center py-4 text-accent">
                   <Spinner size={20} />
                 </div>
@@ -238,7 +395,11 @@ export function SyncPlayButton() {
                     data-testid="syncplay-group"
                     onClick={() => void run(() => manager.joinGroup(g.GroupId))}
                   >
-                    <Users size={16} className="shrink-0 text-muted" />
+                    {g.Invite ? (
+                      <Lock size={16} className="shrink-0 text-muted" aria-label={t('player.syncPlayProvider.inviteOnly')} />
+                    ) : (
+                      <Users size={16} className="shrink-0 text-muted" />
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{g.GroupName}</span>
                       <span className="block truncate text-xs text-muted">{g.Participants.join(', ')}</span>

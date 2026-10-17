@@ -1,6 +1,7 @@
 import type { JellyfinApi } from '@/api/client';
 import type { JellyfinSocket } from '@/realtime/socket';
 import { t } from '@/i18n';
+import { inviteName, readGroupName, type GroupInvite } from './syncplayInviteList';
 
 /**
  * SyncPlay ("watch together"). The server owns the group state: clients ask it to pause, resume
@@ -15,6 +16,14 @@ export interface SyncPlayGroup {
   GroupName: string;
   State: 'Idle' | 'Waiting' | 'Paused' | 'Playing';
   Participants: string[];
+  /** Who may see the group in Jellyfied, when it is invite-only. GroupName is then the plain name. */
+  Invite?: GroupInvite | null;
+}
+
+/** A group as the server sends it, with the invite list (if any) taken out of its name. */
+function fromServer(group: SyncPlayGroup): SyncPlayGroup {
+  const { name, invite } = readGroupName(group.GroupName ?? '');
+  return { ...group, GroupName: name, Invite: invite };
 }
 
 interface QueueItem {
@@ -225,13 +234,14 @@ export class SyncPlayManager {
 
   // ---- Group membership ----------------------------------------------------
 
-  listGroups(): Promise<SyncPlayGroup[]> {
-    return this.api.get<SyncPlayGroup[]>('/SyncPlay/List');
+  async listGroups(): Promise<SyncPlayGroup[]> {
+    return (await this.api.get<SyncPlayGroup[]>('/SyncPlay/List')).map(fromServer);
   }
 
-  async createGroup(name: string) {
+  /** Creates a group, open to everyone or, with `invite`, only shown to the creator and the users invited. */
+  async createGroup(name: string, invite?: { creatorId: string; userIds: string[] }) {
     this.startTimeSync();
-    await this.api.post('/SyncPlay/New', { GroupName: name });
+    await this.api.post('/SyncPlay/New', { GroupName: invite ? inviteName(name, invite.creatorId, invite.userIds) : name });
   }
 
   async joinGroup(groupId: string) {
@@ -255,7 +265,7 @@ export class SyncPlayManager {
     const id = this.snapshot.group?.GroupId;
     if (!id) return;
     try {
-      const group = await this.api.get<SyncPlayGroup>(`/SyncPlay/${id}`);
+      const group = fromServer(await this.api.get<SyncPlayGroup>(`/SyncPlay/${id}`));
       if (this.snapshot.group?.GroupId === id) this.update({ group });
     } catch {
       /* ignore */
@@ -264,12 +274,14 @@ export class SyncPlayManager {
 
   private handleUpdate(u: GroupUpdate) {
     switch (u.Type) {
-      case 'GroupJoined':
-        storeGroup((u.Data as SyncPlayGroup).GroupId);
+      case 'GroupJoined': {
+        const group = fromServer(u.Data as SyncPlayGroup);
+        storeGroup(group.GroupId);
         this.queue = null;
         this.startTimeSync();
-        this.update({ group: u.Data as SyncPlayGroup, hasQueue: false, following: true, playlistItemId: null });
+        this.update({ group, hasQueue: false, following: true, playlistItemId: null });
         break;
+      }
       case 'UserJoined':
         this.onNotice?.({ type: 'joined', user: String(u.Data) });
         void this.refreshGroup();

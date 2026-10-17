@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test';
+import type { Page, Route, WebSocketRoute } from '@playwright/test';
 
 /**
  * A small fake Jellyfin server, answered from inside the browser, so the smoke tests need no real
@@ -40,6 +40,10 @@ interface MockOptions {
   admin?: boolean;
   /** Fill the movie library with 260 films, ten for each letter, and add a second library. */
   big?: boolean;
+  /** Sign in as someone else than demo (same password). */
+  as?: { id: string; name: string };
+  /** Called with the realtime connection, so a test can play the server's side of it. */
+  onSocket?: (ws: WebSocketRoute) => void;
 }
 
 const shows = { Id: 'lib-shows', Name: 'Shows', Type: 'CollectionFolder', CollectionType: 'tvshows', IsFolder: true };
@@ -108,7 +112,8 @@ const serverConfig = {
 };
 
 function answer(route: Route, options: MockOptions): { status?: number; body?: unknown } {
-  const me = options.admin ? { ...user, Policy: { ...user.Policy, IsAdministrator: true } } : user;
+  const who = options.as ? { ...user, Id: options.as.id, Name: options.as.name } : user;
+  const me = options.admin ? { ...who, Policy: { ...who.Policy, IsAdministrator: true } } : who;
   const request = route.request();
   const url = new URL(request.url());
   const path = url.pathname.slice(SERVER.length);
@@ -123,7 +128,7 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
     return { body: { LoginDisclaimer: '<b>Private</b> server. Be kind.', CustomCss: '', SplashscreenEnabled: false } };
   if (path === '/Users/AuthenticateByName') {
     const body = request.postDataJSON() as { Username?: string; Pw?: string };
-    if (body.Username !== USER.name || body.Pw !== USER.password) return { status: 401 };
+    if (body.Username !== (options.as?.name ?? USER.name) || body.Pw !== USER.password) return { status: 401 };
     return { body: { User: me, AccessToken: 'mock-token', ServerId: 'server-1' } };
   }
 
@@ -134,6 +139,7 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
   if (path === '/Users/Me') return { body: me };
   // The server dashboard.
   if (path === '/Users') return { body: [me] };
+  if (path === '/SyncPlay/List') return { body: [] };
   if (path === '/System/Info') return { body: { ServerName: 'Mock Server', Version: '10.11.0', OperatingSystem: 'Linux', Id: 'server-1' } };
   if (path === '/Items/Counts') return { body: { MovieCount: 1, SeriesCount: 0, EpisodeCount: 0, SongCount: 0, AlbumCount: 0 } };
   if (path === '/System/Info/Storage') return { status: 404 };
@@ -196,8 +202,8 @@ export async function mockJellyfin(page: Page, options: MockOptions = {}) {
       body: `window.JELLYFIED_CONFIG = { serverUrl: "${SERVER}", lockServer: true };`,
     }),
   );
-  // The realtime connection (remote control, SyncPlay): accepted and left silent.
-  await page.routeWebSocket(`**${SERVER}/socket**`, () => {});
+  // The realtime connection (remote control, SyncPlay): accepted, and silent unless a test speaks.
+  await page.routeWebSocket(`**${SERVER}/socket**`, (ws) => options.onSocket?.(ws));
   await page.route(`**${SERVER}/**`, (route) => {
     // No artwork: the cards fall back to their placeholders.
     if (/\/Images\/|\/UserImage/.test(route.request().url())) return route.fulfill({ status: 404 });
@@ -218,9 +224,9 @@ export async function mockJellyfin(page: Page, options: MockOptions = {}) {
   );
 }
 
-export async function signIn(page: Page) {
+export async function signIn(page: Page, name = USER.name) {
   await page.goto('/');
-  await page.getByLabel('Username').fill(USER.name);
+  await page.getByLabel('Username').fill(name);
   await page.getByLabel('Password').fill(USER.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 }

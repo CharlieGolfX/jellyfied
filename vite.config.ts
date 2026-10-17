@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 // @ts-expect-error -- a plain script without type declarations
 import { thirdPartyNotices } from './scripts/third-party-notices.mjs';
+// @ts-expect-error -- plain JavaScript for nginx, without type declarations
+import picker from './docker/syncplay-picker.js';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -31,6 +33,53 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/config.js', (_req, res) => {
             res.setHeader('Content-Type', 'application/javascript');
             res.end(`window.JELLYFIED_CONFIG = ${JSON.stringify({ serverUrl: target ? '/jellyfin' : '', lockServer: false })};`);
+          });
+        },
+      },
+      {
+        // The SyncPlay picker, which the container answers with njs: here, the same code with the
+        // state in this process's memory, asking the Jellyfin server from .env.
+        name: 'jellyfied-dev-picker',
+        apply: 'serve',
+        configureServer(server) {
+          const map = new Map<string, string>();
+          const store = {
+            get: (k: string) => map.get(k),
+            set: (k: string, v: string) => void map.set(k, v),
+            add: (k: string, v: string) => (map.has(k) ? false : (map.set(k, v), true)),
+            keys: () => [...map.keys()],
+          };
+          server.middlewares.use('/jellyfied-api/syncplay/', (req, res) => {
+            const send = (status: number, body: unknown) => {
+              res.statusCode = status;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(body));
+            };
+            if (!target) return send(404, { code: 'notAvailable', error: 'Not available' });
+            const ask = async (path: string) => {
+              const r = await fetch(target.replace(/\/+$/, '') + path, { headers: { Authorization: req.headers.authorization ?? '' } });
+              return r.ok ? r.json() : null;
+            };
+            let raw = '';
+            req.on('data', (chunk) => (raw += chunk));
+            req.on('end', () => {
+              void picker
+                .handle({
+                  store,
+                  method: req.method,
+                  groupId: (req.url ?? '').replace(/^\//, '').split('?')[0],
+                  body: req.method === 'POST' ? JSON.parse(raw || '{}') : null,
+                  jellyfin: {
+                    me: () => ask('/Users/Me'),
+                    group: (id: string) => ask(`/SyncPlay/${id}`),
+                    item: (id: string) => ask(`/Items/${id}`),
+                  },
+                })
+                .then(
+                  (r: { status: number; body: unknown }) => send(r.status, r.body),
+                  () => send(500, { code: 'failed', error: 'Failed' }),
+                );
+            });
           });
         },
       },
@@ -76,7 +125,7 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: { exclude: ['jassub'] },
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
+      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts', 'docker/**/*.test.ts'],
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],

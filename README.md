@@ -139,6 +139,13 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   lock screen) for video.
 - SyncPlay: create or join a group from the top bar and watch together. Play, pause, seek and
   moving on to the next episode apply to everyone, and playback is kept in step across devices.
+  A group can be open to everyone on the server or for the people you pick, who are asked in a
+  popup whether to join.
+- SyncPlay picker: in a group, everyone can suggest films, shows and episodes (from the picker's
+  search or an item's menu) and give one vote to each of the others' suggestions. The suggestions
+  make up a wheel where more votes mean a bigger slice. When everyone has said they're ready, or
+  when the group's creator decides not to wait, the wheel spins on every member's screen and what
+  it lands on starts for the whole group.
 - Play on another device: pick any Jellyfin app that supports remote control (TV apps, another
   browser tab, …) from the top bar, and what you play is sent there, with a remote-control bar for
   pause, seek, volume and stop. Jellyfied tabs can be controlled the same way from other apps.
@@ -274,6 +281,9 @@ docker run -d --name jellyfied -p 8080:80 \
 server. In this mode the browser talks to Jellyfin directly, which works because Jellyfin allows
 cross-origin requests by default.
 
+The SyncPlay picker needs the container: its suggestions and votes are kept by Jellyfied's nginx,
+which asks Jellyfin who is calling. Without it, everything else works and the picker is left out.
+
 ## Configuration
 
 Jellyfied is configured with environment variables. With Docker Compose, set them in a `.env`
@@ -368,7 +378,8 @@ npm run test:container        # build the image and test what it serves (needs D
 
 The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
 `JELLYFIN_DEV_URL` if your machine reaches Jellyfin at a different address than the container,
-and `JELLYFIED_DEV_PORT` to use a port other than 5173.
+and `JELLYFIED_DEV_PORT` to use a port other than 5173. It also answers the SyncPlay picker, with
+the same code the container runs (`docker/syncplay-picker.js`), keeping its state in memory.
 
 Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
 The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
@@ -505,6 +516,15 @@ docker/         container entrypoint that writes config.js and the nginx site
   Transcoding → Allow encoding in HEVC format / AV1 format*. Without it the server transcodes to
   H.264 as before. Files that are already HEVC or AV1 are passed through either way.
 - SyncPlay covers video. Music played while in a group stays on your own device.
+- Invite-only SyncPlay groups are a Jellyfied feature: Jellyfin itself lists every group for
+  everyone. Jellyfied keeps who is invited in the group's name, in characters that take up no
+  space, and hides the group from other Jellyfied users; other Jellyfin apps still show it, under
+  its plain name, to anyone. Invitations are noticed within about 15 seconds.
+- The SyncPlay picker is Jellyfied's too. Its state lives in the container's memory and is gone
+  when the container restarts. It only works with the server the container proxies
+  (`JELLYFIN_URL`), since that is the server it checks callers against. Members using other
+  Jellyfin apps can't suggest, vote or say they're ready, so with them in the group the creator
+  spins the wheel by hand. A show that wins starts where the member starting it left off.
 - Subtitle appearance applies to plain text subtitles. Styled (ASS/SSA) subtitles keep the look
   their author gave them unless you switch that off under Account settings, and PGS and VobSub
   subtitles are pictures.

@@ -20,10 +20,12 @@ LABEL org.opencontainers.image.title="Jellyfied" \
 # site's nginx config, config.js and index.html, so those places belong to the nginx user.
 USER root
 COPY docker/40-jellyfied.sh /docker-entrypoint.d/40-jellyfied.sh
+COPY docker/syncplay-picker.js /etc/nginx/njs/syncplay-picker.js
 # The base image's packages are brought up to date, so fixes published after it was built are in.
 RUN apk upgrade --no-cache \
     && chmod +x /docker-entrypoint.d/40-jellyfied.sh \
     && rm -f /etc/nginx/conf.d/default.conf \
+    && sed -i '1i load_module modules/ngx_http_js_module.so;' /etc/nginx/nginx.conf \
     && chown -R 101:101 /etc/nginx/conf.d
 
 COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html

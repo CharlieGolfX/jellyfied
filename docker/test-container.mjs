@@ -120,6 +120,14 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   );
   check('the proxy forwards to the server, under its base path', proxied?.url === '/base/System/Info/Public?x=1', JSON.stringify(proxied));
   check('the proxy passes the client address on', Boolean(proxied?.forwardedFor));
+  // The SyncPlay picker (njs) asks the server who is calling; this server knows nobody.
+  const picker = await fetch(`${origin}/jellyfied-api/syncplay/aaaaaaaabbbbccccddddeeeeeeeeeeee`, {
+    headers: { Authorization: 'MediaBrowser Token="t"' },
+  });
+  check(
+    'the SyncPlay picker runs, and turns away a caller the server does not know',
+    picker.status === 401 && (await picker.json()).code === 'notSignedIn',
+  );
   const forwardedFor = (header) =>
     fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': header } }).then(
       (r) => r.json().then((j) => j.forwardedFor),
@@ -174,6 +182,10 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   );
   check('the proxy works under the path', proxied?.url === '/Users/Me', JSON.stringify(proxied));
   check('WebSockets work under the path', (await webSocketPath('/jellyfied/jellyfin/socket?deviceId=d')) === '/socket?deviceId=d');
+  check(
+    'the SyncPlay picker answers under the path',
+    (await fetch(`${origin}/jellyfied/jellyfied-api/syncplay/aaaaaaaabbbbccccddddeeeeeeeeeeee`)).status === 401,
+  );
 });
 
 upstream.close();

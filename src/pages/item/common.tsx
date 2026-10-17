@@ -35,6 +35,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, formatRemaining, formatRuntime, playedPercent, ticksToSeconds, yearRange } from '@/lib/format';
+import { useSuggestMenuItem } from '@/player/SyncPlayPicker';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay, type PlayOptions } from '@/player/usePlay';
 import { t, tRich } from '@/i18n';
 
@@ -228,6 +229,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const [editing, setEditing] = useState(false);
   const trailers = useLocalTrailers(item.Id, (item.LocalTrailerCount ?? 0) > 0);
+  const suggest = useSuggestMenuItem(item);
 
   const playable = isPlayable(item);
   const position = item.UserData?.PlaybackPositionTicks ?? 0;
@@ -239,6 +241,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const localTrailer = trailers.data?.[0];
 
   const menu: MenuItem[] = [...extraMenu];
+  if (suggest) menu.push(suggest);
   if (resumable && item.MediaType === 'Video') {
     menu.push({
       label: t('item.common.removeFromContinueWatching'),

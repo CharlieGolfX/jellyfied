@@ -21,6 +21,7 @@ import { useIsAdmin } from '@/auth/AuthProvider';
 import type { MenuItem } from '@/components/ui/Menu';
 import { useToast } from '@/components/ui/Toast';
 import { playedPercent } from '@/lib/format';
+import { useSuggestMenuItem } from '@/player/SyncPlayPicker';
 import { isPlayable, supportsInstantMix, supportsWatchedState, useInstantMix, usePlay } from '@/player/usePlay';
 import { AddToCollectionDialog, supportsCollections, useCanManageCollections, useRemoveFromCollection } from './AddToCollection';
 import { supportsMetadataEditing } from './metadataEditing';
@@ -47,6 +48,7 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const isAdmin = useIsAdmin();
   const [editing, setEditing] = useState(false);
+  const suggest = useSuggestMenuItem(item);
 
   const pct = item.UserData?.Played ? 0 : playedPercent(item);
   const played = Boolean(item.UserData?.Played);
@@ -97,6 +99,7 @@ export function useItemActions(item: BaseItemDto, collectionId?: string) {
         ),
     });
   }
+  if (suggest) menuItems.push(suggest);
   if (supportsPlaylists(item)) {
     menuItems.push({ label: t('common.addToPlaylist'), icon: <ListPlus size={16} />, onSelect: () => setAddingToPlaylist(true) });
   }

@@ -219,6 +219,34 @@ if [ -n "$JELLYFIN_URL" ]; then
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         client_max_body_size 0;
+    }
+
+    # The SyncPlay picker: suggestions, votes and the wheel (/etc/nginx/njs/syncplay-picker.js).
+    location ^~ /jellyfied-api/syncplay/ {
+        client_max_body_size 4k;
+        add_header Cache-Control \"no-store\" always;
+        include ${HEADERS};
+        js_content picker.serve;
+    }
+
+    # How the picker asks Jellyfin who is calling and whether they are in the group: with the
+    # caller's own headers, so with their own token and rights.
+    location ~ ^/_jellyfied_jellyfin(?<jellyfin_sub>/.*)\$ {
+        internal;
+        ${RESOLVER}
+        set \$jellyfin_upstream \"${UPSTREAM_TARGET}\";
+        proxy_pass \$jellyfin_upstream\$jellyfin_sub;
+        proxy_method GET;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length \"\";
+        proxy_set_header Content-Type \"\";
+        proxy_set_header Accept-Encoding \"\";
+        proxy_set_header Host ${HOSTPORT};
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        ${SSL_DIRECTIVES}
+        subrequest_output_buffer_size 256k;
     }"
 fi
 
@@ -264,6 +292,12 @@ map \$request_uri \$jellyfin_path {
 
 ${UPSTREAM_BLOCK}
 
+# The SyncPlay picker's state lives in memory shared by the workers, for as long as groups last.
+js_engine qjs;
+js_path /etc/nginx/njs;
+js_import picker from syncplay-picker.js;
+js_shared_dict_zone zone=jellyfied_syncplay:4m timeout=24h evict;
+
 server {
     ${LISTEN}
     server_name _;
@@ -302,6 +336,13 @@ ${BASE_BLOCK}
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         include ${HEADERS};
         try_files \$uri =404;
+    }
+
+    # Jellyfied's own API. Only the SyncPlay picker is behind it, and only with the proxy above.
+    location ^~ /jellyfied-api/ {
+        default_type application/json;
+        include ${HEADERS};
+        return 404 '{"code":"notAvailable","error":"Not available"}';
     }
 ${PROXY_BLOCK}
 

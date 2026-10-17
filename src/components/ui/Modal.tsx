@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 import { useLatest } from '@/lib/useLatest';
@@ -20,6 +20,7 @@ const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl
 export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useLatest(onClose);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +49,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title !== undefined ? titleId : undefined}
         className={clsx(
           'animate-pop-in relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-lg bg-base-800 shadow-2xl ring-1 ring-white/10 outline-none',
           widths[size],
@@ -55,7 +57,9 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
       >
         {title !== undefined && (
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <h2 id={titleId} className="text-lg font-semibold">
+              {title}
+            </h2>
             <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t('common.close')}>
               <X size={18} />
             </Button>
