@@ -33,6 +33,13 @@ describe('JellyfinApi', () => {
     expect(new JellyfinApi('').authorizationHeader()).not.toContain('Token=');
   });
 
+  it('gives the app name the token was issued under, when that is another one', () => {
+    expect(new JellyfinApi('', 'tok', 'u', 'Jellyplex').authorizationHeader()).toMatch(/^MediaBrowser Client="Jellyplex", /);
+    const api = new JellyfinApi('', 'tok');
+    api.setClientName('Jellyplex');
+    expect(api.authorizationHeader()).toMatch(/^MediaBrowser Client="Jellyplex", /);
+  });
+
   it('parses JSON and treats an empty answer as nothing', async () => {
     const api = new JellyfinApi('/jellyfin', 'tok');
     vi.stubGlobal('fetch', respond(200, '{"Name":"x"}'));

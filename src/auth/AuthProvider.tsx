@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { JellyfinApi } from '@/api/client';
+import { APP_NAME } from '@/config';
 import type { AuthenticationResult, UserDto } from '@/api/types';
 import { appPath } from '@/lib/basePath';
 import { clearPin, setPin } from './accountPin';
@@ -19,6 +20,11 @@ export interface StoredSession {
   /** Empty in the list of saved accounts when a PIN has locked it away (see accountPin). */
   accessToken: string;
   sealed?: boolean;
+  /**
+   * The app name the token was issued under, which requests have to give (see JellyfinApi.clientName).
+   * Missing for sign-ins from before it was kept: those may be from when Jellyfied had another name.
+   */
+  client?: string;
 }
 
 interface AuthState {
@@ -39,6 +45,8 @@ interface AuthState {
   addAccount: () => void;
   /** Signs a saved account out and forgets it. */
   forgetAccount: (account: StoredSession) => Promise<void>;
+  /** Gives requests from now on the app name the token was issued under, and remembers it. */
+  setClientName: (name: string) => void;
 }
 
 export const sameAccount = (a: StoredSession, b: StoredSession) => a.userId === b.userId && a.serverUrl === b.serverUrl;
@@ -106,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const unauthorized = useRef<() => void>(() => {});
   const api = useMemo(() => {
     if (!session) return null;
-    const client = new JellyfinApi(session.serverUrl, session.accessToken, session.userId);
+    const client = new JellyfinApi(session.serverUrl, session.accessToken, session.userId, session.client);
     client.onUnauthorized = () => unauthorized.current();
     return client;
   }, [session]);
@@ -139,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: result.User.Id,
         userName: result.User.Name,
         accessToken: result.AccessToken,
+        client: APP_NAME,
       };
       try {
         localStorage.setItem(SESSION_KEY, JSON.stringify(next));
@@ -215,11 +224,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [updateAccounts],
   );
 
+  const setClientName = useCallback(
+    (name: string) => {
+      if (!session || !api) return;
+      // In place, and saved without a new session: a new one would build a new client, and so reconnect everything.
+      api.setClientName(name);
+      const next = { ...session, client: name };
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      updateAccounts((list) => list.map((a) => (sameAccount(a, next) ? { ...a, client: name } : a)));
+    },
+    [session, api, updateAccounts],
+  );
+
   const otherAccounts = useMemo(() => accounts.filter((a) => !session || !sameAccount(a, session)), [accounts, session]);
 
   const value = useMemo(
-    () => ({ session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount }),
-    [session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount],
+    () => ({ session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount, setClientName }),
+    [session, api, completeLogin, logout, otherAccounts, switchAccount, protectAccount, addAccount, forgetAccount, setClientName],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

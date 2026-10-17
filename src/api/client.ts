@@ -59,13 +59,23 @@ export class JellyfinApi {
   readonly serverUrl: string;
   readonly accessToken?: string;
   readonly userId?: string;
+  /**
+   * The app name requests give. Jellyfin files a session under app name and device, and takes the
+   * name for the WebSocket from the sign-in, so this has to be the name the token was issued under.
+   */
+  clientName: string = APP_NAME;
+
+  setClientName(name: string) {
+    this.clientName = name;
+  }
   /** Invoked when an authenticated request is rejected with 401. */
   onUnauthorized?: () => void;
 
-  constructor(serverUrl: string, accessToken?: string, userId?: string) {
+  constructor(serverUrl: string, accessToken?: string, userId?: string, clientName?: string) {
     this.serverUrl = serverUrl.replace(/\/+$/, '');
     this.accessToken = accessToken;
     this.userId = userId;
+    if (clientName) this.clientName = clientName;
   }
 
   get deviceId(): string {
@@ -74,7 +84,7 @@ export class JellyfinApi {
 
   authorizationHeader(): string {
     const parts = [
-      `Client="${APP_NAME}"`,
+      `Client="${headerSafe(this.clientName)}"`,
       `Device="${headerSafe(getDeviceName())}"`,
       `DeviceId="${getDeviceId()}"`,
       `Version="${APP_VERSION}"`,

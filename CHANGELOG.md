@@ -34,6 +34,10 @@ shown in the account menu and on the login screen.
 ### Fixed
 - On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
   a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
+- In a browser signed in from before the rename (as Jellyplex), creating or joining a SyncPlay
+  group seemed to do nothing. Jellyfin puts such a browser's live connection in a session under the
+  old name, so the app's requests under the new name made a second session that never heard about
+  the group. The app now finds the name its live connection is filed under and uses it too.
 - With Jellyfied open in more than one tab or window, creating or joining a SyncPlay group could
   seem to do nothing, and the group stayed in the list to join. Jellyfin counts the tabs of one
   browser as one member and tells only one of them about the group. The tabs now pass SyncPlay's

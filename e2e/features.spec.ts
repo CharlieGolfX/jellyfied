@@ -283,6 +283,36 @@ test('the interface language can be chosen from the languages there is text for'
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
+test('a sign-in from before the rename keeps using the name its WebSocket session is filed under', async ({ page }) => {
+  await mockJellyfin(page);
+  await signIn(page);
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  // As saved before the app name was kept with a sign-in.
+  await page.evaluate(() => {
+    const session = JSON.parse(localStorage.getItem('jellyfied.session')!);
+    delete session.client;
+    localStorage.setItem('jellyfied.session', JSON.stringify(session));
+  });
+  await page.route('**/jellyfin/Sessions?*', (route) =>
+    route.fulfill({
+      json: [
+        { Id: 's1', Client: 'Jellyfied', SupportsRemoteControl: false },
+        { Id: 's2', Client: 'Jellyplex', SupportsRemoteControl: true },
+      ],
+    }),
+  );
+  await page.reload();
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('jellyfied.session')!).client), { timeout: 10_000 })
+    .toBe('Jellyplex');
+  const next = page.waitForRequest(
+    (r) => r.url().includes('/jellyfin/') && (r.headers()['authorization'] ?? '').includes('Client="Jellyplex"'),
+  );
+  await page.getByRole('link', { name: 'Favorites' }).click();
+  await next;
+});
+
 test('the logo takes the accent colour the user picks', async ({ page }) => {
   await mockJellyfin(page);
   await signIn(page);
