@@ -6,36 +6,37 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-18
+
 ### Added
+- A picker for SyncPlay groups. Members suggest films, shows and episodes and vote on each other's
+  suggestions (one vote each, never for their own). A wheel, where more votes make a bigger slice,
+  spins once everyone is ready, or when the group's creator spins it, and what it picks starts
+  for the whole group. It opens from the SyncPlay menu or the group badge in the player.
+  Suggestions and votes are kept by the container (nginx with njs), which checks every request
+  with Jellyfin.
+- SyncPlay groups can be invite-only. Whoever creates a group picks whether everyone on the
+  server can join it or only the users they choose. Invited users are asked in a popup whether to
+  join, and others don't see the group in Jellyfied. Other Jellyfin apps still list every group.
 - The creator of a SyncPlay group can delete it from the SyncPlay menu. Everyone in it using
   Jellyfied leaves within a few seconds and is told why; Jellyfin then ends the empty group.
-- Administrators can sign a user out of all their devices from Dashboard › Devices, which also
-  ends their sessions. Signing yourself out this way keeps the device you are on.
 - A server status button in the top bar for administrators, next to the dashboard and account
   buttons. It shows how many streams are playing, and opens a menu with what is playing across
   the whole server, running library scans and other tasks, and whether a newer Jellyfin or
   Jellyfied release is out (looked up on GitHub at most every six hours) or the server needs a
   restart.
-- SyncPlay groups can be invite-only. Whoever creates a group picks whether everyone on the
-  server can join it or only the users they choose. Invited users are asked in a popup whether to
-  join, and others don't see the group in Jellyfied. Other Jellyfin apps still list every group.
-- A picker for SyncPlay groups. Members suggest films, shows and episodes and vote on each other's
-  suggestions (one vote each, never for their own). A wheel, where more votes make a bigger slice,
-  spins once everyone is ready, or when the group's creator spins it, and what it picks starts
-  for the whole group. Suggestions and votes are kept by the container (nginx with njs), which
-  checks every request with Jellyfin.
+- Administrators can sign a user out of all their devices from Dashboard › Devices, which also
+  ends their sessions. Signing yourself out this way keeps the device you are on.
 
 ### Changed
-- The snowflake in the logo takes the accent colour chosen under Account settings.
 - Works with Jellyfin 12. Jellyfin 12 no longer accepts the access token as "api_key" in addresses
   (unless its legacy authorization is turned back on), which broke the live connection (SyncPlay,
   remote control) and playing video and music. Jellyfied now sends it as "ApiKey", which Jellyfin
   10.11 accepts too. A photo's neighbours stay those of its own folder on Jellyfin 12.
+- The snowflake in the logo takes the accent colour chosen under Account settings.
 - Dialogs are named by their title for screen readers.
 
 ### Fixed
-- On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
-  a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
 - In a browser signed in from before the rename (as Jellyplex), creating or joining a SyncPlay
   group seemed to do nothing. Jellyfin puts such a browser's live connection in a session under the
   old name, so the app's requests under the new name made a second session that never heard about
@@ -45,9 +46,8 @@ shown in the account menu and on the login screen.
   browser as one member and tells only one of them about the group. The tabs now pass SyncPlay's
   messages on to each other, so every tab shows the group, and the tab where SyncPlay was last
   used is the one that plays along.
-- The SyncPlay picker was missing for members whose sign-in uses another address for the same
-  Jellyfin server, such as its direct address. The app now compares the servers' ids. In the
-  player, the group's badge opens the picker, and the picker leaves full screen so it can be seen.
+- On iPhone and iPad, signing in left the app zoomed in, so it had to be pinched back out. Tapping
+  a text field with text under 16px makes iOS zoom in; on touch screens text fields now use 16px.
 
 ## [1.4.0] - 2026-10-16
 
@@ -247,7 +247,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.2.0...v1.3.0
