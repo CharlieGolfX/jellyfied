@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import type { SeekSteps } from '../seekSteps';
 import { t } from '@/i18n';
 
-/** The player's keyboard shortcuts, as shown in the help overlay and listed in the README. */
+/** The player's keyboard shortcuts, as shown in the help overlay and listed in docs/keyboard-shortcuts.md. */
 export function playerShortcuts(steps: SeekSteps): { keys: string[]; action: string }[] {
   return [
     { keys: ['Space', 'K'], action: t('player.shortcuts.playPause') },

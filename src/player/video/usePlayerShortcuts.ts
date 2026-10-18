@@ -38,7 +38,7 @@ interface ShortcutOptions {
   steps: SeekSteps;
 }
 
-/** Keyboard shortcuts of the full-screen player (listed in ShortcutsHelp and the README). */
+/** Keyboard shortcuts of the full-screen player (listed in ShortcutsHelp and docs/keyboard-shortcuts.md). */
 export function usePlayerShortcuts({
   isFull,
   togglePlay,

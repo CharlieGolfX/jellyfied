@@ -8,6 +8,7 @@ src/api/generated.ts
 SUGGESTIONS.md
 CHANGELOG.md
 README.md
+CONTRIBUTING.md
 docs
 
 .github/ISSUE_TEMPLATE

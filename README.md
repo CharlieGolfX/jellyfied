@@ -21,15 +21,7 @@ small nginx container. Your Jellyfin server is not modified: Jellyfied is just a
   - [Docker Compose](#docker-compose)
   - [Building with Docker, without Compose](#building-with-docker-without-compose)
   - [Static hosting without Docker](#static-hosting-without-docker)
-- [Configuration](#configuration)
-  - [Notes](#notes)
-- [Keyboard shortcuts (player)](#keyboard-shortcuts-player)
-- [Development](#development)
-  - [Translations](#translations)
-  - [Tests](#tests)
-  - [Releasing](#releasing)
-- [Compatibility and limitations](#compatibility-and-limitations)
-- [Contributing](#contributing)
+- [Documentation](#documentation)
 - [Credits](#credits)
 - [License](#license)
 
@@ -47,9 +39,13 @@ small nginx container. Your Jellyfin server is not modified: Jellyfied is just a
 | --- | --- |
 | ![Movie detail page with cast and media info](docs/screenshots/movie-details.jpg) | ![Show detail page with seasons](docs/screenshots/show-details.jpg) |
 
-| Account settings |  |
+| SyncPlay picker | Mini player |
 | --- | --- |
-| ![Account and playback settings](docs/screenshots/account-settings.png) |  |
+| ![The SyncPlay picker: four suggestions with votes, on a wheel where more votes make a bigger slice](docs/screenshots/syncplay-picker.jpg) | ![A film playing on in the mini player while its detail page is open](docs/screenshots/mini-player.jpg) |
+
+| Server status (administrators) | Account settings |
+| --- | --- |
+| ![The server status menu with what is playing, server activity and updates](docs/screenshots/server-status.jpg) | ![Account and playback settings](docs/screenshots/account-settings.png) |
 
 The library in these pictures is made up of freely licensed and public-domain titles: the Blender
 Studio open movies (Tears of Steel, Sintel, Big Buck Bunny, Cosmos Laundromat and others,
@@ -254,7 +250,7 @@ This builds the container from source.
 
 4. Open `http://localhost:8080` and sign in with your Jellyfin account.
 
-The port and the other settings are described under [Configuration](#configuration).
+The port and the other settings are described in [docs/configuration.md](docs/configuration.md).
 
 To update later, pull the latest changes and rebuild:
 
@@ -284,291 +280,16 @@ cross-origin requests by default.
 The SyncPlay picker needs the container: its suggestions and votes are kept by Jellyfied's nginx,
 which asks Jellyfin who is calling. Without it, everything else works and the picker is left out.
 
-## Configuration
+## Documentation
 
-Jellyfied is configured with environment variables. With Docker Compose, set them in a `.env`
-file next to `docker-compose.yml` (copy `.env.example`) or edit `docker-compose.yml` directly;
-with plain `docker run`, pass them with `-e`. Changes take effect when the container is recreated.
-
-| Variable                | Default                    | Description |
-| ----------------------- | -------------------------- | ----------- |
-| `JELLYFIN_URL`          | _(empty)_ ¹                | Jellyfin address seen from the container. Enables the built-in reverse proxy at `/jellyfin`, so the browser only ever talks to Jellyfied (no CORS or mixed-content problems, one URL to expose). |
-| `JELLYFIN_PUBLIC_URL`   | _(empty)_                  | Address the browser should use to reach Jellyfin directly, e.g. `https://jellyfin.example.com`. Overrides the proxy for API and media requests. |
-| `JELLYFIED_LOCK_SERVER` | `true` if a server is set  | When `true`, users can't switch to a different server on the login screen. |
-| `JELLYFIED_BASE_PATH`   | _(empty)_                  | Serve Jellyfied under a path, e.g. `/jellyfied`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyfied/jellyfin`). |
-| `JELLYFIED_PORT`        | `80`                       | Port nginx listens on inside the container. |
-| `JELLYFIED_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyfied. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
-
-¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
-
-If neither URL is set, the login screen asks for the server address. Jellyfin allows cross-origin
-requests by default, so this works without a proxy too.
-
-Docker Compose additionally understands these:
-
-| Variable                 | Default    | Description |
-| ------------------------ | ---------- | ----------- |
-| `JELLYFIED_HOST_PORT`    | `8080`     | Port Jellyfied is reachable on. |
-| `JELLYFIED_BIND_ADDRESS` | `0.0.0.0`  | Address the port is published on. Use `127.0.0.1` to make Jellyfied reachable from the Docker host only, for example when a reverse proxy runs in front of it. |
-
-### Notes
-
-- Real client IPs: in proxy mode Jellyfin sees every request coming from Jellyfied, and shows
-  that address for all devices unless it is told to trust it. Two things make the dashboard show
-  where people really connect from:
-  1. In Jellyfin, add the address Jellyfied connects from under *Dashboard → Networking → Known
-     proxies* and restart Jellyfin: the container's IP or Docker subnet, or, when Jellyfin runs
-     on the Docker host, Docker's gateway (`127.0.0.1` with Docker Desktop). If the dashboard
-     shows one private address for every device, that is the address to add.
-  2. If a reverse proxy or tunnel sits in front of Jellyfied, it has to be trusted too. Proxies
-     on private addresses are by default; for others, set `JELLYFIED_TRUSTED_PROXIES`.
-
-  Jellyfied then passes on one address: the last one in `X-Forwarded-For` that is not a trusted
-  proxy. With Docker Desktop (macOS, Windows), visitors who reach the published port directly
-  still all appear as Docker's gateway, because Docker hides their addresses from the container.
-- HTTPS: put Jellyfied behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
-  you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
-- The container serves a health check at `/healthz`.
-- nginx runs as an unprivileged user (uid 101), not as root. Docker lets it listen on port 80
-  anyway; on runtimes that don't (some Kubernetes and rootless setups), set `JELLYFIED_PORT=8080`
-  and publish that port instead.
-- The container sends a strict Content-Security-Policy: scripts and styles only from Jellyfied
-  itself, plus WebAssembly (for styled subtitles) and Google's Cast script when Chromecast is used.
-- Under a base path, a reverse proxy in front has to pass the path on unchanged (no stripping).
-- Jellyfied stores only the session tokens of the signed-in accounts and UI preferences in the
-  browser's local storage.
-
-## Keyboard shortcuts (player)
-
-| Key            | Action              |
-| -------------- | ------------------- |
-| `Space` / `K`  | Play / pause        |
-| `←` / `J`      | Back 10 seconds ¹   |
-| `→` / `L`      | Forward 30 seconds ¹ |
-| `↑` / `↓`      | Volume (also: turn the mouse wheel over the volume control) |
-| `M`            | Mute                |
-| `F`            | Full screen         |
-| `N`            | Next item           |
-| `P`            | Picture-in-picture  |
-| `<` / `>`      | Slower / faster     |
-| `G` / `H`      | Subtitles earlier / later |
-| `Z` / `X`      | Less / more audio delay |
-| `I`            | Playback info       |
-| `?`            | Show this list in the player |
-| `Esc`          | Close menu / minimize to mini player |
-
-¹ Or the lengths chosen under *Account settings → This device*.
-
-`/` focuses search anywhere in the app.
-
-## Development
-
-Requires Node.js 22.22+ (24 recommended).
-
-```bash
-npm install
-cp .env.example .env          # set JELLYFIN_URL to your Jellyfin server
-npm run dev                   # http://localhost:5173
-npm run build                 # type-check and production build into dist/
-npm run check                 # lint, formatting, type-check and unit tests
-npm run format                # format everything with Prettier
-npm run test:e2e              # browser tests (first run: npx playwright install)
-npm run test:container        # build the image and test what it serves (needs Docker)
-```
-
-The development server proxies `/jellyfin` to `JELLYFIN_URL`, like the container does. Set
-`JELLYFIN_DEV_URL` if your machine reaches Jellyfin at a different address than the container,
-and `JELLYFIED_DEV_PORT` to use a port other than 5173. It also answers the SyncPlay picker, with
-the same code the container runs (`docker/syncplay-picker.js`), keeping its state in memory.
-
-Stack: React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router and hls.js.
-The Jellyfin API client is a thin typed `fetch` wrapper (`src/api/`).
-
-### Translations
-
-Interface text is not written in the components. It lives in one file per language under
-`src/i18n/locales/`; English (`en.json`) is the reference and the fallback.
-
-```tsx
-import { t, tRich } from '@/i18n';
-
-<Button>{t('login.signIn')}</Button>
-t('userMenu.switchTo', { name })                  // "Switch to {name}"
-t('settings.seconds', { count })                  // { "one": "…", "other": "…" } picks the plural form
-tRich('admin.userEdit.deleteConfirm', { name: <strong>{user.Name}</strong> })   // an element inside a sentence
-```
-
-- Keys are checked by TypeScript against `en.json`, so a misspelt key fails the type check.
-- Texts are grouped by where they are used (`admin.backups.…`, `player.…`); texts used in several
-  places are under `common`. Counted things ("3 items") are under `count` and go through
-  `plural()` in `lib/format`.
-- The language is loaded before the app starts, and changing it reloads the page. `t` can
-  therefore be called anywhere, including where a module defines its constants.
-- Keep sentences whole. A sentence glued together from translated pieces cannot be reordered by
-  a language with another word order; use placeholders, or `tRich` when a piece is an element.
-- Not translated on purpose: messages for developers (`useAuth must be used inside AuthProvider`)
-  and product names.
-
-Jellyfied comes in English, Spanish (Spain, `es-ES.json`) and Norwegian Bokmål (`nb.json`). To
-add a language, add `src/i18n/locales/<code>.json` (for example `de.json` or `pt-BR.json`). It
-then appears under Account settings → Language by itself, is loaded only when chosen, and is
-picked automatically for browsers set to that language; a language that only exists for another
-region is used too (`es-MX` gets `es-ES`). A text that is missing falls back to English while
-the app runs, but a unit test asks every language file to have every text English has, with the
-same placeholders and the plural forms its language needs: a new English text needs its
-translations in the same change.
-
-Dates, numbers, sizes and durations are written the way the chosen language writes them
-(`lib/format` takes the language from `src/i18n`), not the way the browser's language does.
-
-### Tests
-
-- **Unit tests** ([Vitest](https://vitest.dev)) live next to the code as `*.test.ts(x)`. `npm test`
-  runs them once, `npm run test:watch` re-runs them as you edit.
-- `npm run test:coverage` also writes a coverage report to `coverage/`, and fails when coverage
-  drops below the floor set in `vite.config.ts` (CI runs this). Raise the floor when you add tests.
-- Hooks are tested by running them in a component (`src/test/renderHook.tsx`), with the server
-  and the browser's media abilities replaced by stand-ins.
-- **Browser tests** ([Playwright](https://playwright.dev)) are in `e2e/`. `npm run test:e2e` builds
-  the site and runs `smoke.spec.ts` and `pages.spec.ts` against a mocked Jellyfin API, so no server
-  is needed. They run in Chromium, Firefox and WebKit (Safari's engine); `E2E_BROWSERS=chromium`
-  limits a run to one of them.
-- **Playback tests** (`e2e/live.spec.ts`) play real media and are skipped unless you give them a
-  test account. They change the watched state of what they play, so use a throwaway user:
-
-  ```bash
-  E2E_USERNAME=test E2E_PASSWORD=secret E2E_JELLYFIN_URL=http://localhost:8096 npm run test:e2e
-  ```
-
-  Add `E2E_BASE_URL=http://localhost:8080` to test a running container instead of a fresh build.
-- **Container tests** (`docker/test-container.mjs`) start the image against a stand-in server and
-  check the site, the security headers, the reverse proxy including WebSockets, and serving under
-  a base path.
-- **Linting** uses [oxlint](https://oxc.rs/docs/guide/usage/linter) (`npm run lint`), including the
-  React hooks and React compiler rules, all as errors. **Formatting** is
-  [Prettier](https://prettier.io) (`npm run format`).
-- **API types**: `npm run generate:api` regenerates `src/api/generated.ts` from a Jellyfin
-  server's OpenAPI document. The types the app uses (`src/api/types.ts`) are cut out of those:
-  each lists its fields and takes their types from the generated ones, apart from the few it
-  describes more exactly. A field the server does not have, or a type the server's description
-  rules out, fails the type check.
-- **Screenshots**: `scripts/screenshots.mjs` retakes the pictures in this README from a real library.
-  Use one with freely licensed titles, as the current pictures do, not your own collection.
-
-GitHub Actions runs all of this except the playback tests on every push and pull request, and
-scans the container image for known vulnerabilities.
-
-### Releasing
-
-1. Set the new version in `package.json` (`npm version --no-git-tag-version 1.2.3`) and move the
-   "Unreleased" entries in `CHANGELOG.md` under it.
-2. Commit, then tag the commit `v1.2.3` and push the tag. The tag has to match `package.json`.
-
-The "Container image" workflow then publishes `ghcr.io/charliegolfx/jellyfied` with that version
-and `latest`, with a build provenance attestation and a bill of materials attached, and creates
-the GitHub release from that version's changelog section. Every push to `main` publishes `edge`.
-
-```
-src/
-  api/          API client, types, image helpers, React Query hooks
-  auth/         session handling
-  components/   layout (top bar, sidebar, search), media cards and hubs, UI primitives
-  pages/        home, library, item details, search, favorites, settings, admin/*
-  player/       video player, device profile, music player, playback reporting,
-                SyncPlay, remote control
-  player/video/ parts of the video player: stream handling, menus, shortcuts
-  realtime/     WebSocket connection to the server
-e2e/            browser tests
-docker/         container entrypoint that writes config.js and the nginx site
-```
-
-## Compatibility and limitations
-
-- Jellyfin 10.11 and 12 are supported; the automated tests run against 10.11. Jellyfin 10.9 and 10.10
-  are expected to work, with a few features unavailable: storage statistics need 10.11 and Skip
-  Intro needs 10.10 or newer. Seek-bar previews only appear for videos with trickplay images.
-- Server-side plugins work as usual. Plugins that modify the Jellyfin web UI have no effect in
-  Jellyfied, and plugin settings pages open in the Jellyfin web UI.
-- Live TV covers watching channels and recordings. The programme guide grid, and scheduling or
-  cancelling recordings (DVR), are not implemented; use the regular Jellyfin web UI for those.
-- Every account signed in on a device can be switched to from that device without a password,
-  like in other apps with an account switcher, unless it has a PIN. With a PIN, the account's
-  sign-in is stored encrypted while someone else uses the browser. Two limits: the account that
-  is in use at the moment is not protected by its PIN, and a short PIN can be found by a program
-  that tries every combination against the stored data (each try is slowed down, most of all on
-  https and localhost, where the browser's own cryptography is used; every extra digit makes it
-  ten times as long). On a shared device with people you don't trust, sign out
-  instead. Signing in with the password again removes the PIN, and an account whose PIN is
-  forgotten can only be removed from the device, not signed out on the server from there.
-- The login disclaimer is shown as plain text; HTML in it is not rendered.
-- "Play on another device" works with apps that are signed in to your Jellyfin server and accept
-  remote control.
-- Chromecast uses Jellyfin's own receiver app, which fetches the media from your server itself.
-  The Chromecast therefore has to be able to open the address you use for Jellyfied: it does not
-  work when you browse on `localhost`, and a server behind HTTPS needs a certificate the Chromecast
-  trusts. The Cast software is loaded from Google (`www.gstatic.com`) the first time you pick
-  Chromecast, and not before. A show or season continues at the next episode to watch, as it
-  does in the browser; albums and playlists start from their beginning.
-- AirPlay shows the video and plays its sound on the other device. It only carries the picture,
-  so while it is in use the server burns the subtitles into the video, which means a transcode.
-  The address you use for Jellyfied has to be reachable from the AirPlay device.
-- HEVC and AV1 transcoding has to be switched on in the server: *Dashboard → Playback →
-  Transcoding → Allow encoding in HEVC format / AV1 format*. Without it the server transcodes to
-  H.264 as before. Files that are already HEVC or AV1 are passed through either way.
-- SyncPlay covers video. Music played while in a group stays on your own device.
-- Invite-only SyncPlay groups are a Jellyfied feature: Jellyfin itself lists every group for
-  everyone. Jellyfied keeps who is invited in the group's name, in characters that take up no
-  space, and hides the group from other Jellyfied users; other Jellyfin apps still show it, under
-  its plain name, to anyone. Invitations are noticed within about 15 seconds.
-- The SyncPlay picker is Jellyfied's too. Its state lives in the container's memory and is gone
-  when the container restarts. It only works with the server the container proxies
-  (`JELLYFIN_URL`), since that is the server it checks callers against. Members using other
-  Jellyfin apps can't suggest, vote or say they're ready, so with them in the group the creator
-  spins the wheel by hand. A show that wins starts where the member starting it left off.
-- Jellyfin has no way to end a SyncPlay group for everyone, so deleting one goes through the
-  picker's state too (and needs the container): Jellyfied members leave within a few seconds, and
-  the group ends once nobody is left. Members on other Jellyfin apps stay in it until they leave.
-- Subtitle appearance applies to plain text subtitles. Styled (ASS/SSA) subtitles keep the look
-  their author gave them unless you switch that off under Account settings, and PGS and VobSub
-  subtitles are pictures.
-- VobSub (DVD) subtitles are read out of the video file itself, because the server has no way to
-  hand them out. That works for Matroska (MKV) files whose index covers the subtitle track, which
-  MKVToolNix and ffmpeg write. For other files, and for VobSub in a file of its own (.idx/.sub),
-  the server burns them into the video as before and they can't be shifted.
-- A picture-in-picture window only shows the picture. While it is open, the server burns image
-  subtitles into the video, and in Chromium browsers styled subtitles too; Safari shows styled
-  subtitles as plain text there. This restarts the stream when the window opens and closes.
-- Audio delay can only make the sound later, not earlier: a browser can't play sound ahead of the
-  picture. It is not available in Safari on iPhone and iPad.
-- Streaming quality, poster size, grid or list view and volume are stored per browser. The other
-  preferences are saved with your Jellyfin account, where only Jellyfied reads them.
-- SyncPlay and remote control use a WebSocket connection. If you put another reverse proxy in front
-  of Jellyfied, make sure it forwards WebSocket upgrades.
-- Which formats play directly depends on the browser. Jellyfied tells the server exactly what the
-  current browser can decode, and the server transcodes everything else.
-
-## Contributing
-
-Bug reports, feature requests and pull requests are welcome. Security problems are reported
-privately; see [SECURITY.md](SECURITY.md).
-
-- **Bugs:** open an issue and include your Jellyfied version (shown in the account menu), your
-  Jellyfin server version, the browser you use, and the steps
-  to reproduce the problem. For playback problems, also say whether the player showed direct play
-  or transcode, and include the media info for the file if you can.
-- **Features:** open an issue to discuss larger changes before you start, so we can agree on the
-  approach first.
-- **Pull requests:**
-  1. Fork the repository and create a branch from `main`.
-  2. Set up the development environment as described under [Development](#development).
-  3. Keep each pull request focused on one change, and follow the existing code style.
-  4. Run `npm run check` and `npm run build` before you submit. Both must pass, and new logic
-     should come with a test.
-  5. Describe what you changed and how you tested it. For UI changes, add a screenshot.
-
-By submitting a contribution you agree that it is licensed under the GNU General Public License,
-version 3 or later, the same license as the
-rest of the project.
+- [Configuration](docs/configuration.md): environment variables, real client addresses, HTTPS and
+  other notes on running the container.
+- [Keyboard shortcuts](docs/keyboard-shortcuts.md) in the player (`?` shows them in the player too).
+- [Compatibility and limitations](docs/compatibility.md): supported Jellyfin versions, and what
+  Chromecast, AirPlay, SyncPlay and the subtitle renderers can and can't do.
+- [Development](docs/development.md): running it locally, tests, project layout and releasing.
+- [Contributing](CONTRIBUTING.md): bug reports, pull requests and translations.
+- [Changelog](CHANGELOG.md) and [security policy](SECURITY.md).
 
 ## Credits
 
