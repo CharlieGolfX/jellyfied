@@ -4,10 +4,10 @@ import type { JellyfinSocket } from '@/realtime/socket';
 import { SyncPlayManager, type SyncPlayGroup, type SyncPlayNotice, type SyncPlayOpenRequest } from './syncplay';
 import { inviteName } from './syncplayInviteList';
 
-/** A socket that only remembers who listens, so the test can play the server. */
-function fakeSocket() {
+/** A socket that only remembers who listens, so the test can play the server. Open unless told otherwise. */
+function fakeSocket(isOpen = true) {
   const handlers = new Map<string, (data: unknown) => void>();
-  const open: (() => void)[] = [];
+  const open = new Set<() => void>();
   return {
     socket: {
       on: (type: string, handler: (data: unknown) => void) => {
@@ -15,12 +15,16 @@ function fakeSocket() {
         return () => handlers.delete(type);
       },
       onOpen: (handler: () => void) => {
-        open.push(handler);
-        return () => {};
+        open.add(handler);
+        if (isOpen) handler();
+        return () => open.delete(handler);
       },
     } as unknown as JellyfinSocket,
     update: (Type: string, Data?: unknown) => handlers.get('SyncPlayGroupUpdate')?.({ GroupId: 'g1', Type, Data }),
-    connect: () => open.forEach((h) => h()),
+    connect: () => {
+      isOpen = true;
+      [...open].forEach((h) => h());
+    },
     listening: () => handlers.size,
   };
 }
@@ -106,10 +110,37 @@ describe('SyncPlayManager: groups', () => {
     expect(sessionStorage.getItem('jellyfied.syncPlayGroup')).toBe('g1');
   });
 
-  it('joins the remembered group again when the connection opens', () => {
+  it('joins the remembered group again when the connection opens', async () => {
+    manager.dispose();
+    server = fakeSocket(false);
+    manager = new SyncPlayManager({ post, get } as unknown as JellyfinApi, server.socket);
     sessionStorage.setItem('jellyfied.syncPlayGroup', 'g1');
     server.connect();
+    await vi.waitFor(() => expect(post).toHaveBeenCalledWith('/SyncPlay/Join', { GroupId: 'g1' }));
+  });
+
+  it('waits for the live connection before joining, and remembers the group from the start', async () => {
+    manager.dispose();
+    server = fakeSocket(false);
+    manager = new SyncPlayManager({ post, get } as unknown as JellyfinApi, server.socket);
+    const joining = manager.joinGroup('g1');
+    await Promise.resolve();
+    expect(post).not.toHaveBeenCalledWith('/SyncPlay/Join', expect.anything());
+    server.connect();
+    await joining;
     expect(post).toHaveBeenCalledWith('/SyncPlay/Join', { GroupId: 'g1' });
+    expect(sessionStorage.getItem('jellyfied.syncPlayGroup')).toBe('g1');
+  });
+
+  it('says so when the live connection does not come, instead of joining a group it would not hear about', async () => {
+    manager.dispose();
+    server = fakeSocket(false);
+    manager = new SyncPlayManager({ post, get } as unknown as JellyfinApi, server.socket);
+    const joining = manager.joinGroup('g1');
+    const failed = expect(joining).rejects.toThrow(/live updates/);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await failed;
+    expect(post).not.toHaveBeenCalledWith('/SyncPlay/Join', expect.anything());
   });
 
   it('reports who joins and leaves, and refreshes the member list', async () => {

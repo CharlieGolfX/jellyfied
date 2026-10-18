@@ -146,6 +146,16 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
     'WebSockets go through the proxy',
     (await webSocketPath('/jellyfin/socket?ApiKey=secret-token&deviceId=d')) === '/base/socket?ApiKey=secret-token&deviceId=d',
   );
+  // Pages from before the switch to "ApiKey" still send "api_key", which Jellyfin 12 ignores.
+  check(
+    'a token sent as api_key reaches the server as ApiKey',
+    (await webSocketPath('/jellyfin/socket?api_key=old-token&deviceId=d')) === '/base/socket?ApiKey=old-token&deviceId=d',
+  );
+  const legacy = await fetch(`${origin}/jellyfin/Videos/1/stream?static=true&api_key=old-token`).then(
+    (r) => r.json(),
+    () => null,
+  );
+  check('…in any address', legacy?.url === '/base/Videos/1/stream?static=true&ApiKey=old-token', JSON.stringify(legacy));
 
   // The line for a WebSocket is written when it closes.
   await new Promise((r) => setTimeout(r, 1500));

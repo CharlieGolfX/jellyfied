@@ -1312,7 +1312,8 @@
       "groupGone": "That SyncPlay group no longer exists.",
       "joined": "{user} joined the SyncPlay group",
       "left": "{user} left the SyncPlay group",
-      "noAccess": "You don’t have access to what this SyncPlay group is watching."
+      "noAccess": "You don’t have access to what this SyncPlay group is watching.",
+      "notConnected": "Not connected to the server’s live updates, which SyncPlay needs. Close Jellyfied tabs left open from before an update, or reload the page."
     },
     "syncPlayInvites": {
       "decline": "Decline",

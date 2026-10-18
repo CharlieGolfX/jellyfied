@@ -1312,7 +1312,8 @@
       "groupGone": "Ese grupo de SyncPlay ya no existe.",
       "joined": "{user} se ha unido al grupo de SyncPlay",
       "left": "{user} ha salido del grupo de SyncPlay",
-      "noAccess": "No tienes acceso a lo que está viendo este grupo de SyncPlay."
+      "noAccess": "No tienes acceso a lo que está viendo este grupo de SyncPlay.",
+      "notConnected": "No hay conexión con las actualizaciones en directo del servidor, que SyncPlay necesita. Cierra las pestañas de Jellyfied abiertas desde antes de una actualización o vuelve a cargar la página."
     },
     "syncPlayInvites": {
       "decline": "Rechazar",

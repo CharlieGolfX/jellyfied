@@ -10,6 +10,8 @@ import { inviteName, readGroupName, type GroupInvite } from './syncplayInviteLis
  */
 
 const TICKS_PER_MS = 10_000;
+/** How long joining or creating a group waits for the live connection. */
+const CONNECT_TIMEOUT = 15_000;
 
 export interface SyncPlayGroup {
   GroupId: string;
@@ -175,11 +177,13 @@ export class SyncPlayManager {
   onNotice: ((notice: SyncPlayNotice) => void) | null = null;
 
   private readonly api: JellyfinApi;
+  private readonly socket: JellyfinSocket;
   private readonly tabs: BroadcastChannel | null;
   private readonly tabId = Math.random().toString(36).slice(2);
 
   constructor(api: JellyfinApi, socket: JellyfinSocket) {
     this.api = api;
+    this.socket = socket;
     this.tabs = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(`jellyfied.syncPlay.${api.userId ?? ''}`);
     if (this.tabs) this.tabs.onmessage = (e: MessageEvent<TabMessage>) => this.fromTab(e.data);
     const leaving = () => {
@@ -335,14 +339,38 @@ export class SyncPlayManager {
     return (await this.api.get<SyncPlayGroup[]>('/SyncPlay/List')).map(fromServer);
   }
 
+  /**
+   * Waits for the live connection, which is how the server says the group was joined. A browser
+   * can hold it back for a while, for instance after other tabs' attempts to connect failed.
+   */
+  private connected(timeoutMs = CONNECT_TIMEOUT): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let stop = () => {};
+      const timer = window.setTimeout(() => {
+        stop();
+        reject(new Error(t('player.syncPlay.notConnected')));
+      }, timeoutMs);
+      stop = this.socket.onOpen(() => {
+        window.clearTimeout(timer);
+        // onOpen may call back before it has returned the way to stop it.
+        queueMicrotask(() => stop());
+        resolve();
+      });
+    });
+  }
+
   /** Creates a group, open to everyone or, with `invite`, only shown to the creator and the users invited. */
   async createGroup(name: string, invite?: { creatorId: string; userIds: string[] }) {
+    await this.connected();
     this.claimPlayback();
     this.startTimeSync();
     await this.api.post('/SyncPlay/New', { GroupName: invite ? inviteName(name, invite.creatorId, invite.userIds) : name });
   }
 
   async joinGroup(groupId: string) {
+    await this.connected();
+    // Remembered now, so a connection that drops before the server's answer joins again when back.
+    storeGroup(groupId);
     this.claimPlayback();
     this.startTimeSync();
     await this.api.post('/SyncPlay/Join', { GroupId: groupId });

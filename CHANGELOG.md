@@ -6,6 +6,14 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Fixed
+- In Firefox, SyncPlay could still seem to do nothing in the browser where a group was created or
+  an invitation accepted. Tabs left open from before the Jellyfin 12 fix kept failing to connect,
+  and Firefox then holds back the other tabs' live connections to the same site, so the server's
+  "you joined" never arrived. The container now passes a token sent the old way on in the new way,
+  so such tabs connect again. Joining or creating a group also waits for the live connection, and
+  says so if it does not come.
+
 ## [1.5.0] - 2026-10-18
 
 ### Added

@@ -1312,7 +1312,8 @@
       "groupGone": "Den SyncPlay-gruppen finnes ikke lenger.",
       "joined": "{user} ble med i SyncPlay-gruppen",
       "left": "{user} forlot SyncPlay-gruppen",
-      "noAccess": "Du har ikke tilgang til det denne SyncPlay-gruppen ser på."
+      "noAccess": "Du har ikke tilgang til det denne SyncPlay-gruppen ser på.",
+      "notConnected": "Ikke koblet til serverens direkteoppdateringer, som SyncPlay trenger. Lukk Jellyfied-faner som har stått åpne siden før en oppdatering, eller last inn siden på nytt."
     },
     "syncPlayInvites": {
       "decline": "Avslå",
