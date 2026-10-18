@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-18
+
 ### Fixed
 - In Firefox, SyncPlay could still seem to do nothing in the browser where a group was created or
   an invitation accepted. Tabs left open from before the Jellyfin 12 fix kept failing to connect,
@@ -255,7 +257,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.0...v1.3.1
