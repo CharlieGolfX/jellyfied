@@ -5,7 +5,7 @@ import type { UserPolicy } from '@/api/types';
 import { useApi } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select } from '@/components/ui/Form';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { parseList } from './shared';
 import { t } from '@/i18n';
 

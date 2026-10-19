@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input, Switch, TextArea } from '@/components/ui/Form';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { AdminPage, parseList, useConfigEditor } from './shared';
 import { t } from '@/i18n';
 

@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { ParentalControls } from './ParentalControls';
 import { AdminPage } from './shared';
 import { t, tRich } from '@/i18n';

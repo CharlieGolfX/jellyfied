@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
+import { fileToBase64 } from '@/lib/fileToBase64';
 import type { ImageInfo, RemoteImage } from './metadataEditorTypes';
 import { t } from '@/i18n';
 
@@ -23,15 +24,6 @@ const IMAGE_TYPES: { type: ImageType; label: string; landscape: boolean }[] = [
   { type: 'Thumb', label: t('media.metadataImagesTab.thumbnail'), landscape: true },
   { type: 'Banner', label: t('media.metadataImagesTab.banner'), landscape: true },
 ];
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = () => reject(reader.error ?? new Error(t('media.metadataImagesTab.couldNotReadTheFile')));
-    reader.readAsDataURL(file);
-  });
-}
 
 export function ImagesTab({ item }: { item: BaseItemDto }) {
   const api = useApi();

@@ -2,19 +2,16 @@ import clsx from 'clsx';
 import { Airplay, Cast, PictureInPicture2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
 import { useItem, useMediaSegments } from '@/api/queries';
-import type { ItemsResult } from '@/api/types';
-import { useApi, useCurrentUser, useSession } from '@/auth/AuthProvider';
+import { useApi, useCurrentUser } from '@/auth/AuthProvider';
 import { Spinner } from '@/components/ui/Spinner';
 import { errorMessage, useToast } from '@/components/ui/Toast';
-import { episodeLabel, secondsToTicks, ticksToSeconds } from '@/lib/format';
+import { episodeLabel, ticksToSeconds } from '@/lib/format';
 import { usePageTitle } from '@/lib/usePageTitle';
-import { registerActiveVideo, type ActiveVideo } from './activePlayer';
-import { audioDelaySupported, getLastAudioDelay, hasAudioGraph, releaseAudioDelay, setAudioDelay as applyAudioDelay } from './audioDelay';
+import { audioDelaySupported, getLastAudioDelay } from './audioDelay';
 import { useAudioPlayer } from './AudioPlayerProvider';
-import { castPlay, chromecastSupported, connectChromecast, useChromecast } from './chromecast';
+import { chromecastSupported, connectChromecast } from './chromecast';
 import { useSeekSteps } from './seekSteps';
 import { PlaybackInfo } from './PlaybackInfo';
 import { pictureStyle, readPictureFit, storePictureFit, type PictureAspect, type PictureFit } from './picture';
@@ -30,11 +27,14 @@ import { EndsAt, SleepIndicator } from './video/indicators';
 import { ChaptersMenu, PictureMenu, SettingsMenu, SubtitlesMenu } from './video/menus';
 import { hlsJsSupported } from './video/hlsSupport';
 import { MiniOverlay } from './video/MiniOverlay';
-import { ControlBar, TopBar, type TitlePart } from './video/PlayerBars';
+import { ControlBar, TopBar } from './video/PlayerBars';
+import { PlayerError } from './video/PlayerError';
 import { pipSupported, readNumber, SEGMENT_LABELS, VOLUME_KEY, type PlayerPanel } from './video/shared';
 import { ShortcutsHelp } from './video/ShortcutsHelp';
 import { UpNextCard } from './video/UpNextCard';
+import { playerTitles } from './video/titles';
 import { useAirPlay } from './video/useAirPlay';
+import { useCastHandoff } from './video/useCastHandoff';
 import { usePlaybackStream } from './video/usePlaybackStream';
 import {
   useActiveSegment,
@@ -46,9 +46,11 @@ import {
   useTrickplayPreview,
 } from './video/usePlayerChrome';
 import { usePlayerShortcuts } from './video/usePlayerShortcuts';
+import { useRemoteHandle } from './video/useRemoteHandle';
 import { useTouchGestures } from './video/useTouchGestures';
+import { useUpNext } from './video/useUpNext';
+import { useVideoAudioDelay } from './video/useVideoAudioDelay';
 import { useVideoMediaSession } from './video/useVideoMediaSession';
-import { useLatest } from '@/lib/useLatest';
 import { t } from '@/i18n';
 
 /** App-level player: renders the current video session full screen or as the mini player. */
@@ -63,7 +65,6 @@ export default function GlobalVideoPlayer() {
 
 function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlayerState }) {
   const api = useApi();
-  const { userId, serverId } = useSession();
   const navigate = useNavigate();
   const { mode, start, close, expand, minimize } = useVideoSession();
   const isFull = mode === 'full';
@@ -115,23 +116,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
   // ---- Up next -----------------------------------------------------------
   const queue = navState.queue;
-  const queueIndex = queue ? queue.indexOf(itemId) : -1;
-  const nextFromQueue = queue && queueIndex >= 0 && queueIndex < queue.length - 1 ? queue[queueIndex + 1] : undefined;
-  const nextEpisode = useQuery({
-    queryKey: ['next-episode', itemId],
-    queryFn: () =>
-      api.get<ItemsResult>(`/Shows/${item!.SeriesId}/Episodes`, {
-        userId,
-        startItemId: itemId,
-        limit: 2,
-        isMissing: false,
-        fields: ['PrimaryImageAspectRatio'],
-      }),
-    enabled: !nextFromQueue && item?.Type === 'Episode' && Boolean(item.SeriesId),
-    staleTime: Infinity,
-  });
-  const nextId = nextFromQueue ?? nextEpisode.data?.Items.find((i) => i.Id !== itemId)?.Id;
-  const { data: nextItem } = useItem(nextId);
+  const { nextId, nextItem } = useUpNext(itemId, item, queue);
   // Honour the user's "Automatically play the next episode" preference for TV episodes.
   // A "stop at the end of this video" sleep timer also turns it off.
   const autoAdvance = !sleep.endOfVideo && (item?.Type !== 'Episode' || user?.Configuration?.EnableNextEpisodeAutoPlay !== false);
@@ -235,37 +220,16 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     }
   }, [volume, muted]);
 
-  // Audio delay. Sound from another origin is silent in Web Audio unless the media was requested
-  // with CORS, so such a stream is loaded again with CORS the first time a delay is set.
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !audioDelayAvailable) return;
-    const crossOrigin = new URL(api.serverUrl, window.location.href).origin !== window.location.origin;
-    if (audioDelay !== 0 && crossOrigin && !video.crossOrigin && !hasAudioGraph(video)) {
-      video.crossOrigin = 'anonymous';
-      const s = streamRef.current;
-      if (s && !hlsRef.current) {
-        void load({
-          start: video.currentTime,
-          audioIndex: s.audioIndex,
-          subIndex: s.subIndex,
-          bitrate: maxBitrate,
-          mediaSourceId: s.source.Id,
-          forceTranscode: s.method === 'Transcode',
-        });
-      }
-    }
-    if (!applyAudioDelay(video, audioDelay) && audioDelay !== 0) {
-      toast.error(t('player.videoPlayer.audioDelayUnavailable'));
-      setAudioDelay(0);
-    }
-  }, [audioDelay, audioDelayAvailable, api, load, maxBitrate, toast, streamRef, hlsRef]);
-  useEffect(() => {
-    const video = videoRef.current;
-    return () => {
-      if (video) releaseAudioDelay(video);
-    };
-  }, []);
+  useVideoAudioDelay({
+    videoRef,
+    delay: audioDelay,
+    setDelay: setAudioDelay,
+    available: audioDelayAvailable,
+    streamRef,
+    hlsRef,
+    load,
+    maxBitrate,
+  });
 
   // Playback speed. defaultPlaybackRate survives source changes (quality/audio switches).
   // A SyncPlay group always plays at normal speed.
@@ -368,27 +332,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     forward: seekSteps.forward,
   });
 
-  // Chromecast: once one is connected while this video is open, the video moves over to it.
-  const cast = useChromecast();
-  const castConnected = cast.status === 'connected';
-  const castWasConnected = useRef(castConnected);
-  useEffect(() => {
-    const was = castWasConnected.current;
-    castWasConnected.current = castConnected;
-    if (was || !castConnected || !item || inSync) return;
-    const s = streamRef.current;
-    castPlay({ api, serverId }, [item], {
-      startPositionTicks: secondsToTicks(videoRef.current?.currentTime ?? 0),
-      mediaSourceId: s?.source.Id,
-      audioStreamIndex: s?.audioIndex,
-      subtitleStreamIndex: s && s.subIndex >= 0 ? s.subIndex : undefined,
-    })
-      .then(() => {
-        toast.info(t('player.videoPlayer.playingOn', { deviceName: cast.deviceName }));
-        exit();
-      })
-      .catch((err: unknown) => toast.error(err));
-  }, [castConnected, cast.deviceName, item, inSync, api, serverId, streamRef, toast, exit]);
+  const cast = useCastHandoff({ item, inSync, videoRef, streamRef, onMoved: exit });
 
   // Collapsing into the mini player: close menus and leave browser full screen.
   const [wasFull, setWasFull] = useState(isFull);
@@ -446,9 +390,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     switchQuality(bitrate);
   };
 
-  // Let remote control (other devices) drive this player. The handle is registered once and
-  // always calls the latest closures.
-  const controls = useLatest<Omit<ActiveVideo, 'itemId' | 'video'> | null>({
+  useRemoteHandle(itemId, videoRef, {
     play: () => {
       pauseAudio();
       void videoRef.current?.play().catch(() => {});
@@ -466,24 +408,6 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     setSubtitleIndex: changeSubtitle,
     toggleFullscreen,
   });
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    return registerActiveVideo({
-      itemId,
-      video,
-      play: () => controls.current?.play(),
-      pause: () => controls.current?.pause(),
-      seek: (s) => controls.current?.seek(s),
-      stop: () => controls.current?.stop(),
-      next: () => controls.current?.next(),
-      setVolume: (v) => controls.current?.setVolume(v),
-      setMuted: (m) => controls.current?.setMuted(m),
-      setAudioIndex: (i) => controls.current?.setAudioIndex(i),
-      setSubtitleIndex: (i) => controls.current?.setSubtitleIndex(i),
-      toggleFullscreen: () => controls.current?.toggleFullscreen(),
-    });
-  }, [itemId, controls]);
 
   // ---- Derived UI state ------------------------------------------------------
   const { segment: activeSegment, fresh: skipFresh } = useActiveSegment(segments.data?.Items, currentTime);
@@ -545,33 +469,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     );
   }
 
-  const title = item?.Type === 'Episode' ? item.SeriesName : item?.Name;
-  const subtitle =
-    item?.Type === 'Episode'
-      ? `${episodeLabel(item)}${item.Name ? ` · ${item.Name}` : ''}`
-      : item?.ProductionYear
-        ? String(item.ProductionYear)
-        : '';
-
-  // The same, in pieces that lead to their pages: the show, its season and the episode, or the film.
-  const itemPage = (id?: string | null) => (id ? `/item/${id}` : undefined);
-  const titleParts: TitlePart =
-    item?.Type === 'Episode'
-      ? { label: item.SeriesName ?? '', to: itemPage(item.SeriesId) }
-      : { label: item?.Name ?? '', to: itemPage(item?.Id) };
-  const subtitleParts: TitlePart[] = [];
-  if (item?.Type === 'Episode') {
-    const s = item.ParentIndexNumber;
-    const e = item.IndexNumber;
-    if (s !== undefined && s !== null) subtitleParts.push({ label: `S${s}`, to: itemPage(item.SeasonId) });
-    const episode = [
-      e !== undefined && e !== null ? `E${e}${item.IndexNumberEnd ? `-${item.IndexNumberEnd}` : ''}` : '',
-      item.Name ?? '',
-    ].filter(Boolean);
-    if (episode.length) subtitleParts.push({ label: episode.join(' · '), to: itemPage(item.Id) });
-  } else if (item?.ProductionYear) {
-    subtitleParts.push({ label: String(item.ProductionYear) });
-  }
+  const { title, subtitle, titleParts, subtitleParts } = playerTitles(item);
   /** Opens a page in place of the full-screen player, which carries on in the mini player. */
   const openPage = (to: string) => navigate(to, { replace: true });
 
@@ -621,27 +519,13 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
       )}
 
       {error && (
-        <div
-          className={clsx(
-            'absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 text-center',
-            isFull ? 'gap-4 px-6' : 'gap-2 px-3 text-sm',
-          )}
-        >
-          <p className={clsx('max-w-lg text-fg', !isFull && 'line-clamp-3')}>{error}</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <button onClick={retry} className="rounded-md bg-accent px-4 py-2 font-semibold text-accent-ink hover:bg-accent-hover">
-              {t('player.videoPlayer.retry')}
-            </button>
-            {isFull && stream?.method !== 'Transcode' && (
-              <button onClick={retryTranscode} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
-                {t('player.videoPlayer.tryTranscoding')}
-              </button>
-            )}
-            <button onClick={exit} className="rounded-md bg-white/10 px-4 py-2 hover:bg-white/20">
-              {isFull ? t('player.videoPlayer.goBack') : t('common.close')}
-            </button>
-          </div>
-        </div>
+        <PlayerError
+          message={error}
+          full={isFull}
+          onRetry={retry}
+          onTranscode={isFull && stream?.method !== 'Transcode' ? retryTranscode : undefined}
+          onExit={exit}
+        />
       )}
 
       {isFull && (
@@ -835,7 +719,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
       {!isFull && (
         <MiniOverlay
-          title={title ?? ''}
+          title={title}
           subtitle={subtitle}
           itemId={itemId}
           playing={playing}

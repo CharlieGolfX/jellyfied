@@ -4,7 +4,7 @@ import { Field, Switch, TextArea } from '@/components/ui/Form';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useDraft } from '@/lib/useDraft';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { useApi } from '@/auth/AuthProvider';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/Toast';

@@ -199,7 +199,7 @@ if [ -n "$JELLYFIN_URL" ]; then
     location ${PROXY_PATH}/ {
         ${RESOLVER}
         set \$jellyfin_upstream \"${UPSTREAM_TARGET}\";
-        proxy_pass \$jellyfin_upstream\$jellyfin_path_out;
+        proxy_pass \$jellyfin_upstream\$jellyfin_path;
 
         proxy_http_version 1.1;
         proxy_set_header Host ${HOSTPORT};
@@ -288,14 +288,6 @@ map \$request_uri \$jellyfin_path {
     ~^${BASE}${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     ~^${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     default /;
-}
-
-# Jellyfin 12 only reads a token in the address as "ApiKey", unless its legacy authorization is on.
-# Pages loaded before Jellyfied switched still send "api_key"; renamed here, they keep working, and
-# their failing WebSocket attempts stop holding back the browser's other connections to this site.
-map \$jellyfin_path \$jellyfin_path_out {
-    "~^(?<legacy_head>[^?]*\\?(?:[^#]*&)?)api_key=(?<legacy_tail>.*)\$" "\${legacy_head}ApiKey=\${legacy_tail}";
-    default \$jellyfin_path;
 }
 
 ${UPSTREAM_BLOCK}

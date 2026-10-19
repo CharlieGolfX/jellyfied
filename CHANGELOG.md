@@ -6,6 +6,17 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Changed
+- Subtitles drawn over the video are looked at only when a line starts or ends, or the video is
+  seeked, paused or sped up, instead of on every frame. This saves work during long playback,
+  mostly on phones and in the mini player.
+
+### Removed
+- The last of the code kept for the rename from Jellyplex. A browser still signed in from back
+  then, as Jellyplex, has to sign in again for SyncPlay and remote control to reach it, and the
+  container no longer passes on a token sent as "api_key" (from tabs left open since before 1.4)
+  as "ApiKey"; reloading such a tab is enough.
+
 ## [1.5.1] - 2026-10-18
 
 ### Fixed

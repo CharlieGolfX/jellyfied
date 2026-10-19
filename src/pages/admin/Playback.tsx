@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox, Field, Input, Select, Switch } from '@/components/ui/Form';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { AdminPage, useConfigEditor } from './shared';
 import { useDraft } from '@/lib/useDraft';
 import { t } from '@/i18n';

@@ -8,7 +8,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { useDraft } from '@/lib/useDraft';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { AdminPage } from './shared';
 import { t } from '@/i18n';
 

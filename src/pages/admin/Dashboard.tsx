@@ -22,7 +22,7 @@ import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { episodeLabel, formatBitrate, formatBytes, formatClock, formatNumber, formatRelative, ticksToSeconds } from '@/lib/format';
-import { Card } from '@/pages/Settings';
+import { Card } from '@/components/ui/Card';
 import { AdminPage, StatusPill } from './shared';
 import { t } from '@/i18n';
 

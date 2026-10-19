@@ -70,29 +70,6 @@ describe('AuthProvider', () => {
     expect(auth.otherAccounts).toEqual([]);
   });
 
-  it('remembers the app name a sign-in was issued under, without starting the client over', () => {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(saved('ann')));
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify([saved('ann')]));
-    mount();
-    const api = auth.api;
-    act(() => auth.setClientName('Jellyplex'));
-    expect(auth.api).toBe(api);
-    expect(auth.api?.authorizationHeader()).toMatch(/^MediaBrowser Client="Jellyplex", /);
-    expect(JSON.parse(localStorage.getItem(SESSION_KEY)!).client).toBe('Jellyplex');
-    expect(loadAccounts()[0].client).toBe('Jellyplex');
-
-    // Next time the app starts, requests give that name from the first one.
-    act(() => root.unmount());
-    mount();
-    expect(auth.api?.authorizationHeader()).toMatch(/^MediaBrowser Client="Jellyplex", /);
-  });
-
-  it('notes that a new sign-in is issued under this app’s name', () => {
-    mount();
-    act(() => auth.completeLogin('http://server:8096', 'Home', loginResult('ann')));
-    expect(auth.session?.client).toBe('Jellyfied');
-  });
-
   it('picks up a saved session, with an API client that carries its token', () => {
     localStorage.setItem(SESSION_KEY, JSON.stringify(saved('ann')));
     mount();

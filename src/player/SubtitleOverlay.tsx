@@ -40,26 +40,42 @@ export function SubtitleOverlay({
   const shownKey = useRef('');
 
   useEffect(() => {
-    let frame = 0;
-    const tick = () => {
-      frame = requestAnimationFrame(tick);
-      const video = videoRef.current;
-      const cues = trackRef.current?.track.cues;
+    const video = videoRef.current;
+    if (!video) return;
+    let timer: number | undefined;
+    // Works out the cues to show now, and while playing, looks again when the next one starts or ends.
+    const update = () => {
+      window.clearTimeout(timer);
+      const cues = trackRef.current?.track.cues ?? [];
+      const t = video.currentTime - delay;
       const active: VTTCue[] = [];
-      if (video && cues) {
-        const t = video.currentTime - delay;
-        for (let i = 0; i < cues.length; i++) {
-          const cue = cues[i] as VTTCue;
-          if (cue.startTime <= t && t < cue.endTime) active.push(cue);
-        }
+      let next = Infinity;
+      for (let i = 0; i < cues.length; i++) {
+        const cue = cues[i] as VTTCue;
+        if (cue.startTime <= t && t < cue.endTime) active.push(cue);
+        if (cue.startTime > t) next = Math.min(next, cue.startTime);
+        else if (cue.endTime > t) next = Math.min(next, cue.endTime);
+      }
+      if (!video.paused && next < Infinity) {
+        timer = window.setTimeout(update, ((next - t) / (video.playbackRate || 1)) * 1000 + 10);
       }
       const key = active.map((c) => `${c.startTime}|${c.endTime}|${c.text}`).join('\n');
       if (key === shownKey.current) return;
       shownKey.current = key;
       setLines(active.map(cueHtml));
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    // "cuechange" and "load" come from the <track>, which is replaced when another track is picked;
+    // listening while they pass through the video (capture) catches every one.
+    const capture = ['cuechange', 'load'];
+    const events = ['play', 'pause', 'playing', 'waiting', 'seeked', 'ratechange', 'emptied', 'loadeddata'];
+    capture.forEach((e) => video.addEventListener(e, update, true));
+    events.forEach((e) => video.addEventListener(e, update));
+    update();
+    return () => {
+      window.clearTimeout(timer);
+      capture.forEach((e) => video.removeEventListener(e, update, true));
+      events.forEach((e) => video.removeEventListener(e, update));
+    };
   }, [trackRef, videoRef, delay]);
 
   if (lines.length === 0) return null;
