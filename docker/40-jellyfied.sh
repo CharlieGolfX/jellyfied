@@ -11,8 +11,10 @@
 #   JELLYFIED_PORT         Port nginx listens on inside the container (default 80).
 #   JELLYFIED_BASE_PATH    Optional. Serve Jellyfied under this path, e.g. /jellyfied, for reverse
 #                          proxies that give every app a path instead of a host name.
-#   JELLYFIED_DATA_DIR     Optional. Where the SyncPlay picker keeps its state between restarts
-#                          (default /var/lib/jellyfied, a volume).
+#   JELLYFIED_DATA_DIR     Optional. Where the SyncPlay picker and the stats comparisons keep their
+#                          state between restarts (default /var/lib/jellyfied, a volume).
+#   JELLYFIED_STATS_MIN_USERS  How many people have to take part before Your stats compares
+#                          anyone with the others (default 3, at least 2).
 #   JELLYFIED_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
 #                          X-Forwarded-For header is believed: a reverse proxy or tunnel in front
 #                          of Jellyfied, and Docker's own gateway. Default "private" (loopback
@@ -116,19 +118,25 @@ if [ -n "$BASE" ]; then
 "
 fi
 
-# Where the SyncPlay picker keeps its state between restarts: the image's data volume
-# (/var/lib/jellyfied). Without a writable one, for example on a read-only file system, it is kept
-# in memory only.
+# Where the SyncPlay picker and the stats comparisons keep their state between restarts: the
+# image's data volume (/var/lib/jellyfied). Without a writable one, for example on a read-only file
+# system, it is kept in memory only.
 DATA_DIR="${JELLYFIED_DATA_DIR:-/var/lib/jellyfied}"
 PICKER_STATE=""
+STATS_STATE=""
 if [ -n "$JELLYFIN_URL" ]; then
   if mkdir -p "$DATA_DIR" 2>/dev/null && [ -w "$DATA_DIR" ]; then
     PICKER_STATE=" state=${DATA_DIR}/syncplay-picker.json"
-    log "SyncPlay picker state kept in ${DATA_DIR}"
+    STATS_STATE=" state=${DATA_DIR}/stats-compare.json"
+    log "SyncPlay picker and stats comparisons kept in ${DATA_DIR}"
   else
-    log "SyncPlay picker state kept in memory only: ${DATA_DIR} is not writable"
+    log "SyncPlay picker and stats comparisons kept in memory only: ${DATA_DIR} is not writable"
   fi
 fi
+
+# How many people have to take part before Your stats compares anyone (at least 2).
+STATS_MIN_USERS=$(printf '%s' "${JELLYFIED_STATS_MIN_USERS:-3}" | tr -cd '0-9')
+[ -z "$STATS_MIN_USERS" ] || [ "$STATS_MIN_USERS" -lt 2 ] && STATS_MIN_USERS=3
 
 # ---------------------------------------------------------------------------
 # nginx site
@@ -249,6 +257,18 @@ if [ -n "$JELLYFIN_URL" ]; then
         js_content picker.serve;
     }
 
+    # Your stats compared with others (/etc/nginx/njs/stats-compare.js): anonymous summaries in,
+    # statements about the caller out.
+    location = /jellyfied-api/stats {
+        limit_req zone=jellyfied_picker burst=20 nodelay;
+        limit_req_status 429;
+        client_max_body_size 16k;
+        set \$jellyfied_stats_min_users ${STATS_MIN_USERS};
+        add_header Cache-Control \"no-store\" always;
+        include ${HEADERS};
+        js_content stats.serve;
+    }
+
     # How the picker asks Jellyfin who is calling and whether they are in the group: with the
     # caller's own headers, so with their own token and rights.
     location ~ ^/_jellyfied_jellyfin(?<jellyfin_sub>/.*)\$ {
@@ -331,6 +351,9 @@ js_engine qjs;
 js_path /etc/nginx/njs;
 js_import picker from syncplay-picker.js;
 js_shared_dict_zone zone=jellyfied_syncplay:4m timeout=24h evict${PICKER_STATE};
+# The stats summaries of those who take part in comparisons, forgotten a month after their last.
+js_import stats from stats-compare.js;
+js_shared_dict_zone zone=jellyfied_stats:2m timeout=30d evict${STATS_STATE};
 limit_req_zone \$binary_remote_addr zone=jellyfied_picker:1m rate=10r/s;
 
 server {

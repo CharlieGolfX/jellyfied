@@ -14,10 +14,15 @@
 - "Download all" starts one download per file, since a browser can't build one archive without
   holding all of it in memory. Browsers ask once whether the site may download several files.
 - Your stats only count what Jellyfied's own players play, measured while playing and saved with
-  the account (in Jellyfin's display preferences for the client "jellyfied"). Playing in other
-  Jellyfin apps, and marking something as watched, adds nothing, and nothing played before this
-  version is in it. Jellyfin itself keeps no such record; the Playback Reporting plugin does,
-  for all apps, but only administrators can read it.
+  the account for the last twelve months (in Jellyfin's display preferences for the client
+  "jellyfied"). Playing in other Jellyfin apps, and marking something as watched, adds nothing.
+  Jellyfin itself keeps no such record; the Playback Reporting plugin does, for all apps, but only
+  administrators can read it.
+- Comparing your stats with others needs the container, like the SyncPlay picker. Those who take
+  part share totals and time per genre for each period, never titles, with the container, which
+  keeps them under a one-way hash of the user id and only ever tells each person about
+  themselves. Nothing is compared until at least three people take part
+  (`JELLYFIED_STATS_MIN_USERS`), and someone who hasn't been around for a week is left out.
 - Every account signed in on a device can be switched to from that device without a password,
   like in other apps with an account switcher, unless it has a PIN. With a PIN, the account's
   sign-in is stored encrypted while someone else uses the browser. Two limits: the account that

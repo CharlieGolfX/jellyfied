@@ -1686,23 +1686,74 @@
     "usedForClockTimesSuch": "Se usa para las horas, como «Termina a las» en el reproductor, y para las fechas del panel."
   },
   "stats": {
+    "compare": {
+      "among": {
+        "one": "Entre {count} persona que participa.",
+        "other": "Entre {count} personas que participan."
+      },
+      "anonymous": "Con los demás de este servidor que participan. Nadie ve los números, nombres ni títulos de los demás.",
+      "explain": "Mira cómo se compara lo que ves y escuchas con los demás de aquí, como «Has visto más drama que nadie». Tus estadísticas se comparten de forma anónima con Jellyfied en este servidor: tiempo por género y totales, nunca títulos. Puedes dejarlo cuando quieras y se eliminarán.",
+      "join": "Compararme con los demás",
+      "joinedToast": "Participas en las comparaciones",
+      "leftToast": "Tus estadísticas ya no se comparten",
+      "more": {
+        "episodes": "Has visto más episodios que el {share} % de los demás",
+        "films": "Has visto más películas que el {share} % de los demás",
+        "music": "Has escuchado más música que el {share} % de los demás",
+        "songs": "Has reproducido más canciones que el {share} % de los demás",
+        "video": "Has visto más que el {share} % de los demás"
+      },
+      "most": {
+        "episodes": "Has visto más episodios que nadie aquí",
+        "films": "Has visto más películas que nadie aquí",
+        "music": "Has escuchado más música que nadie aquí",
+        "songs": "Has reproducido más canciones que nadie aquí",
+        "video": "Has visto más que nadie aquí"
+      },
+      "mostGenre": "Has visto más {genre} que nadie aquí",
+      "notEnough": {
+        "one": "Las comparaciones aparecen cuando participa {count} persona. Ahora participan {taking}.",
+        "other": "Las comparaciones aparecen cuando participan {count} personas. Ahora participan {taking}."
+      },
+      "nothingStandsOut": "Nada destaca en este periodo. ¡Sigue viendo!",
+      "stop": "Dejar de compararme",
+      "title": "Cómo te comparas",
+      "unavailable": "Las comparaciones no están disponibles ahora."
+    },
     "episodesOfShows": {
       "one": "Episodios · {count} serie",
       "other": "Episodios · {count} series"
     },
     "films": "Películas vistas",
-    "howCounted": "Tiempo realmente reproducido en Jellyfied con esta cuenta, en cualquier navegador. Marcar algo como visto no cuenta, ni tampoco reproducir en otras aplicaciones de Jellyfin. Una película o un episodio cuenta como visto cuando se ha reproducido la mayor parte, y una canción cuando se ha reproducido la mitad (o cuatro minutos).",
-    "lastWeeks": "Las últimas {count} semanas",
-    "lastWeeksNote": "Tiempo reproducido cada semana, vídeo y música",
+    "howCounted": "Tiempo realmente reproducido en Jellyfied con esta cuenta, en cualquier navegador, durante los últimos doce meses. Marcar algo como visto no cuenta, ni tampoco reproducir en otras aplicaciones de Jellyfin. Una película o un episodio cuenta como visto cuando se ha reproducido la mayor parte, y una canción cuando se ha reproducido la mitad (o cuatro minutos).",
     "musicListened": {
       "one": "Música · {count} canción",
       "other": "Música · {count} canciones"
     },
+    "nothingInPeriod": "No se ha reproducido nada en este periodo.",
     "nothingYet": "Aún no has visto nada",
     "nothingYetHint": "Reproduce una película, un episodio o algo de música y aquí aparecerá el tiempo que le dedicas.",
+    "per": {
+      "day": "Vídeo y música, por día",
+      "month": "Vídeo y música, por mes",
+      "week": "Vídeo y música, por semana"
+    },
+    "period": "Periodo",
+    "ranges": {
+      "12m": "12 meses",
+      "30d": "30 días",
+      "3m": "3 meses",
+      "6m": "6 meses",
+      "7d": "7 días"
+    },
     "rewatched": "Vistas más de una vez",
     "since": "Medido desde el {date}.",
-    "thisWeek": "Esta semana",
+    "this": {
+      "day": "Hoy",
+      "month": "Este mes",
+      "week": "Esta semana"
+    },
+    "timePlayed": "Tiempo reproducido",
     "timeWatched": "Tiempo visto",
     "times": {
       "one": "una vez",
@@ -1710,7 +1761,7 @@
     },
     "title": "Tus estadísticas",
     "topGenres": "Géneros más vistos",
-    "weekOf": "Semana del {date}: {time}"
+    "weekOf": "Semana del {date}"
   },
   "ui": {
     "crashState": {

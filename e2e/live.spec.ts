@@ -658,6 +658,18 @@ test.describe('playback on a real server', () => {
     const films = await items(page, '/Items', { includeItemTypes: 'Movie', recursive: 'true', sortBy: 'SortName', limit: '2' });
     test.skip(films.length < 2, 'the server needs two films');
     const [played, marked] = films;
+    // From no playtime at all (other tests may have left some on this account).
+    await page.evaluate(async () => {
+      const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string; userId: string };
+      const headers = {
+        Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+        'Content-Type': 'application/json',
+      };
+      const prefs = `${s.serverUrl}/DisplayPreferences/jellyfied-playtime?userId=${s.userId}&client=jellyfied`;
+      const dto = await (await fetch(prefs, { headers })).json();
+      await fetch(prefs, { method: 'POST', headers, body: JSON.stringify({ ...dto, CustomPrefs: {} }) });
+      localStorage.removeItem(`jellyfied.playtime.pending.${s.userId}`);
+    });
     // Marked as watched without playing a second of it.
     await page.evaluate(async (id) => {
       const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string; userId: string };

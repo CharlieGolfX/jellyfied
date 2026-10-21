@@ -1686,23 +1686,74 @@
     "usedForClockTimesSuch": "Used for clock times such as “Ends at” in the player and dates in the dashboard."
   },
   "stats": {
+    "compare": {
+      "among": {
+        "one": "Among {count} person taking part.",
+        "other": "Among {count} people taking part."
+      },
+      "anonymous": "With the others on this server who take part. Nobody sees anyone else's numbers, names or titles.",
+      "explain": "See how your watching and listening compares with the others here, like \"You watched more Drama than anyone else\". Your stats are shared anonymously with Jellyfied on this server: time per genre and totals, never titles. You can stop at any time, which removes them.",
+      "join": "Compare with others",
+      "joinedToast": "You're taking part in comparisons",
+      "leftToast": "Your stats are no longer shared",
+      "more": {
+        "episodes": "You watched more episodes than {share}% of the others here",
+        "films": "You watched more films than {share}% of the others here",
+        "music": "You listened to more music than {share}% of the others here",
+        "songs": "You played more songs than {share}% of the others here",
+        "video": "You watched more than {share}% of the others here"
+      },
+      "most": {
+        "episodes": "You watched more episodes than anyone else here",
+        "films": "You watched more films than anyone else here",
+        "music": "You listened to more music than anyone else here",
+        "songs": "You played more songs than anyone else here",
+        "video": "You watched more than anyone else here"
+      },
+      "mostGenre": "You watched more {genre} than anyone else here",
+      "notEnough": {
+        "one": "Comparisons appear once {count} person takes part. {taking} do now.",
+        "other": "Comparisons appear once {count} people take part. {taking} do now."
+      },
+      "nothingStandsOut": "Nothing stands out in this period. Keep watching!",
+      "stop": "Stop comparing",
+      "title": "How you compare",
+      "unavailable": "Comparisons aren't available right now."
+    },
     "episodesOfShows": {
       "one": "Episodes · {count} show",
       "other": "Episodes · {count} shows"
     },
     "films": "Films watched",
-    "howCounted": "Time actually played in Jellyfied with this account, in any browser. Marking something as watched doesn't count, and nor does playing in other Jellyfin apps. A film or episode counts as watched once most of it has played, a song once half of it (or four minutes) has.",
-    "lastWeeks": "The last {count} weeks",
-    "lastWeeksNote": "Time played each week, video and music",
+    "howCounted": "Time actually played in Jellyfied with this account, in any browser, over the last twelve months. Marking something as watched doesn't count, and nor does playing in other Jellyfin apps. A film or episode counts as watched once most of it has played, a song once half of it (or four minutes) has.",
     "musicListened": {
       "one": "Music · {count} song",
       "other": "Music · {count} songs"
     },
+    "nothingInPeriod": "Nothing played in this period.",
     "nothingYet": "Nothing watched yet",
     "nothingYetHint": "Play a film, an episode or some music and the time you spend on it shows up here.",
+    "per": {
+      "day": "Video and music, per day",
+      "month": "Video and music, per month",
+      "week": "Video and music, per week"
+    },
+    "period": "Period",
+    "ranges": {
+      "12m": "12 months",
+      "30d": "30 days",
+      "3m": "3 months",
+      "6m": "6 months",
+      "7d": "7 days"
+    },
     "rewatched": "Watched more than once",
     "since": "Measured since {date}.",
-    "thisWeek": "This week",
+    "this": {
+      "day": "Today",
+      "month": "This month",
+      "week": "This week"
+    },
+    "timePlayed": "Time played",
     "timeWatched": "Time watched",
     "times": {
       "one": "once",
@@ -1710,7 +1761,7 @@
     },
     "title": "Your stats",
     "topGenres": "Top genres",
-    "weekOf": "Week of {date}: {time}"
+    "weekOf": "Week of {date}"
   },
   "ui": {
     "crashState": {

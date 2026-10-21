@@ -8,6 +8,9 @@ import { fileURLToPath, URL } from 'node:url';
 import { thirdPartyNotices } from './scripts/third-party-notices.mjs';
 // @ts-expect-error -- plain JavaScript for nginx, without type declarations
 import picker from './docker/syncplay-picker.js';
+// @ts-expect-error -- plain JavaScript for nginx, without type declarations
+import statsCompare from './docker/stats-compare.js';
+import { createHash } from 'node:crypto';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -73,6 +76,57 @@ export default defineConfig(({ mode }) => {
                     me: () => ask('/Users/Me'),
                     group: (id: string) => ask(`/SyncPlay/${id}`),
                     item: (id: string) => ask(`/Items/${id}`),
+                  },
+                })
+                .then(
+                  (r: { status: number; body: unknown }) => send(r.status, r.body),
+                  () => send(500, { code: 'failed', error: 'Failed' }),
+                );
+            });
+          });
+        },
+      },
+      {
+        // Your stats compared with others, which the container answers with njs: the same code here,
+        // with the summaries in this process's memory.
+        name: 'jellyfied-dev-stats',
+        apply: 'serve',
+        configureServer(server) {
+          const map = new Map<string, string>();
+          const store = {
+            get: (k: string) => map.get(k),
+            set: (k: string, v: string) => void map.set(k, v),
+            del: (k: string) => void map.delete(k),
+            keys: () => [...map.keys()],
+          };
+          server.middlewares.use('/jellyfied-api/stats', (req, res) => {
+            const send = (status: number, body: unknown) => {
+              res.statusCode = status;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(body));
+            };
+            if (!target) return send(404, { code: 'notAvailable', error: 'Not available' });
+            let raw = '';
+            req.on('data', (chunk) => (raw += chunk));
+            req.on('end', () => {
+              void statsCompare
+                .handle({
+                  store,
+                  method: req.method,
+                  range: new URL(req.url ?? '/', 'http://x').searchParams.get('range'),
+                  body: req.method === 'POST' ? JSON.parse(raw || '{}') : null,
+                  minUsers: Number(env.JELLYFIED_STATS_MIN_USERS) || 3,
+                  hash: (id: string) =>
+                    createHash('sha256')
+                      .update('jellyfied-stats:' + id)
+                      .digest('hex'),
+                  jellyfin: {
+                    me: async () => {
+                      const r = await fetch(target.replace(/\/+$/, '') + '/Users/Me', {
+                        headers: { Authorization: req.headers.authorization ?? '' },
+                      });
+                      return r.ok ? r.json() : null;
+                    },
                   },
                 })
                 .then(

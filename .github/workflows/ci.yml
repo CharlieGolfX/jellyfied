@@ -93,7 +93,7 @@ jobs:
       - run: docker build -t jellyfied:ci .
       # A throwaway server with generated test media, and the image in front of it. Sets E2E_* for the tests.
       - run: node e2e/server/setup.mjs up ${{ matrix.jellyfin }} jellyfied:ci
-      - run: npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts --workers=1
+      - run: npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts e2e/stats-live.spec.ts --workers=1
         env:
           E2E_BROWSERS: chromium
       - name: Server logs

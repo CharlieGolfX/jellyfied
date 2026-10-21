@@ -27,7 +27,11 @@ const FFMPEG = 'linuxserver/ffmpeg:9.0.2';
 const JELLYFIN_PORT = Number(process.env.E2E_JELLYFIN_PORT ?? 18096);
 const APP_PORT = Number(process.env.E2E_APP_PORT ?? 18080);
 const MEDIA = process.env.E2E_MEDIA_DIR ?? join(tmpdir(), 'jellyfied-e2e-media');
-const USERS = { owner: { name: 'e2e', password: 'e2e-password' }, friend: { name: 'e2e-friend', password: 'e2e-password' } };
+const USERS = {
+  owner: { name: 'e2e', password: 'e2e-password' },
+  friend: { name: 'e2e-friend', password: 'e2e-password' },
+  third: { name: 'e2e-third', password: 'e2e-password' },
+};
 const server = `http://localhost:${JELLYFIN_PORT}`;
 
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8' }).trim();
@@ -328,7 +332,8 @@ try {
 }
 
 const friend = await api('POST', '/Users/New', { Name: USERS.friend.name, Password: USERS.friend.password });
-log(`users: ${USERS.owner.name} (administrator), ${USERS.friend.name} (${friend.Id})`);
+await api('POST', '/Users/New', { Name: USERS.third.name, Password: USERS.third.password });
+log(`users: ${USERS.owner.name} (administrator), ${USERS.friend.name} (${friend.Id}), ${USERS.third.name}`);
 
 // ---- Jellyfied ----------------------------------------------------------------------------------
 log(`starting ${jellyfiedImage}`);
@@ -353,7 +358,11 @@ const env = {
   E2E_PASSWORD: USERS.owner.password,
   E2E_FRIEND_USERNAME: USERS.friend.name,
   E2E_FRIEND_PASSWORD: USERS.friend.password,
+  E2E_THIRD_USERNAME: USERS.third.name,
+  E2E_THIRD_PASSWORD: USERS.third.password,
 };
 const lines = Object.entries(env).map(([k, v]) => `${k}=${v}`);
 if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, lines.join('\n') + '\n');
-log(`ready. Run the tests with:\n\n  ${lines.join(' ')} npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts\n`);
+log(
+  `ready. Run the tests with:\n\n  ${lines.join(' ')} npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts e2e/stats-live.spec.ts\n`,
+);

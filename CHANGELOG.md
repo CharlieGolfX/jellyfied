@@ -19,9 +19,12 @@ shown in the account menu and on the login screen.
 - "Who's watching?" on the sign-in screen: everyone's picture, for the accounts signed in on this
   device (with a lock on those with a PIN) and the server's public users.
 - Your stats, in the account menu: time watched and listened, films, episodes and songs played
-  through, top genres, what you have rewatched and the last twelve weeks. It counts only time
-  actually played in Jellyfied, measured while playing and saved with the account, not what is
-  marked as watched.
+  through, top genres and what you have rewatched, for the last 7 or 30 days, or 3, 6 or 12
+  months. It counts only time actually played in Jellyfied, measured while playing and kept with
+  the account for a year, not what is marked as watched. Those who choose to can see how they
+  compare with the others on the server who do too ("You watched more Drama than anyone else
+  here"), anonymously: the container keeps only totals and time per genre, under a hash, and
+  tells each person only about themselves, once at least three take part.
 - "Download all…" for a season, show, album, collection or playlist, one file after the other.
 - A Segments tab in the metadata editor, for a video's intro, credits, recap, preview and
   commercial markers. They can be changed when the server has the Intro Skipper plugin.

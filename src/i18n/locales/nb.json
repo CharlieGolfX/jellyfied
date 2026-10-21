@@ -1686,23 +1686,74 @@
     "usedForClockTimesSuch": "Brukes til klokkeslett som «Slutter» i avspilleren og datoer i kontrollpanelet."
   },
   "stats": {
+    "compare": {
+      "among": {
+        "one": "Blant {count} person som er med.",
+        "other": "Blant {count} personer som er med."
+      },
+      "anonymous": "Med de andre på denne serveren som er med. Ingen ser andres tall, navn eller titler.",
+      "explain": "Se hvordan det du ser og hører på er sammenlignet med de andre her, som «Du så mer drama enn noen andre». Statistikken din deles anonymt med Jellyfied på denne serveren: tid per sjanger og totaler, aldri titler. Du kan slutte når som helst, og da fjernes den.",
+      "join": "Sammenlign med andre",
+      "joinedToast": "Du er med i sammenligningene",
+      "leftToast": "Statistikken din deles ikke lenger",
+      "more": {
+        "episodes": "Du så flere episoder enn {share} % av de andre her",
+        "films": "Du så flere filmer enn {share} % av de andre her",
+        "music": "Du hørte mer musikk enn {share} % av de andre her",
+        "songs": "Du spilte flere sanger enn {share} % av de andre her",
+        "video": "Du så mer enn {share} % av de andre her"
+      },
+      "most": {
+        "episodes": "Du så flere episoder enn noen andre her",
+        "films": "Du så flere filmer enn noen andre her",
+        "music": "Du hørte mer musikk enn noen andre her",
+        "songs": "Du spilte flere sanger enn noen andre her",
+        "video": "Du så mer enn noen andre her"
+      },
+      "mostGenre": "Du så mer {genre} enn noen andre her",
+      "notEnough": {
+        "one": "Sammenligninger vises når {count} person er med. {taking} er med nå.",
+        "other": "Sammenligninger vises når {count} personer er med. {taking} er med nå."
+      },
+      "nothingStandsOut": "Ingenting skiller seg ut i denne perioden. Fortsett å se!",
+      "stop": "Slutt å sammenligne",
+      "title": "Slik er du sammenlignet med andre",
+      "unavailable": "Sammenligninger er ikke tilgjengelige nå."
+    },
     "episodesOfShows": {
       "one": "Episoder · {count} serie",
       "other": "Episoder · {count} serier"
     },
     "films": "Filmer sett",
-    "howCounted": "Tid som faktisk er spilt i Jellyfied med denne kontoen, i alle nettlesere. Å merke noe som sett teller ikke, og heller ikke avspilling i andre Jellyfin-apper. En film eller episode teller som sett når mesteparten er spilt, en sang når halvparten (eller fire minutter) er spilt.",
-    "lastWeeks": "De siste {count} ukene",
-    "lastWeeksNote": "Tid spilt hver uke, video og musikk",
+    "howCounted": "Tid som faktisk er spilt i Jellyfied med denne kontoen, i alle nettlesere, de siste tolv månedene. Å merke noe som sett teller ikke, og heller ikke avspilling i andre Jellyfin-apper. En film eller episode teller som sett når mesteparten er spilt, en sang når halvparten (eller fire minutter) er spilt.",
     "musicListened": {
       "one": "Musikk · {count} sang",
       "other": "Musikk · {count} sanger"
     },
+    "nothingInPeriod": "Ingenting spilt i denne perioden.",
     "nothingYet": "Ingenting sett ennå",
     "nothingYetHint": "Spill en film, en episode eller litt musikk, så vises tiden du bruker her.",
+    "per": {
+      "day": "Video og musikk, per dag",
+      "month": "Video og musikk, per måned",
+      "week": "Video og musikk, per uke"
+    },
+    "period": "Periode",
+    "ranges": {
+      "12m": "12 måneder",
+      "30d": "30 dager",
+      "3m": "3 måneder",
+      "6m": "6 måneder",
+      "7d": "7 dager"
+    },
     "rewatched": "Sett mer enn én gang",
     "since": "Målt siden {date}.",
-    "thisWeek": "Denne uken",
+    "this": {
+      "day": "I dag",
+      "month": "Denne måneden",
+      "week": "Denne uken"
+    },
+    "timePlayed": "Tid spilt",
     "timeWatched": "Tid sett",
     "times": {
       "one": "én gang",
@@ -1710,7 +1761,7 @@
     },
     "title": "Din statistikk",
     "topGenres": "Mest sette sjangre",
-    "weekOf": "Uken fra {date}: {time}"
+    "weekOf": "Uken fra {date}"
   },
   "ui": {
     "crashState": {

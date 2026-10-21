@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.title="Jellyfied" \
 # site's nginx config, config.js and index.html, so those places belong to the nginx user.
 USER root
 COPY docker/40-jellyfied.sh /docker-entrypoint.d/40-jellyfied.sh
-COPY docker/syncplay-picker.js /etc/nginx/njs/syncplay-picker.js
+COPY docker/syncplay-picker.js docker/stats-compare.js /etc/nginx/njs/
 # The base image's packages are brought up to date, so fixes published after it was built are in.
 RUN apk upgrade --no-cache \
     && chmod +x /docker-entrypoint.d/40-jellyfied.sh \
@@ -39,7 +39,8 @@ ENV JELLYFIN_URL="" \
     JELLYFIED_TRUSTED_PROXIES="private" \
     JELLYFIED_PORT=80
 
-# The SyncPlay picker's state (suggestions, votes, spins), kept across restarts and updates.
+# The SyncPlay picker's state (suggestions, votes, spins) and the stats comparisons' summaries,
+# kept across restarts and updates.
 VOLUME /var/lib/jellyfied
 
 EXPOSE 80

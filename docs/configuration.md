@@ -12,7 +12,8 @@ with plain `docker run`, pass them with `-e`. Changes take effect when the conta
 | `JELLYFIED_BASE_PATH`   | _(empty)_                  | Serve Jellyfied under a path, e.g. `/jellyfied`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyfied/jellyfin`). |
 | `JELLYFIED_PORT`        | `80`                       | Port nginx listens on inside the container. |
 | `JELLYFIED_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyfied. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
-| `JELLYFIED_DATA_DIR`        | `/var/lib/jellyfied`   | Where the SyncPlay picker keeps its state between restarts. The image declares it as a volume; `docker-compose.yml` names it `jellyfied-data`. On a read-only file system the state is kept in memory only. |
+| `JELLYFIED_DATA_DIR`        | `/var/lib/jellyfied`   | Where the SyncPlay picker and the stats comparisons keep their state between restarts. The image declares it as a volume; `docker-compose.yml` names it `jellyfied-data`. On a read-only file system the state is kept in memory only. |
+| `JELLYFIED_STATS_MIN_USERS` | `3` | How many people have to take part before Your stats compares anyone with the others (at least 2). With two, any comparison tells each about the other. |
 
 ¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
 

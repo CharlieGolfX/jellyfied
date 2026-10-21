@@ -63,16 +63,17 @@ scripts/        API type generation, screenshots, licence notices, release helpe
   pictures. Text renders a little differently on every system, so they run in Playwright's Linux
   container (needs Docker): `npm run test:visual`, and `npm run test:visual:update` after an
   intended change to the player. Look at the new pictures before committing them.
-- **Playback and SyncPlay tests** (`e2e/live.spec.ts`, `e2e/syncplay-live.spec.ts`) need a real
-  server. `e2e/server/setup.mjs` makes a throwaway one in Docker, with generated test media, two
-  users and Jellyfied in front of it, the way CI runs them against Jellyfin 10.11 and 12:
+- **Playback, SyncPlay and stats tests** (`e2e/live.spec.ts`, `e2e/syncplay-live.spec.ts`,
+  `e2e/stats-live.spec.ts`) need a real server. `e2e/server/setup.mjs` makes a throwaway one in
+  Docker, with generated test media, three users and Jellyfied in front of it, the way CI runs them against Jellyfin 10.11 and 12:
 
   ```bash
   npm run test:container          # builds jellyfied:ci (and tests it)
   node e2e/server/setup.mjs up 12 # or 10.11; prints the variables for the next line
   E2E_BASE_URL=http://localhost:18080 E2E_USERNAME=e2e E2E_PASSWORD=e2e-password \
-    E2E_FRIEND_USERNAME=e2e-friend E2E_FRIEND_PASSWORD=e2e-password E2E_BROWSERS=chromium \
-    npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts --workers=1
+    E2E_FRIEND_USERNAME=e2e-friend E2E_FRIEND_PASSWORD=e2e-password \
+    E2E_THIRD_USERNAME=e2e-third E2E_THIRD_PASSWORD=e2e-password E2E_BROWSERS=chromium \
+    npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts e2e/stats-live.spec.ts --workers=1
   node e2e/server/setup.mjs down
   ```
 

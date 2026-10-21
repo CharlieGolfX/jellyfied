@@ -169,11 +169,26 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   check('access tokens are kept out of the access log', log.includes('ApiKey=***') && !log.includes('secret-token'));
 });
 
-console.log(`\n${image}: keeping the SyncPlay picker's state`);
+console.log(`\n${image}: keeping the SyncPlay picker's state and the stats summaries`);
 await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}` }, async (name) => {
   const group = `${origin}/jellyfied-api/syncplay/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`;
   const headers = { Authorization: 'MediaBrowser Token="member"', 'Content-Type': 'application/json' };
   const claimed = await fetch(group, { method: 'POST', headers, body: JSON.stringify({ action: 'claim' }) }).then((r) => r.json());
+  const stats = `${origin}/jellyfied-api/stats`;
+  const shared = await fetch(stats, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ summaries: { '30d': { video: 3600, genres: { Drama: 3600 } } } }),
+  }).then((r) => r.json());
+  check(
+    'Your stats comparisons take a summary',
+    shared.joined === true && shared.enough === false && shared.participants === 1,
+    JSON.stringify(shared),
+  );
+  check(
+    'and turn away callers the server does not know',
+    (await fetch(stats, { headers: { Authorization: 'MediaBrowser Token="t"' } })).status === 401,
+  );
   check('the picker takes a request from a member', claimed.claimed === true, JSON.stringify(claimed));
   docker('restart', name);
   let after = null;
@@ -185,6 +200,11 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
     if (!after) await new Promise((r) => setTimeout(r, 500));
   }
   check('what it knew is still there after a restart', after?.claimed === true && after?.host === MEMBER.Name, JSON.stringify(after));
+  const statsAfter = await fetch(`${origin}/jellyfied-api/stats?range=30d`, { headers }).then(
+    (r) => r.json(),
+    () => null,
+  );
+  check('so are the stats summaries', statsAfter?.joined === true && statsAfter?.participants === 1, JSON.stringify(statsAfter));
 });
 
 console.log(`\n${image}: trusting no proxies`);
