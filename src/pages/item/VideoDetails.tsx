@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useEpisodes, useSimilar, useSpecialFeatures } from '@/api/queries';
 import type { BaseItemDto, MediaStream } from '@/api/types';
-import { useCurrentUser, useIsAdmin } from '@/auth/AuthProvider';
+import { useCurrentUser } from '@/auth/AuthProvider';
 import { Hub } from '@/components/media/Hub';
 import { episodeLabel, formatBitrate, formatBytes, formatDate } from '@/lib/format';
 import { recallTracks, rememberAudioTrack, rememberSubtitleTrack } from '@/player/trackMemory';
@@ -47,7 +47,6 @@ function StreamSelect({
 }
 
 export function VideoDetails({ item }: { item: BaseItemDto }) {
-  const isAdmin = useIsAdmin();
   const sources = item.MediaSources ?? [];
   const [sourceId, setSourceId] = useState(sources[0]?.Id ?? '');
   const source = sources.find((s) => s.Id === sourceId) ?? sources[0];
@@ -200,7 +199,6 @@ export function VideoDetails({ item }: { item: BaseItemDto }) {
                     {s.BitRate ? ` · ${formatBitrate(s.BitRate)}` : ''}
                   </div>
                 ))}
-                {isAdmin && source.Path && <div className="break-all text-faint">{source.Path}</div>}
               </div>
             </details>
           )}

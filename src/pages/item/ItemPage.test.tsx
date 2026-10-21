@@ -128,6 +128,23 @@ describe('the item page', () => {
     page.unmount();
   });
 
+  it('never shows where the file is, not even to an administrator', async () => {
+    const withPath = {
+      ...movie,
+      Path: '/media/movies/Mock Movie (2020)/Mock Movie.mkv',
+      MediaSources: [{ ...movie.MediaSources[0], Path: '/media/movies/Mock Movie (2020)/Mock Movie.mkv' }],
+    };
+    const page = await renderPage(<ItemPage />, {
+      path: `/item/${movie.Id}`,
+      route: '/item/:id',
+      server: (p, i, u) =>
+        p === '/Users/Me' ? { ...me, Policy: { IsAdministrator: true } } : p === `/Items/${movie.Id}` ? withPath : server(p, i, u),
+    });
+    expect(page.text()).toContain('Media info');
+    expect(page.text()).not.toContain('/media/movies');
+    page.unmount();
+  });
+
   it('says so when the item does not exist', async () => {
     const page = await renderPage(<ItemPage />, {
       path: '/item/nope',

@@ -6,6 +6,10 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Changed
+- Media info on a video's page no longer shows where its file is on the server, also not to
+  administrators.
+
 ## [1.6.0] - 2026-10-21
 
 ### Added
