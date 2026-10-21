@@ -8,10 +8,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PageSpinner } from '@/components/ui/Spinner';
 import HomePage from '@/pages/Home';
 import LibraryPage from '@/pages/Library';
-import ItemPage from '@/pages/item/ItemPage';
 import LoginPage from '@/pages/Login';
-import SearchPage from '@/pages/Search';
-import FavoritesPage from '@/pages/Favorites';
 import NotFoundPage from '@/pages/NotFound';
 import { RemoteControlReceiver } from '@/player/RemoteControl';
 import { SyncPlayInvites } from '@/player/SyncPlayInvites';
@@ -21,8 +18,17 @@ import { LiveUpdates } from '@/realtime/LiveUpdates';
 import { t } from '@/i18n';
 
 const GlobalVideoPlayer = lazy(() => import('@/player/VideoPlayer'));
+// Pages away from the first screen load on demand, which keeps the first download small.
+const ItemPage = lazy(() => import('@/pages/item/ItemPage'));
+const SearchPage = lazy(() => import('@/pages/Search'));
+const FavoritesPage = lazy(() => import('@/pages/Favorites'));
 const SettingsPage = lazy(() => import('@/pages/Settings'));
+const StatsPage = lazy(() => import('@/pages/Stats'));
 const AdminRoutes = lazy(() => import('@/pages/admin/AdminRoutes'));
+
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageSpinner />}>{children}</Suspense>;
+}
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { session } = useAuth();
@@ -103,23 +109,52 @@ export default function App() {
         >
           <Route index element={<HomePage />} />
           <Route path="library/:id" element={<LibraryPage />} />
-          <Route path="item/:id" element={<ItemPage />} />
-          <Route path="search" element={<SearchPage />} />
-          <Route path="favorites" element={<FavoritesPage />} />
+          <Route
+            path="item/:id"
+            element={
+              <Lazy>
+                <ItemPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="search"
+            element={
+              <Lazy>
+                <SearchPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="favorites"
+            element={
+              <Lazy>
+                <FavoritesPage />
+              </Lazy>
+            }
+          />
           <Route
             path="settings"
             element={
-              <Suspense fallback={<PageSpinner />}>
+              <Lazy>
                 <SettingsPage />
-              </Suspense>
+              </Lazy>
+            }
+          />
+          <Route
+            path="stats"
+            element={
+              <Lazy>
+                <StatsPage />
+              </Lazy>
             }
           />
           <Route
             path="admin/*"
             element={
-              <Suspense fallback={<PageSpinner />}>
+              <Lazy>
                 <AdminRoutes />
-              </Suspense>
+              </Lazy>
             }
           />
           <Route path="*" element={<NotFoundPage />} />

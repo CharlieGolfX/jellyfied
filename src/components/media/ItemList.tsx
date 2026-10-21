@@ -44,7 +44,7 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
           aria-label={t('media.itemList.select', { title })}
           className={clsx(
             'flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-opacity',
-            selected ? 'border-accent bg-accent text-accent-ink' : 'border-white/40 text-transparent hover:border-white/80',
+            selected ? 'border-accent bg-accent-fill text-accent-ink' : 'border-white/40 text-transparent hover:border-white/80',
             selected || selecting ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100',
           )}
         >
@@ -99,7 +99,7 @@ const ItemRow = memo(function ItemRow({ item, collectionId }: { item: BaseItemDt
             title={played ? t('common.markAsUnwatched') : t('common.markAsWatched')}
           >
             {unplayedCount > 0 && !played ? (
-              <span className="block min-w-5 rounded bg-accent px-1 text-center text-[11px] font-bold text-accent-ink">
+              <span className="block min-w-5 rounded bg-accent-fill px-1 text-center text-[11px] font-bold text-accent-ink">
                 {unplayedCount}
               </span>
             ) : (

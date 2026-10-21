@@ -1,4 +1,4 @@
-import { LayoutDashboard, Lock, LogOut, Scale, Settings, User, UserPlus, Users } from 'lucide-react';
+import { ChartColumn, LayoutDashboard, Lock, LogOut, Scale, Settings, User, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { hasPin } from '@/auth/accountPin';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
@@ -14,7 +14,7 @@ export function Avatar({ userId, tag, name, size = 32 }: { userId: string; tag?:
   const initial = (name ?? '?').trim().charAt(0).toUpperCase();
   return (
     <span
-      className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent font-semibold text-accent-ink"
+      className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent-fill font-semibold text-accent-ink"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
       {tag ? (
@@ -42,6 +42,7 @@ export function UserMenu() {
         items={[
           { header: true, label: `${user?.Name ?? session.userName} · ${session.serverName}` },
           { label: t('userMenu.accountSettings'), icon: <Settings size={16} />, onSelect: () => navigate('/settings') },
+          { label: t('userMenu.stats'), icon: <ChartColumn size={16} />, onSelect: () => navigate('/stats') },
           ...(isAdmin
             ? [{ label: t('nav.serverDashboard'), icon: <LayoutDashboard size={16} />, onSelect: () => navigate('/admin') }]
             : []),

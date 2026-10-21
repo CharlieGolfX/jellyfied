@@ -355,7 +355,7 @@ function PickerBody({ state, showing, elapsed }: { state: PickerState; showing: 
                     title={s.voters.length ? t('player.picker.votedBy', { names: s.voters.join(', ') }) : undefined}
                     className={clsx(
                       'flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums ring-1 transition-colors',
-                      s.voted ? 'bg-accent text-accent-ink ring-accent' : 'text-muted ring-white/15 hover:bg-white/10 hover:text-fg',
+                      s.voted ? 'bg-accent-fill text-accent-ink ring-accent' : 'text-muted ring-white/15 hover:bg-white/10 hover:text-fg',
                       'disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent',
                     )}
                   >

@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import type { CardShape } from '@/api/images';
 import { defaultShape } from '@/api/images';
 import type { BaseItemDto } from '@/api/types';
@@ -22,15 +22,43 @@ interface HubRowProps {
   className?: string;
 }
 
+/** How far each row was scrolled sideways, by the history entry it was on and the row's title. */
+const rowPositions = new Map<string, number>();
+
 /** A titled horizontal scroller with paging arrows. */
 export function HubRow({ title, to, actions, children, className }: HubRowProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
 
+  // Going back to a page puts its rows where they were scrolled to, like the page itself (see AppShell).
+  const location = useLocation();
+  const id = useId();
+  const memoryKey = `${location.key}:${typeof title === 'string' ? title : id}`;
+  const memoryKeyRef = useRef(memoryKey);
+  // A filter or tab gives the page a new history entry; leaving it gives the next page's, which this
+  // row, about to go away, must not save its place under.
+  const [path] = useState(location.pathname);
+  const samePage = location.pathname === path;
+  useEffect(() => {
+    if (samePage) memoryKeyRef.current = memoryKey;
+  }, [samePage, memoryKey]);
+  // The cards may not all be there yet: keep going there as the row grows, until the user scrolls it.
+  const restoring = useRef(rowPositions.get(memoryKey) ?? 0);
+  const stopRestoring = () => {
+    restoring.current = 0;
+  };
+
   const update = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
+    if (restoring.current > 0) {
+      // Not smoothly, as the row's own scrolling is.
+      el.scrollTo({ left: restoring.current, behavior: 'instant' });
+      if (Math.abs(el.scrollLeft - restoring.current) < 2) restoring.current = 0;
+    } else {
+      rowPositions.set(memoryKeyRef.current, el.scrollLeft);
+    }
     setCanLeft(el.scrollLeft > 4);
     setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
@@ -50,6 +78,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
   const page = (dir: 1 | -1) => {
     const el = scrollerRef.current;
     if (!el) return;
+    stopRestoring();
     el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: 'smooth' });
   };
 
@@ -90,6 +119,9 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
         ref={scrollerRef}
         data-hub-scroller
         onScroll={update}
+        onWheel={stopRestoring}
+        onPointerDown={stopRestoring}
+        onTouchStart={stopRestoring}
         // A horizontal scroller also clips vertically, so pad the top to leave room for the cards' hover ring.
         className="scrollbar-none -mt-1 overflow-x-auto scroll-smooth px-4 pt-1 pb-2 sm:px-8 lg:px-10"
         style={{ scrollPaddingInline: '2.5rem' }}

@@ -277,11 +277,29 @@ export function useLocalPlay() {
     [audio, navigate, videoSession, sync, api, userId, toast],
   );
 
+  const playAudioQueue = useCallback(
+    (items: BaseItemDto[], startIndex: number) => {
+      if (sync?.inGroup) {
+        // In a SyncPlay group music starts for everyone too, from the beginning.
+        sync
+          .setQueue(
+            items.map((i) => i.Id),
+            startIndex,
+            0,
+          )
+          .catch((err) => toast.error(err));
+        return;
+      }
+      audio.play(items, startIndex);
+    },
+    [audio, sync, toast],
+  );
+
   return useCallback(
     async (item: BaseItemDto, opts: PlayOptions = {}) => {
       try {
         if (item.MediaType === 'Audio' && !item.IsFolder) {
-          audio.play([item]);
+          playAudioQueue([item], 0);
           return;
         }
         if (item.MediaType === 'Video' && !item.IsFolder) {
@@ -307,7 +325,10 @@ export function useLocalPlay() {
           return;
         }
         if (children[0].MediaType === 'Audio') {
-          audio.play(children.filter((c) => c.MediaType === 'Audio'));
+          playAudioQueue(
+            children.filter((c) => c.MediaType === 'Audio'),
+            0,
+          );
           return;
         }
         const videos = children.filter((c) => c.MediaType === 'Video');
@@ -320,7 +341,7 @@ export function useLocalPlay() {
         toast.error(err);
       }
     },
-    [audio, lookUp, playVideoQueue, toast],
+    [lookUp, playVideoQueue, playAudioQueue, toast],
   );
 }
 
@@ -337,6 +358,7 @@ export function useInstantMix() {
   const { userId } = useSession();
   const audio = useAudioPlayer();
   const toast = useToast();
+  const sync = useSyncPlayManager();
   return useCallback(
     async (item: BaseItemDto) => {
       try {
@@ -353,11 +375,18 @@ export function useInstantMix() {
           toast.info(t('player.play.noInstantMix'));
           return;
         }
-        audio.play(tracks);
+        // In a SyncPlay group the mix plays for everyone.
+        if (sync?.inGroup)
+          await sync.setQueue(
+            tracks.map((i) => i.Id),
+            0,
+            0,
+          );
+        else audio.play(tracks);
       } catch (err) {
         toast.error(err);
       }
     },
-    [api, userId, audio, toast],
+    [api, userId, audio, toast, sync],
   );
 }

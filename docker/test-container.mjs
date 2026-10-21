@@ -17,8 +17,14 @@ function check(name, ok, detail = '') {
 }
 
 // ---- The stand-in server: answers every request with what it was asked, and accepts WebSockets.
+// With the token "member", it is a user who is in every SyncPlay group, for the picker.
+const MEMBER = { Id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', Name: 'tester' };
 const upstream = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
+  if ((req.headers.authorization ?? '').includes('Token="member"')) {
+    if (req.url === '/Users/Me') return res.end(JSON.stringify(MEMBER));
+    if (req.url.startsWith('/SyncPlay/')) return res.end(JSON.stringify({ Participants: [MEMBER.Name] }));
+  }
   res.end(JSON.stringify({ url: req.url, host: req.headers.host, forwardedFor: req.headers['x-forwarded-for'] ?? null }));
 });
 upstream.on('upgrade', (req, socket) => {
@@ -99,6 +105,11 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
     csp,
   );
   check(
+    'keeps API calls and media to its own address when it proxies a locked server',
+    /connect-src 'self'[^;*]*;/.test(csp) && /media-src 'self'[^;*]*;/.test(csp),
+    csp,
+  );
+  check(
     'forbids framing and type sniffing',
     home.headers.get('x-frame-options') === 'DENY' && home.headers.get('x-content-type-options') === 'nosniff',
   );
@@ -128,6 +139,10 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
     'the SyncPlay picker runs, and turns away a caller the server does not know',
     picker.status === 401 && (await picker.json()).code === 'notSignedIn',
   );
+  const burst = await Promise.all(
+    Array.from({ length: 80 }, () => fetch(`${origin}/jellyfied-api/syncplay/aaaaaaaabbbbccccddddeeeeeeeeeeee`).then((r) => r.status)),
+  );
+  check('the SyncPlay picker turns away a flood of requests from one address', burst.includes(429), burst.join(' '));
   const forwardedFor = (header) =>
     fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': header } }).then(
       (r) => r.json().then((j) => j.forwardedFor),
@@ -154,6 +169,24 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   check('access tokens are kept out of the access log', log.includes('ApiKey=***') && !log.includes('secret-token'));
 });
 
+console.log(`\n${image}: keeping the SyncPlay picker's state`);
+await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}` }, async (name) => {
+  const group = `${origin}/jellyfied-api/syncplay/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`;
+  const headers = { Authorization: 'MediaBrowser Token="member"', 'Content-Type': 'application/json' };
+  const claimed = await fetch(group, { method: 'POST', headers, body: JSON.stringify({ action: 'claim' }) }).then((r) => r.json());
+  check('the picker takes a request from a member', claimed.claimed === true, JSON.stringify(claimed));
+  docker('restart', name);
+  let after = null;
+  for (let i = 0; i < 40 && !after; i++) {
+    after = await fetch(group, { headers }).then(
+      (r) => (r.ok ? r.json() : null),
+      () => null,
+    );
+    if (!after) await new Promise((r) => setTimeout(r, 500));
+  }
+  check('what it knew is still there after a restart', after?.claimed === true && after?.host === MEMBER.Name, JSON.stringify(after));
+});
+
 console.log(`\n${image}: trusting no proxies`);
 await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIED_TRUSTED_PROXIES: 'none' }, async () => {
   const seen = await fetch(`${origin}/jellyfin/Users/Me`, { headers: { 'X-Forwarded-For': '203.0.113.7' } }).then(
@@ -162,6 +195,15 @@ await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}
   );
   check('X-Forwarded-For from the peer is ignored', Boolean(seen) && seen !== '203.0.113.7', seen);
 });
+
+console.log(`\n${image}: with a server address for the browser`);
+await withContainer(
+  { JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIN_PUBLIC_URL: 'https://jellyfin.example.com' },
+  async () => {
+    const csp = (await fetch(`${origin}/`)).headers.get('content-security-policy') ?? '';
+    check('lets API calls and media go to the other address', /connect-src \*/.test(csp) && /media-src \*/.test(csp), csp);
+  },
+);
 
 console.log(`\n${image}: under /jellyfied`);
 await withContainer({ JELLYFIN_URL: `http://host.docker.internal:${upstreamPort}`, JELLYFIED_BASE_PATH: '/jellyfied/' }, async () => {

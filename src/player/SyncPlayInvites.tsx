@@ -109,7 +109,7 @@ export function SyncPlayInvites() {
           {t('player.syncPlayInvites.decline')}
         </button>
         <button
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
+          className="rounded-md bg-accent-fill px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
           disabled={busy}
           onClick={() => void join()}
         >

@@ -6,10 +6,43 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Added
+- A programme guide for Live TV: channels down the side, time along the top, a few hours at a time.
+  A programme opens with what it is about, Watch now while it airs, and, for those allowed to
+  manage Live TV, Record or Record series, with which airings to record (new ones only, any
+  channel, any time), how early to start and late to end, and how many to keep. What is scheduled
+  is listed under Recordings, where it can be changed or cancelled.
+- SyncPlay for music: a song, album or Instant Mix played in a group plays for everyone, and
+  pausing, seeking, skipping, repeat, shuffle and removing songs apply to the whole group.
+- Lyrics in the music player, where the server has them (Jellyfin 10.9 or newer). Timed lyrics
+  follow the song, and clicking a line jumps there.
+- "Who's watching?" on the sign-in screen: everyone's picture, for the accounts signed in on this
+  device (with a lock on those with a PIN) and the server's public users.
+- Your stats, in the account menu: time watched, films, episodes and song plays, top genres, what
+  you have rewatched and the last twelve weeks.
+- "Download all…" for a season, show, album, collection or playlist, one file after the other.
+- A Segments tab in the metadata editor, for a video's intro, credits, recap, preview and
+  commercial markers. They can be changed when the server has the Intro Skipper plugin.
+- The SyncPlay picker keeps its suggestions and votes across restarts and updates of the
+  container, on a volume (`/var/lib/jellyfied`, named `jellyfied-data` in the Compose file).
+
 ### Changed
+- Buttons and badges filled with the accent colour use a slightly deeper shade of it, so their
+  white text is easy to read (the default blue goes from #00a4dc to #007ea9). Accents that would
+  turn muddy that way, like amber, keep their colour and get dark text. Faint text is a little
+  lighter, for the same reason.
+- When the container proxies Jellyfin and the server is locked, its Content-Security-Policy only
+  lets API calls and media go to Jellyfied's own address.
+- The SyncPlay picker's endpoints are rate-limited per address.
+- The search, favorites and item pages load when first opened, which makes the first load smaller.
 - Subtitles drawn over the video are looked at only when a line starts or ends, or the video is
   seeked, paused or sped up, instead of on every frame. This saves work during long playback,
   mostly on phones and in the mini player.
+
+### Fixed
+- Switches in the settings had no on/off state for screen readers until their value had loaded.
+- Going back to a page puts its rows, such as a show's seasons, where they were scrolled to
+  sideways, instead of at the start.
 
 ### Removed
 - The last of the code kept for the rename from Jellyplex. A browser still signed in from back

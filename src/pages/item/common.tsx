@@ -32,6 +32,7 @@ import { supportsMetadataEditing } from '@/components/media/metadataEditing';
 import { Button } from '@/components/ui/Button';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { ConfirmDialog } from '@/components/ui/Modal';
+import { canDownloadAll, DownloadAllDialog } from '@/components/media/DownloadAllDialog';
 import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { formatClock, formatRemaining, formatRuntime, playedPercent, ticksToSeconds, yearRange } from '@/lib/format';
@@ -228,6 +229,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
   const [addingToCollection, setAddingToCollection] = useState(false);
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const trailers = useLocalTrailers(item.Id, (item.LocalTrailerCount ?? 0) > 0);
   const suggest = useSuggestMenuItem(item);
 
@@ -265,6 +267,9 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
       icon: <Download size={16} />,
       onSelect: () => window.open(api.url(`/Items/${item.Id}/Download`, {}, true), '_blank', 'noopener'),
     });
+  }
+  if (canDownloadAll(item)) {
+    menu.push({ label: t('media.downloadAll.menu'), icon: <Download size={16} />, onSelect: () => setDownloadingAll(true) });
   }
   if (isAdmin) {
     if (supportsMetadataEditing(item)) {
@@ -373,6 +378,7 @@ export function ActionBar({ item, playOptions, showShuffle, extraMenu = [] }: Ac
         </Suspense>
       )}
 
+      <DownloadAllDialog item={item} open={downloadingAll} onClose={() => setDownloadingAll(false)} />
       <ConfirmDialog
         open={confirmDelete}
         title={t('item.common.deleteItem')}

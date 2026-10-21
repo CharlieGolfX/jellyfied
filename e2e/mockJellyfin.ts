@@ -1,4 +1,5 @@
 import type { Page, Route, WebSocketRoute } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /**
  * A small fake Jellyfin server, answered from inside the browser, so the smoke tests need no real
@@ -44,7 +45,26 @@ interface MockOptions {
   as?: { id: string; name: string };
   /** Called with the realtime connection, so a test can play the server's side of it. */
   onSocket?: (ws: WebSocketRoute) => void;
+  /** Give the mock movie a file to play: eight seconds of a test pattern and a tone (WebM). */
+  playable?: boolean;
 }
+
+/** The playable movie's one media source, played directly from fixtures/sample.webm. */
+const sampleSource = {
+  Id: 'source-1',
+  Protocol: 'File',
+  Container: 'webm',
+  Size: 67_862,
+  RunTimeTicks: 80_000_000,
+  SupportsDirectPlay: true,
+  SupportsDirectStream: true,
+  SupportsTranscoding: false,
+  MediaStreams: [
+    { Type: 'Video', Index: 0, Codec: 'vp9', Width: 320, Height: 180, IsDefault: true },
+    { Type: 'Audio', Index: 1, Codec: 'opus', Channels: 1, Language: 'eng', IsDefault: true },
+  ],
+  DefaultAudioStreamIndex: 1,
+};
 
 const shows = { Id: 'lib-shows', Name: 'Shows', Type: 'CollectionFolder', CollectionType: 'tvshows', IsFolder: true };
 
@@ -56,6 +76,33 @@ const manyMovies = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].flatMap((letter, l) =>
     Name: `${letter} film ${String(n + 1).padStart(2, '0')}`,
     ProductionYear: 2000 + ((l * 10 + n) % 3),
     genreId: n % 2 ? 'g-comedy' : 'g-drama',
+  })),
+);
+
+/** A show in the "Shows" library: twelve seasons, more than fit across, of 24 episodes each. */
+const series = { Id: 'show-1', Name: 'The Mock Show', Type: 'Series', IsFolder: true, ChildCount: 12, UserData: { Played: false } };
+const seasons = Array.from({ length: 12 }, (_, i) => i + 1).map((n) => ({
+  Id: `season-${n}`,
+  Name: `Season ${n}`,
+  Type: 'Season',
+  IsFolder: true,
+  IndexNumber: n,
+  SeriesId: series.Id,
+  SeriesName: series.Name,
+  UserData: { Played: false },
+}));
+const episodes = seasons.flatMap((season) =>
+  Array.from({ length: 24 }, (_, i) => ({
+    ...movie,
+    Id: `ep-${season.IndexNumber}-${i + 1}`,
+    Name: `Episode ${i + 1} of ${season.Name}`,
+    Type: 'Episode',
+    IndexNumber: i + 1,
+    ParentIndexNumber: season.IndexNumber,
+    SeasonId: season.Id,
+    SeasonName: season.Name,
+    SeriesId: series.Id,
+    SeriesName: series.Name,
   })),
 );
 
@@ -179,8 +226,17 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
         ],
       },
     };
+  if (path === '/Items' && url.searchParams.get('parentId') === shows.Id && options.big) return { body: list([series]) };
   if (path === '/Items' && url.searchParams.has('parentId'))
     return { body: libraryItems(options.big ? manyMovies : [movie], url.searchParams) };
+  if (options.big) {
+    if (path === `/Shows/${series.Id}/Seasons`) return { body: list(seasons) };
+    if (path === `/Shows/${series.Id}/Episodes`)
+      return { body: list(episodes.filter((e) => e.SeasonId === url.searchParams.get('seasonId'))) };
+    const shown = [series, ...seasons, ...episodes].find((i) => path === `/Items/${i.Id}`);
+    if (shown) return { body: shown };
+    if (/^\/Items\/ep-[^/]+\/PlaybackInfo$/.test(path)) return { body: { MediaSources: [], PlaySessionId: 'play-1' } };
+  }
   // A search finds the one movie, or with the large library all 260 of them.
   if (path === '/Items') return { body: list(url.searchParams.has('searchTerm') ? (options.big ? manyMovies : [movie]) : []) };
   if (path === `/Items/${library.Id}`) return { body: library };
@@ -188,11 +244,15 @@ function answer(route: Route, options: MockOptions): { status?: number; body?: u
   if (path === `/Items/${brokenMovie.Id}`) return { body: brokenMovie };
   if (/^\/Items\/[^/]+$/.test(path)) return { status: 404 };
   if (/\/(SpecialFeatures|LocalTrailers)$/.test(path) || path === '/Sessions' || path === '/Localization/Cultures') return { body: [] };
-  // There is no media behind the mock movie: the player opens and reports that.
-  if (path === `/Items/${movie.Id}/PlaybackInfo`) return { body: { MediaSources: [], PlaySessionId: 'play-1' } };
+  // There is no media behind the mock movie unless it is playable: the player opens and reports that.
+  if (path === `/Items/${movie.Id}/PlaybackInfo`)
+    return { body: { MediaSources: options.playable ? [sampleSource] : [], PlaySessionId: 'play-1' } };
   if (method !== 'GET') return { status: 204 };
   return { body: list([]) };
 }
+
+let sampleFile: Buffer | undefined;
+const sample = () => (sampleFile ??= readFileSync(new URL('./fixtures/sample.webm', import.meta.url)));
 
 export async function mockJellyfin(page: Page, options: MockOptions = {}) {
   // What the container's entrypoint writes when JELLYFIN_URL is set.
@@ -207,6 +267,8 @@ export async function mockJellyfin(page: Page, options: MockOptions = {}) {
   await page.route(`**${SERVER}/**`, (route) => {
     // No artwork: the cards fall back to their placeholders.
     if (/\/Images\/|\/UserImage/.test(route.request().url())) return route.fulfill({ status: 404 });
+    if (options.playable && new URL(route.request().url()).pathname === `${SERVER}/Videos/${movie.Id}/stream`)
+      return route.fulfill({ contentType: 'video/webm', body: sample() });
     const { status = 200, body } = answer(route, options);
     return route.fulfill({ status, contentType: 'application/json', body: body === undefined ? '' : JSON.stringify(body) });
   });

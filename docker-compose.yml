@@ -36,6 +36,9 @@ services:
     extra_hosts:
       # Makes host.docker.internal work on Linux too.
       - 'host.docker.internal:host-gateway'
+    volumes:
+      # The SyncPlay picker's suggestions and votes, so they survive restarts and updates.
+      - jellyfied-data:/var/lib/jellyfied
 
   # If Jellyfin runs in Docker as well, put both on the same network and use
   # JELLYFIN_URL=http://jellyfin:8096, e.g.:
@@ -50,3 +53,6 @@ services:
   #     - ./jellyfin/config:/config
   #     - ./jellyfin/cache:/cache
   #     - /path/to/media:/media:ro
+
+volumes:
+  jellyfied-data:

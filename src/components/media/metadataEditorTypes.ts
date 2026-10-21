@@ -44,4 +44,4 @@ export interface RemoteSearchResult {
   ProviderIds?: Record<string, string>;
 }
 
-export type Tab = 'details' | 'images' | 'identify';
+export type Tab = 'details' | 'images' | 'identify' | 'segments';

@@ -111,8 +111,13 @@ export type ChapterInfo = Model<Server.ChapterInfo, 'Name' | 'ImageTag', 'StartP
 
 export type BaseItemDto = Model<
   Server.BaseItemDto,
-  // Live TV: channels carry their number and what is on, programmes their channel and times.
+  // Live TV: channels carry their number and what is on, programmes their channel and times,
+  // and whether they will be recorded (TimerId) or are part of a series that will be.
   | 'ChannelNumber'
+  | 'TimerId'
+  | 'SeriesTimerId'
+  | 'IsSeries'
+  | 'EpisodeTitle'
   | 'ChannelId'
   | 'ChannelName'
   | 'StartDate'
@@ -207,6 +212,30 @@ export type TrickplayInfo = Model<
   | 'ThumbnailCount'
   // Milliseconds between thumbnails. */
   | 'Interval'
+>;
+
+/** A scheduled recording of one programme. */
+export type TimerInfo = Model<
+  Server.TimerInfoDto,
+  'Id' | 'ProgramId' | 'ChannelName' | 'Name' | 'Status' | 'SeriesTimerId' | 'PrePaddingSeconds' | 'PostPaddingSeconds',
+  'ChannelId' | 'StartDate' | 'EndDate',
+  { ProgramInfo?: BaseItemDto | null }
+>;
+
+/** A recurring recording: every airing of a series. */
+export type SeriesTimerInfo = Model<
+  Server.SeriesTimerInfoDto,
+  | 'Id'
+  | 'ProgramId'
+  | 'ChannelName'
+  | 'Name'
+  | 'RecordAnyTime'
+  | 'RecordAnyChannel'
+  | 'RecordNewOnly'
+  | 'KeepUpTo'
+  | 'PrePaddingSeconds'
+  | 'PostPaddingSeconds',
+  'ChannelId'
 >;
 
 export interface ItemsResult<T = BaseItemDto> {
@@ -538,6 +567,12 @@ export type PlaybackInfoResponse = Model<
 >;
 
 export type MediaSegment = Model<Server.MediaSegmentDto, never, 'Id' | 'ItemId' | 'Type' | 'StartTicks' | 'EndTicks'>;
+
+/** One line of a song's lyrics; `Start` (ticks) only when the lyrics are timed (LRC). */
+export type LyricLine = Model<Server.LyricLine, 'Start', 'Text'>;
+
+/** A song's lyrics (Jellyfin 10.9+, /Audio/{id}/Lyrics). */
+export type Lyrics = Model<Server.LyricDto, never, never, { Lyrics?: LyricLine[] }>;
 
 export type QueryFilters = Model<
   Server.QueryFilters,

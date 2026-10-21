@@ -12,6 +12,7 @@ with plain `docker run`, pass them with `-e`. Changes take effect when the conta
 | `JELLYFIED_BASE_PATH`   | _(empty)_                  | Serve Jellyfied under a path, e.g. `/jellyfied`, for reverse proxies that give each app a path instead of a host name. The proxy to Jellyfin moves with it (`/jellyfied/jellyfin`). |
 | `JELLYFIED_PORT`        | `80`                       | Port nginx listens on inside the container. |
 | `JELLYFIED_TRUSTED_PROXIES` | `private`              | Whose `X-Forwarded-For` header is believed: the reverse proxy or tunnel in front of Jellyfied. Addresses or networks separated by spaces (`172.18.0.0/16 10.0.0.2`), `private` for loopback and the private ranges, or `none`. |
+| `JELLYFIED_DATA_DIR`        | `/var/lib/jellyfied`   | Where the SyncPlay picker keeps its state between restarts. The image declares it as a volume; `docker-compose.yml` names it `jellyfied-data`. On a read-only file system the state is kept in memory only. |
 
 ¹ The Compose file sets it to `http://host.docker.internal:8096` unless you choose another value.
 
@@ -48,6 +49,11 @@ Docker Compose additionally understands these:
   and publish that port instead.
 - The container sends a strict Content-Security-Policy: scripts and styles only from Jellyfied
   itself, plus WebAssembly (for styled subtitles) and Google's Cast script when Chromecast is used.
+  When it proxies Jellyfin and the server is locked (no `JELLYFIN_PUBLIC_URL`), API calls and
+  media are also limited to Jellyfied's own address; otherwise they may go anywhere, since the
+  server can live elsewhere.
+- The SyncPlay picker endpoints are rate-limited to 10 requests a second per address (bursts of
+  up to 50), since each one checks the caller with Jellyfin.
 - Under a base path, a reverse proxy in front has to pass the path on unchanged (no stripping).
 - Jellyfied stores only the session tokens of the signed-in accounts and UI preferences in the
   browser's local storage.

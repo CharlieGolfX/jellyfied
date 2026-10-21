@@ -10,11 +10,12 @@ import { DetailsTab } from './MetadataDetailsTab';
 import { IDENTIFY_TYPES, type Tab } from './metadataEditorTypes';
 import { IdentifyTab } from './MetadataIdentifyTab';
 import { ImagesTab } from './MetadataImagesTab';
+import { SegmentsTab } from './MetadataSegmentsTab';
 import { t } from '@/i18n';
 
 /** Item types the server can look up with its metadata providers ("Identify"). */
 
-/** Metadata editor for administrators: text fields, artwork, and re-identifying an item. */
+/** Metadata editor for administrators: text fields, artwork, re-identifying an item, and a video's skippable segments. */
 export default function MetadataEditor({ itemId, onClose }: { itemId: string; onClose: () => void }) {
   const api = useApi();
   const { userId } = useSession();
@@ -37,6 +38,7 @@ export default function MetadataEditor({ itemId, onClose }: { itemId: string; on
     { id: 'images', label: t('media.metadataEditor.images') },
   ];
   if (item.data && IDENTIFY_TYPES.has(item.data.Type)) tabs.push({ id: 'identify', label: t('media.metadataEditor.identify') });
+  if (item.data?.MediaType === 'Video' && !item.data.IsFolder) tabs.push({ id: 'segments', label: t('media.metadataEditor.segments') });
 
   return (
     <Modal
@@ -75,6 +77,7 @@ export default function MetadataEditor({ itemId, onClose }: { itemId: string; on
           </div>
           {tab === 'images' && <ImagesTab item={item.data} />}
           {tab === 'identify' && <IdentifyTab item={item.data} onApplied={onClose} />}
+          {tab === 'segments' && <SegmentsTab item={item.data} />}
         </>
       )}
     </Modal>

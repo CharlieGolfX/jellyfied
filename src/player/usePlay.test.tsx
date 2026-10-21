@@ -115,7 +115,7 @@ describe('usePlay in this browser', () => {
   it('puts a song in the music player', async () => {
     const song = item({ Id: 'song-1', Type: 'Audio', MediaType: 'Audio' });
     await play(song);
-    expect(m.audio.play).toHaveBeenCalledWith([song]);
+    expect(m.audio.play).toHaveBeenCalledWith([song], 0);
     expect(m.navigate).not.toHaveBeenCalled();
   });
 
@@ -143,7 +143,7 @@ describe('usePlay in this browser', () => {
     const tracks = ['t1', 't2'].map((Id) => item({ Id, Type: 'Audio', MediaType: 'Audio' }));
     m.api.get.mockResolvedValue(list(tracks));
     await play(item({ Id: 'album-1', Type: 'MusicAlbum', MediaType: undefined, IsFolder: true }));
-    expect(m.audio.play).toHaveBeenCalledWith(tracks);
+    expect(m.audio.play).toHaveBeenCalledWith(tracks, 0);
   });
 
   it('says so when there is nothing to play', async () => {
@@ -166,6 +166,14 @@ describe('usePlay in this browser', () => {
     await play(item({ Id: 'movie-1' }));
     await vi.waitFor(() => expect(m.sync!.setQueue).toHaveBeenCalledWith(['movie-1'], 0, 700));
     expect(m.navigate).not.toHaveBeenCalled();
+  });
+
+  it('starts music for the whole group too, from the beginning', async () => {
+    m.sync = { inGroup: true, setQueue: vi.fn().mockResolvedValue(undefined) };
+    act(() => root.render(<Probe />));
+    await play(item({ Id: 'song-1', Type: 'Audio', MediaType: 'Audio' }));
+    await vi.waitFor(() => expect(m.sync!.setQueue).toHaveBeenCalledWith(['song-1'], 0, 0));
+    expect(m.audio.play).not.toHaveBeenCalled();
   });
 });
 

@@ -134,7 +134,7 @@ export default defineConfig(({ mode }) => {
         reportsDirectory: 'coverage',
         // A floor, a little under what the tests reach today: the run fails when coverage drops
         // below it. Raise it when tests are added.
-        thresholds: { lines: 29, statements: 28, functions: 16, branches: 21 },
+        thresholds: { lines: 45, statements: 44, functions: 31, branches: 36 },
       },
     },
   };

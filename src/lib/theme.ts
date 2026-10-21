@@ -63,6 +63,32 @@ function luminance(hex: string): number {
   return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
 }
 
+/** An accent darkened towards black: `keep` is how much of each channel stays (0–1). */
+function darken(hex: string, keep: number): string {
+  const channel = (i: number) =>
+    Math.round(parseInt(hex.slice(i, i + 2), 16) * keep)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
+
+const contrastWithWhite = (hex: string) => 1.05 / (luminance(hex) + 0.05);
+
+/**
+ * The colours for filled surfaces with text on them: the accent made just dark enough for white
+ * text to reach WCAG AA (4.5:1), which keeps the colour recognisable for most accents. One that
+ * would have to lose more than 30% of its brightness (light yellows and ambers turn brown) keeps
+ * its colour and gets dark text instead.
+ */
+export function accentColors(accent: string): { fill: string; hover: string; ink: string } {
+  let keep = 1;
+  while (keep > 0.7 && contrastWithWhite(darken(accent, keep)) < 4.5) keep -= 0.01;
+  if (contrastWithWhite(darken(accent, keep)) < 4.5) {
+    return { fill: accent, hover: `color-mix(in srgb, ${accent} 84%, white)`, ink: '#101010' };
+  }
+  return { fill: darken(accent, keep), hover: darken(accent, keep - 0.06), ink: '#ffffff' };
+}
+
 function read(): Theme {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Theme>;
@@ -79,12 +105,15 @@ function read(): Theme {
 function apply(theme: Theme) {
   const root = document.documentElement.style;
   if (theme.accent === DEFAULT_THEME.accent) {
-    for (const name of ['--color-accent', '--color-accent-hover', '--color-accent-ink']) root.removeProperty(name);
+    for (const name of ['--color-accent', '--color-accent-hover', '--color-accent-fill', '--color-accent-fill-hover', '--color-accent-ink'])
+      root.removeProperty(name);
   } else {
     root.setProperty('--color-accent', theme.accent);
     root.setProperty('--color-accent-hover', `color-mix(in srgb, ${theme.accent} 84%, white)`);
-    // Text on top of the accent colour: dark on light accents, white on the rest.
-    root.setProperty('--color-accent-ink', luminance(theme.accent) > 0.36 ? '#101010' : '#ffffff');
+    const colors = accentColors(theme.accent);
+    root.setProperty('--color-accent-fill', colors.fill);
+    root.setProperty('--color-accent-fill-hover', colors.hover);
+    root.setProperty('--color-accent-ink', colors.ink);
   }
   const colors = theme.background === DEFAULT_THEME.background ? null : backgroundColors(theme.background);
   STEPS.forEach((step, i) => {

@@ -1,0 +1,4 @@
+/* Used by visual.spec.ts: the moving picture is left out of the comparison. */
+video {
+  visibility: hidden !important;
+}

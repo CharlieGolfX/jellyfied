@@ -3,11 +3,11 @@ import type { ServerClock } from './syncplayClock';
 import { TICKS_PER_MS, type SyncCommand } from './syncplayProtocol';
 
 /**
- * Keeps one <video> element, playing one group queue entry, following the server's commands, and
+ * Keeps one <video> or <audio> element, playing one group queue entry, following the server's commands, and
  * tells the server what the user does to it (pause, play, seek) and when it stalls.
  */
 export class SyncPlayFollower {
-  readonly video: HTMLVideoElement;
+  readonly video: HTMLMediaElement;
   readonly playlistItemId: string;
 
   /** 'loading' until the player has buffered and reported Ready for the first time. */
@@ -27,7 +27,7 @@ export class SyncPlayFollower {
   private readonly api: JellyfinApi;
   private readonly clock: ServerClock;
 
-  constructor(api: JellyfinApi, clock: ServerClock, video: HTMLVideoElement, playlistItemId: string) {
+  constructor(api: JellyfinApi, clock: ServerClock, video: HTMLMediaElement, playlistItemId: string) {
     this.api = api;
     this.clock = clock;
     this.video = video;

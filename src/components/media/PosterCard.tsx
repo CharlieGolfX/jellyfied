@@ -190,7 +190,7 @@ export const PosterCard = memo(function PosterCard({
           />
         )}
         {item.IsFolder && unplayedCount > 0 && (item.Type === 'Series' || item.Type === 'Season' || item.Type === 'BoxSet') && (
-          <span className="absolute top-1.5 right-1.5 min-w-6 rounded bg-accent px-1.5 py-0.5 text-center text-xs font-bold text-accent-ink shadow">
+          <span className="absolute top-1.5 right-1.5 min-w-6 rounded bg-accent-fill px-1.5 py-0.5 text-center text-xs font-bold text-accent-ink shadow">
             {unplayedCount}
           </span>
         )}
@@ -221,7 +221,7 @@ export const PosterCard = memo(function PosterCard({
           aria-label={t('media.posterCard.select', { finalTitle })}
           className={clsx(
             'absolute top-1.5 left-1.5 z-[1] flex h-6 w-6 items-center justify-center rounded-full border-2 shadow transition-opacity',
-            selected ? 'border-accent bg-accent text-accent-ink' : 'border-white/80 bg-black/50 text-transparent hover:text-white/80',
+            selected ? 'border-accent bg-accent-fill text-accent-ink' : 'border-white/80 bg-black/50 text-transparent hover:text-white/80',
             selected || selecting ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100',
           )}
         >
@@ -238,7 +238,7 @@ export const PosterCard = memo(function PosterCard({
           )}
           tabIndex={-1}
         >
-          <span className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-ink shadow-lg transition-transform hover:scale-110">
+          <span className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-fill text-accent-ink shadow-lg transition-transform hover:scale-110">
             <Play size={22} fill="currentColor" className="ml-0.5" />
           </span>
         </button>

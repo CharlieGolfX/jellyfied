@@ -953,16 +953,58 @@
     }
   },
   "liveTv": {
+    "allEpisodes": "Todos los episodios",
+    "anyChannel": "Cualquier canal",
+    "atAnyTime": "A cualquier hora",
+    "cancelRecording": "Cancelar grabación",
+    "cancelRecordingOf": "Cancelar la grabación de {name}",
+    "cancelSeriesRecording": "Cancelar grabación de la serie",
+    "cancelSeriesRecordingOf": "Dejar de grabar {name}",
     "channels": "Canales",
+    "earlier": "Antes",
+    "endLate": "Terminar más tarde",
+    "guide": "Guía",
+    "keep": "Conservar",
+    "keepAll": "Todas las grabaciones",
+    "keepLatest": {
+      "one": "La última grabación",
+      "other": "Las últimas {count} grabaciones"
+    },
+    "later": "Después",
     "liveTvHasNoChannels": "La TV en directo todavía no tiene canales. El sintonizador y la guía se configuran en el panel de Jellyfin.",
+    "minutes": {
+      "one": "{count} minuto",
+      "other": "{count} minutos"
+    },
+    "newEpisodesOnly": "Solo episodios nuevos",
     "noChannels": "No hay canales",
     "noGuideInformation": "No hay información de la guía",
     "noRecordings": "No hay grabaciones",
     "nothingInTheGuideRight": "Ahora mismo no hay nada en la guía",
+    "now": "Ahora",
+    "onAnyChannel": "En cualquier canal",
     "onNow": "En emisión",
+    "record": "Grabar",
+    "recordSeries": "Grabar la serie",
+    "recordSeriesMenu": "Grabar la serie…",
+    "recordSeriesTitle": "Grabar {name}",
+    "recordingCancelled": "Grabación cancelada",
+    "recordingNow": "grabando ahora",
+    "recordingScheduled": "Se grabará",
     "recordings": "Grabaciones",
     "recordingsHint": "Los programas que graba el servidor aparecen aquí.",
-    "watch": "Ver {name}"
+    "scheduled": "Programadas",
+    "seriesRecordingCancelled": "Grabación de la serie cancelada",
+    "seriesRecordingSaved": "Grabación de la serie guardada",
+    "seriesRecordingScheduled": "Se grabarán todas las emisiones",
+    "seriesRecordingSettingsOf": "Ajustes de la grabación de {name}",
+    "seriesRecordings": "Grabaciones de series",
+    "seriesWillBeRecorded": "La serie se está grabando",
+    "settings": "Ajustes",
+    "startEarly": "Empezar antes",
+    "watch": "Ver {name}",
+    "watchNow": "Ver ahora",
+    "willBeRecorded": "Se grabará"
   },
   "login": {
     "backToUsers": "Volver a los usuarios",
@@ -977,13 +1019,13 @@
     "licences": "Licencias",
     "notJellyfin": "Esa dirección no ha respondido como un servidor Jellyfin.",
     "password": "Contraseña",
+    "pinLocked": "Bloqueada con un PIN",
     "quickConnect": "Quick Connect",
     "quickConnectHelp": "En un dispositivo donde ya hayas iniciado sesión, abre Quick Connect en tus ajustes de usuario e introduce este código:",
     "serverAddress": "Dirección del servidor",
     "serverAddressHint": "Por ejemplo, http://192.168.1.10:8096 o https://jellyfin.example.com",
     "serverInfo": "{name} · Jellyfin {version}",
     "setupIncomplete": "Este servidor no ha terminado su configuración inicial. Completa primero el asistente de configuración en la interfaz web de Jellyfin.",
-    "signedInHere": "Sesión iniciada en este dispositivo",
     "signIn": "Iniciar sesión",
     "signInManually": "Iniciar sesión manualmente",
     "signOutAccount": "Cerrar la sesión de {name}",
@@ -1029,6 +1071,27 @@
       "largerPosters": "Pósteres más grandes",
       "posterSize": "Tamaño de los pósteres",
       "smallerPosters": "Pósteres más pequeños"
+    },
+    "downloadAll": {
+      "allStarted": "Se han iniciado todas las descargas. El navegador muestra cómo van.",
+      "browserMayAsk": "Se descargan una tras otra; puede que el navegador pregunte si este sitio puede descargar varios archivos.",
+      "menu": "Descargar todo…",
+      "nothing": "Aquí no hay nada que puedas descargar.",
+      "progress": "Iniciadas {started} de {count}…",
+      "start": {
+        "one": "Descargar {count} archivo",
+        "other": "Descargar {count} archivos"
+      },
+      "started": "Iniciada",
+      "summary": {
+        "one": "{count} archivo, {size} en total.",
+        "other": "{count} archivos, {size} en total."
+      },
+      "summaryNoSize": {
+        "one": "{count} archivo.",
+        "other": "{count} archivos."
+      },
+      "title": "Descargar {name}"
     },
     "featuredBanner": {
       "details": "Detalles",
@@ -1089,7 +1152,8 @@
       "details": "Detalles",
       "editMetadata": "Editar metadatos: {name}",
       "identify": "Identificar",
-      "images": "Imágenes"
+      "images": "Imágenes",
+      "segments": "Segmentos"
     },
     "metadataIdentifyTab": {
       "applyingMatch": "Aplicando la coincidencia…",
@@ -1132,6 +1196,31 @@
       "moreActions": "Más acciones",
       "play": "Reproducir {finalTitle}",
       "select": "Seleccionar {finalTitle}"
+    },
+    "segments": {
+      "add": "Añadir un segmento",
+      "changedElsewhere": "Los segmentos se cambiaron en otro sitio mientras tanto. Aquí están tal como son ahora.",
+      "end": "Fin",
+      "hint": "El reproductor ofrece saltarlos. Tiempos como minutos:segundos (1:23) u horas:minutos:segundos.",
+      "none": "Aún no hay segmentos.",
+      "problem": {
+        "badEnd": "El final no es un tiempo.",
+        "badStart": "El inicio no es un tiempo.",
+        "endBeforeStart": "El final tiene que ir después del inicio.",
+        "pastTheEnd": "Empieza después de que termine el vídeo."
+      },
+      "readOnly": "Vienen de los proveedores de segmentos del servidor. Para cambiarlos aquí, instala el complemento Intro Skipper (10.11 o posterior), que permite a Jellyfied editarlos.",
+      "remove": "Quitar el segmento",
+      "saved": "Segmentos guardados",
+      "start": "Inicio",
+      "type": "Tipo",
+      "types": {
+        "Commercial": "Anuncio",
+        "Intro": "Intro",
+        "Outro": "Créditos",
+        "Preview": "Avance",
+        "Recap": "Resumen"
+      }
     }
   },
   "nav": {
@@ -1151,6 +1240,7 @@
   "player": {
     "audioBar": {
       "closePlayer": "Cerrar el reproductor",
+      "lyrics": "Letra",
       "mute": "Silenciar",
       "playQueue": "Cola de reproducción · {count}",
       "queue": "Cola",
@@ -1160,8 +1250,10 @@
         "off": "Repetir: desactivado",
         "one": "Repetir: esta pista"
       },
+      "shuffleGroup": "Mezclar la cola del grupo",
       "shuffleUpcoming": "Mezclar lo siguiente",
-      "volume": "Volumen"
+      "volume": "Volumen",
+      "withGroup": "Sonando con tu grupo de SyncPlay"
     },
     "audioDelay": "Retardo de audio {delay}",
     "castButton": {
@@ -1593,6 +1685,32 @@
     "updatePassword": "Actualizar contraseña",
     "usedForClockTimesSuch": "Se usa para las horas, como «Termina a las» en el reproductor, y para las fechas del panel."
   },
+  "stats": {
+    "episodesOfShows": {
+      "one": "Episodios, de {count} serie",
+      "other": "Episodios, de {count} series"
+    },
+    "films": "Películas",
+    "howCounted": "A partir de lo que ha reproducido esta cuenta. Jellyfin recuerda cuántas veces y cuándo fue la última, no cada vez, así que volver a ver una película cuenta toda la película otra vez y un título cuenta en la semana en que se reprodujo por última vez.",
+    "lastWeeks": "Las últimas {count} semanas",
+    "lastWeeksNote": "Películas y episodios, por la semana en que se reprodujeron por última vez",
+    "nothingYet": "Aún no has visto nada",
+    "nothingYetHint": "Aquí aparecen las películas, episodios y canciones que reproduzcas.",
+    "rewatched": "Vistas más de una vez",
+    "songPlays": "Reproducciones de canciones",
+    "thisWeek": "Esta semana",
+    "timeWatched": "Tiempo visto",
+    "times": {
+      "one": "una vez",
+      "other": "{count} veces"
+    },
+    "title": "Tus estadísticas",
+    "topGenres": "Géneros más vistos",
+    "weekOf": {
+      "one": "Semana del {date}: {count} título",
+      "other": "Semana del {date}: {count} títulos"
+    }
+  },
   "ui": {
     "crashState": {
       "crashed": "Esta página ha encontrado un error y no se ha podido mostrar. El resto de Jellyfied sigue funcionando.",
@@ -1619,6 +1737,7 @@
     "licences": "Licencias",
     "open": "Menú de la cuenta",
     "signOut": "Cerrar sesión",
+    "stats": "Tus estadísticas",
     "switchTo": "Cambiar a {name}"
   }
 }

@@ -51,19 +51,38 @@ scripts/        API type generation, screenshots, licence notices, release helpe
 - `npm run test:coverage` also writes a coverage report to `coverage/`, and fails when coverage
   drops below the floor set in `vite.config.ts` (CI runs this). Raise the floor when you add tests.
 - Hooks are tested by running them in a component (`src/test/renderHook.tsx`), with the server
-  and the browser's media abilities replaced by stand-ins.
+  and the browser's media abilities replaced by stand-ins. Whole pages are rendered with
+  `src/test/renderPage.tsx`, inside the app's providers and against a fake server written in the
+  test (see `src/pages/admin/pages.test.tsx`).
 - **Browser tests** ([Playwright](https://playwright.dev)) are in `e2e/`. `npm run test:e2e` builds
-  the site and runs `smoke.spec.ts` and `pages.spec.ts` against a mocked Jellyfin API, so no server
-  is needed. They run in Chromium, Firefox and WebKit (Safari's engine); `E2E_BROWSERS=chromium`
-  limits a run to one of them.
-- **Playback tests** (`e2e/live.spec.ts`) play real media and are skipped unless you give them a
-  test account. They change the watched state of what they play, so use a throwaway user:
+  the site and runs them against a mocked Jellyfin API, so no server is needed. They run in
+  Chromium, Firefox and WebKit (Safari's engine); `E2E_BROWSERS=chromium` limits a run to one of
+  them. `a11y.spec.ts` checks the main pages with [axe](https://github.com/dequelabs/axe-core)
+  for WCAG 2.1 A and AA problems.
+- **Player screenshots** (`e2e/visual.spec.ts`) compare the player's controls with reference
+  pictures. Text renders a little differently on every system, so they run in Playwright's Linux
+  container (needs Docker): `npm run test:visual`, and `npm run test:visual:update` after an
+  intended change to the player. Look at the new pictures before committing them.
+- **Playback and SyncPlay tests** (`e2e/live.spec.ts`, `e2e/syncplay-live.spec.ts`) need a real
+  server. `e2e/server/setup.mjs` makes a throwaway one in Docker, with generated test media, two
+  users and Jellyfied in front of it, the way CI runs them against Jellyfin 10.11 and 12:
 
   ```bash
-  E2E_USERNAME=test E2E_PASSWORD=secret E2E_JELLYFIN_URL=http://localhost:8096 npm run test:e2e
+  npm run test:container          # builds jellyfied:ci (and tests it)
+  node e2e/server/setup.mjs up 12 # or 10.11; prints the variables for the next line
+  E2E_BASE_URL=http://localhost:18080 E2E_USERNAME=e2e E2E_PASSWORD=e2e-password \
+    E2E_FRIEND_USERNAME=e2e-friend E2E_FRIEND_PASSWORD=e2e-password E2E_BROWSERS=chromium \
+    npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts --workers=1
+  node e2e/server/setup.mjs down
   ```
 
-  Add `E2E_BASE_URL=http://localhost:8080` to test a running container instead of a fresh build.
+  They also run against your own server, with a throwaway user (they change the watched state of
+  what they play): `E2E_USERNAME=test E2E_PASSWORD=secret E2E_JELLYFIN_URL=http://localhost:8096
+  npm run test:e2e`. Add `E2E_BASE_URL=http://localhost:8080` to test a running container instead
+  of a fresh build. The generated media has no image (PGS, VobSub) subtitles, so those tests only
+  run against a server that has some.
+- **Bundle size**: `npm run size` (after a build) checks the first load and every chunk against
+  the budget in `scripts/bundle-size.mjs`; CI runs it.
 - **Container tests** (`docker/test-container.mjs`) start the image against a stand-in server and
   check the site, the security headers, the reverse proxy including WebSockets, and serving under
   a base path.

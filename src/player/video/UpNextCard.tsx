@@ -47,7 +47,7 @@ export function UpNextCard({
         <div className="mt-3 flex gap-2">
           <button
             onClick={onPlay}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-accent py-2 text-sm font-semibold text-accent-ink hover:bg-accent-hover"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-accent-fill py-2 text-sm font-semibold text-accent-ink hover:bg-accent-fill-hover"
           >
             <Play size={16} fill="currentColor" /> {t('player.video.upNextCard.playNow')}
           </button>

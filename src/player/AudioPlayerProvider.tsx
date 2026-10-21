@@ -7,6 +7,7 @@ import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped } from './reporting';
 import { getCastTarget, sendRemotePlay, type RemotePlayCommand } from './castTarget';
 import { castPlay, getChromecast } from './chromecast';
+import type { SyncPlayManager, SyncPlayQueueState } from './syncplay';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -21,7 +22,20 @@ interface AudioPlayerState {
   volume: number;
   muted: boolean;
   repeat: RepeatMode;
+  /** Playing along with a SyncPlay group: the group's queue, and the group decides what plays. */
+  inGroup: boolean;
+  /** The group's queue is shuffled (in a group, shuffling is a mode rather than a one-off). */
+  shuffled: boolean;
   play: (items: BaseItemDto[], startIndex?: number) => void;
+  /**
+   * Plays a SyncPlay group's queue from `index`, at `startTicks`, following the group: playing,
+   * pausing and seeking go through it, and at the end of a track it moves on for everyone.
+   */
+  playForGroup: (manager: SyncPlayManager, items: BaseItemDto[], index: number, startTicks: number, playlistItemId: string) => void;
+  /** Stops following the group; what is loaded stays, as this browser's own. */
+  leaveGroup: () => void;
+  /** The group's queue changed: songs added or removed, shuffled, or repeat changed. */
+  updateGroupQueue: (items: BaseItemDto[], state: SyncPlayQueueState) => void;
   enqueue: (items: BaseItemDto[]) => void;
   playNext: (items: BaseItemDto[]) => void;
   toggle: () => void;
@@ -39,6 +53,14 @@ interface AudioPlayerState {
 }
 
 const AudioPlayerContext = createContext<AudioPlayerState | null>(null);
+
+/** The group this player follows, and the queue entry it is on. */
+interface GroupPlayback {
+  manager: SyncPlayManager;
+  playlistItemId: string;
+  /** Where in the track the group is, in seconds, when it is loaded. */
+  start: number;
+}
 
 function supportedContainers(): string {
   const a = document.createElement('audio');
@@ -73,7 +95,7 @@ function streamUrl(api: JellyfinApi, item: BaseItemDto, playSessionId: string): 
   );
 }
 
-function shuffled<T>(arr: T[]): T[] {
+function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -100,13 +122,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   });
   const [muted, setMuted] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>('off');
+  const [group, setGroup] = useState<GroupPlayback | null>(null);
+  const [shuffled, setShuffled] = useState(false);
+  const shuffledRef = useRef(shuffled);
+  useLayoutEffect(() => {
+    shuffledRef.current = shuffled;
+  });
 
   const current = queue[index] ?? null;
 
   // Mutable refs so event handlers always see fresh state.
-  const stateRef = useRef({ queue, index, repeat, api });
+  const stateRef = useRef({ queue, index, repeat, api, group });
   useLayoutEffect(() => {
-    stateRef.current = { queue, index, repeat, api };
+    stateRef.current = { queue, index, repeat, api, group };
   });
   const sessionRef = useRef<{ itemId: string; playSessionId: string } | null>(null);
 
@@ -148,7 +176,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(0);
     setDuration(ticksToSeconds(current.RunTimeTicks));
     setIsLoading(true);
-    audio.play().catch(() => setIsPlaying(false));
+    const following = stateRef.current.group;
+    if (following) {
+      // The group's follower starts it, together with everyone, from where the group is.
+      if (following.start > 0) {
+        audio.addEventListener('loadedmetadata', () => (audio.currentTime = following.start), { once: true });
+      }
+    } else audio.play().catch(() => setIsPlaying(false));
     void reportPlaybackStart(api, {
       ItemId: current.Id,
       PlaySessionId: playSessionId,
@@ -176,7 +210,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const onPause = () => setIsPlaying(false);
     const onWaiting = () => setIsLoading(true);
     const onEnded = () => {
-      const { queue: q, index: i, repeat: r } = stateRef.current;
+      const { queue: q, index: i, repeat: r, group: g } = stateRef.current;
+      if (g && r === 'one') {
+        g.manager.restart();
+        return;
+      }
+      if (g) {
+        // The group moves on together; at the end of its queue it stops.
+        if (!g.manager.requestNext()) {
+          reportStop();
+          setIsPlaying(false);
+        }
+        return;
+      }
       if (r === 'one') {
         audio.currentTime = 0;
         void audio.play();
@@ -278,6 +324,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume, muted]);
 
+  // SyncPlay: hand the audio element to the group for as long as this track plays along.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!group || !audio) return;
+    return group.manager.attach(audio, group.playlistItemId);
+  }, [group]);
+
   /** While "Play on" is active, music goes to the other device instead of this browser's queue. */
   const sendToCastTarget = useCallback((items: BaseItemDto[], command: RemotePlayCommand, startIndex = 0): boolean => {
     const target = getCastTarget();
@@ -304,6 +357,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     (items: BaseItemDto[], startIndex = 0) => {
       if (!items.length) return;
       if (sendToCastTarget(items, 'PlayNow', startIndex)) return;
+      setGroup(null);
       const audio = audioRef.current;
       const sameTrack = stateRef.current.queue[stateRef.current.index]?.Id === items[startIndex]?.Id;
       setQueue(items);
@@ -316,8 +370,43 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     [sendToCastTarget],
   );
 
+  const playForGroup = useCallback(
+    (manager: SyncPlayManager, items: BaseItemDto[], startIndex: number, startTicks: number, playlistItemId: string) => {
+      const start = ticksToSeconds(startTicks);
+      const audio = audioRef.current;
+      const sameTrack = stateRef.current.queue[stateRef.current.index]?.Id === items[startIndex]?.Id;
+      setGroup({ manager, playlistItemId, start });
+      setQueue(items);
+      setIndex(startIndex);
+      // The same song again (repeated in the queue, or the group starting over): only move to the spot.
+      if (sameTrack && audio) audio.currentTime = start;
+    },
+    [],
+  );
+
+  const leaveGroup = useCallback(() => {
+    setGroup(null);
+    setShuffled(false);
+  }, []);
+
+  const updateGroupQueue = useCallback((items: BaseItemDto[], state: SyncPlayQueueState) => {
+    if (!stateRef.current.group) return;
+    const playing = state.queue[state.index];
+    setQueue(items);
+    // Where the playing song is now; the song itself doesn't change here.
+    const at = items.findIndex((i) => i.Id === playing);
+    if (at >= 0) setIndex(at);
+    setRepeat(state.repeat);
+    setShuffled(state.shuffled);
+  }, []);
+
   const enqueue = useCallback(
     (items: BaseItemDto[]) => {
+      const g = stateRef.current.group;
+      if (g) {
+        g.manager.enqueue(items.map((i) => i.Id));
+        return;
+      }
       if (sendToCastTarget(items, 'PlayLast')) return;
       setQueue((q) => [...q, ...items]);
     },
@@ -326,6 +415,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const playNext = useCallback(
     (items: BaseItemDto[]) => {
+      const g = stateRef.current.group;
+      if (g) {
+        g.manager.enqueue(
+          items.map((i) => i.Id),
+          true,
+        );
+        return;
+      }
       if (sendToCastTarget(items, 'PlayNext')) return;
       setQueue((q) => {
         const i = stateRef.current.index;
@@ -346,7 +443,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const pause = useCallback(() => audioRef.current?.pause(), []);
 
   const next = useCallback(() => {
-    const { queue: q, index: i, repeat: r } = stateRef.current;
+    const { queue: q, index: i, repeat: r, group: g } = stateRef.current;
+    if (g) {
+      g.manager.requestNext();
+      return;
+    }
     if (i + 1 < q.length) setIndex(i + 1);
     else if (r === 'all' && q.length > 1) setIndex(0);
   }, []);
@@ -357,7 +458,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.currentTime = 0;
       return;
     }
-    const { index: i } = stateRef.current;
+    const { index: i, group: g } = stateRef.current;
+    if (g) {
+      if (!g.manager.requestPrevious() && audio) audio.currentTime = 0;
+      return;
+    }
     if (i > 0) setIndex(i - 1);
     else if (audio) audio.currentTime = 0;
   }, []);
@@ -369,10 +474,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTime(audio.currentTime);
   }, []);
 
-  const jumpTo = useCallback((i: number) => setIndex(i), []);
+  const jumpTo = useCallback((i: number) => {
+    const g = stateRef.current.group;
+    if (g) g.manager.jumpTo(i);
+    else setIndex(i);
+  }, []);
 
+  // In a group, removing, shuffling and repeating are the group's: the server sends the result back.
   const removeAt = useCallback((i: number) => {
-    const { queue: q, index: cur } = stateRef.current;
+    const { queue: q, index: cur, group: g } = stateRef.current;
+    if (g) {
+      g.manager.remove(i);
+      return;
+    }
     const nextQueue = q.filter((_, idx) => idx !== i);
     setQueue(nextQueue);
     if (i < cur) setIndex(cur - 1);
@@ -380,6 +494,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const stop = useCallback(() => {
+    setGroup(null);
     setQueue([]);
     setIndex(0);
   }, []);
@@ -390,13 +505,22 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
-  const cycleRepeat = useCallback(() => setRepeat((r) => (r === 'off' ? 'all' : r === 'all' ? 'one' : 'off')), []);
+  const cycleRepeat = useCallback(() => {
+    const { repeat: r, group: g } = stateRef.current;
+    const nextMode: RepeatMode = r === 'off' ? 'all' : r === 'all' ? 'one' : 'off';
+    if (g) g.manager.setRepeat(nextMode);
+    else setRepeat(nextMode);
+  }, []);
 
   const shuffleQueue = useCallback(() => {
-    const { queue: q, index: i } = stateRef.current;
+    const { queue: q, index: i, group: g } = stateRef.current;
+    if (g) {
+      g.manager.setShuffle(!shuffledRef.current);
+      return;
+    }
     if (q.length < 3) return;
     const head = q.slice(0, i + 1);
-    const tail = shuffled(q.slice(i + 1));
+    const tail = shuffle(q.slice(i + 1));
     setQueue([...head, ...tail]);
   }, []);
 
@@ -435,7 +559,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       repeat,
+      inGroup: group !== null,
+      shuffled,
       play,
+      playForGroup,
+      leaveGroup,
+      updateGroupQueue,
       enqueue,
       playNext,
       toggle,
@@ -462,7 +591,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       volume,
       muted,
       repeat,
+      group,
+      shuffled,
       play,
+      playForGroup,
+      leaveGroup,
+      updateGroupQueue,
       enqueue,
       playNext,
       toggle,

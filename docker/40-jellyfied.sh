@@ -11,6 +11,8 @@
 #   JELLYFIED_PORT         Port nginx listens on inside the container (default 80).
 #   JELLYFIED_BASE_PATH    Optional. Serve Jellyfied under this path, e.g. /jellyfied, for reverse
 #                          proxies that give every app a path instead of a host name.
+#   JELLYFIED_DATA_DIR     Optional. Where the SyncPlay picker keeps its state between restarts
+#                          (default /var/lib/jellyfied, a volume).
 #   JELLYFIED_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
 #                          X-Forwarded-For header is believed: a reverse proxy or tunnel in front
 #                          of Jellyfied, and Docker's own gateway. Default "private" (loopback
@@ -112,6 +114,20 @@ if [ -n "$BASE" ]; then
         rewrite ^${BASE}(/.*)\$ \$1 last;
     }
 "
+fi
+
+# Where the SyncPlay picker keeps its state between restarts: the image's data volume
+# (/var/lib/jellyfied). Without a writable one, for example on a read-only file system, it is kept
+# in memory only.
+DATA_DIR="${JELLYFIED_DATA_DIR:-/var/lib/jellyfied}"
+PICKER_STATE=""
+if [ -n "$JELLYFIN_URL" ]; then
+  if mkdir -p "$DATA_DIR" 2>/dev/null && [ -w "$DATA_DIR" ]; then
+    PICKER_STATE=" state=${DATA_DIR}/syncplay-picker.json"
+    log "SyncPlay picker state kept in ${DATA_DIR}"
+  else
+    log "SyncPlay picker state kept in memory only: ${DATA_DIR} is not writable"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -222,7 +238,11 @@ if [ -n "$JELLYFIN_URL" ]; then
     }
 
     # The SyncPlay picker: suggestions, votes and the wheel (/etc/nginx/njs/syncplay-picker.js).
+    # Every request asks Jellyfin who is calling, so one address only gets a few a second. That
+    # still leaves room for a household behind one address: each open tab polls about once a second.
     location ^~ /jellyfied-api/syncplay/ {
+        limit_req zone=jellyfied_picker burst=50 nodelay;
+        limit_req_status 429;
         client_max_body_size 4k;
         add_header Cache-Control \"no-store\" always;
         include ${HEADERS};
@@ -255,15 +275,28 @@ fi
 # server block. The proxied Jellyfin responses only get the server-level headers: the policy below
 # is written for Jellyfied and would break Jellyfin's own web interface.
 #
-# Images, media and API calls may go to any address, because the Jellyfin server can live on
-# another origin (JELLYFIN_PUBLIC_URL, or one typed on the login screen). Scripts cannot, with two
-# exceptions: WebAssembly ('wasm-unsafe-eval'), which draws styled subtitles, and Google's Cast SDK
-# on www.gstatic.com, which is only loaded when someone picks Chromecast.
+# Scripts may only come from here, with two exceptions: WebAssembly ('wasm-unsafe-eval'), which
+# draws styled subtitles, and Google's Cast SDK on www.gstatic.com, which is only loaded when
+# someone picks Chromecast. Images may come from anywhere: the metadata editor and the plugin
+# catalogue show pictures straight from metadata providers and plugin repositories.
+#
+# API calls and media go to the server. When that is this container's proxy and nobody can pick
+# another one at login, they are kept to this origin, plus GitHub's API for the update check
+# (administrators only) and the Cast SDK. Otherwise the server can live anywhere
+# (JELLYFIN_PUBLIC_URL, or one typed on the login screen), so they may go to any address.
+if [ -n "$JELLYFIN_URL" ] && [ -z "$JELLYFIN_PUBLIC_URL" ] && [ "$LOCK" = true ]; then
+  CONNECT_SRC="'self' https://api.github.com https://www.gstatic.com data: blob:"
+  MEDIA_SRC="'self' data: blob:"
+  log "Content-Security-Policy: API calls and media limited to this origin"
+else
+  CONNECT_SRC="* ws: wss: data: blob:"
+  MEDIA_SRC="* data: blob:"
+fi
 cat >"$HEADERS" <<EOF
 add_header X-Content-Type-Options nosniff always;
 add_header Referrer-Policy same-origin always;
 add_header X-Frame-Options DENY always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self'; img-src * data: blob:; media-src * data: blob:; connect-src * ws: wss: data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com; style-src 'self'; img-src * data: blob:; media-src ${MEDIA_SRC}; connect-src ${CONNECT_SRC}; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 EOF
 
 cat >"$CONF" <<EOF
@@ -292,11 +325,13 @@ map \$request_uri \$jellyfin_path {
 
 ${UPSTREAM_BLOCK}
 
-# The SyncPlay picker's state lives in memory shared by the workers, for as long as groups last.
+# The SyncPlay picker's state lives in memory shared by the workers, for as long as groups last,
+# and in a file (when there is a place to write it), so a restart or an update doesn't lose it.
 js_engine qjs;
 js_path /etc/nginx/njs;
 js_import picker from syncplay-picker.js;
-js_shared_dict_zone zone=jellyfied_syncplay:4m timeout=24h evict;
+js_shared_dict_zone zone=jellyfied_syncplay:4m timeout=24h evict${PICKER_STATE};
+limit_req_zone \$binary_remote_addr zone=jellyfied_picker:1m rate=10r/s;
 
 server {
     ${LISTEN}

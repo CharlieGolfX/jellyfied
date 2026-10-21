@@ -170,6 +170,36 @@ test('an account stays signed in while another one is added, and can be continue
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
 });
 
+test("the sign-in screen asks who's watching, with the accounts signed in here and the server's public users", async ({ page }) => {
+  await page.route('**/jellyfin/Users/Public', (route) =>
+    route.fulfill({
+      json: [
+        { Id: 'user-1', Name: USER.name, HasPassword: true },
+        { Id: 'user-9', Name: 'Kid', HasPassword: true },
+      ],
+    }),
+  );
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Sign in manually' }).click();
+  await page.getByLabel('Username').fill(USER.name);
+  await page.getByLabel('Password').fill(USER.password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByText('Add another account').click();
+
+  await expect(page.getByRole('heading', { name: 'Who’s watching?' })).toBeVisible();
+  const profiles = page.getByTestId('profiles');
+  // demo is signed in already, so it is there once, to continue; Kid needs a password.
+  await expect(profiles.getByRole('button', { name: `Continue as ${USER.name}` })).toBeVisible();
+  await expect(profiles.getByText(USER.name, { exact: true })).toHaveCount(1);
+  await profiles.getByRole('button', { name: 'Kid' }).click();
+  await expect(page.getByLabel('Username')).toHaveValue('Kid');
+  await expect(page.getByLabel('Password')).toBeFocused();
+  await page.getByRole('button', { name: 'Back to users' }).click();
+  await expect(profiles).toBeVisible();
+});
+
 test('preferences are taken from the account and changes are sent back to it', async ({ page }) => {
   let saved: { CustomPrefs?: Record<string, string> } | null = null;
   await page.route('**/jellyfin/DisplayPreferences/**', async (route) => {

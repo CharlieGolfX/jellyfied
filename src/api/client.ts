@@ -24,6 +24,10 @@ export interface RequestOptions {
   /** Expected response format. Defaults to JSON (or undefined for empty responses). */
   responseType?: 'json' | 'text';
   keepalive?: boolean;
+  /** Extra request headers, e.g. If-Match. */
+  headers?: Record<string, string>;
+  /** Called with a successful response before its body is read, e.g. for its ETag. */
+  onResponse?: (response: Response) => void;
 }
 
 function headerSafe(value: string): string {
@@ -109,6 +113,7 @@ export class JellyfinApi {
     const headers: Record<string, string> = {
       Authorization: this.authorizationHeader(),
       Accept: opts.responseType === 'text' ? 'text/plain, */*' : 'application/json',
+      ...opts.headers,
     };
     let body: BodyInit | undefined;
     if (opts.rawBody) {
@@ -156,6 +161,7 @@ export class JellyfinApi {
       throw new ApiError(response.status, message);
     }
 
+    opts.onResponse?.(response);
     if (response.status === 204) return undefined as T;
     const text = await response.text();
     if (opts.responseType === 'text') return text as T;

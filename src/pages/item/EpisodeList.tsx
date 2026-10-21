@@ -38,7 +38,7 @@ export function EpisodeRow({ episode, onPlay }: { episode: BaseItemDto; onPlay: 
         />
         {!missing && (
           <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-ink">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-fill text-accent-ink">
               <Play size={20} fill="currentColor" className="ml-0.5" />
             </span>
           </span>

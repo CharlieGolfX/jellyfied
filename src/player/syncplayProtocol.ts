@@ -31,6 +31,16 @@ export interface QueueUpdate {
   PlayingItemIndex: number;
   StartPositionTicks: number;
   IsPlaying: boolean;
+  ShuffleMode?: 'Sorted' | 'Shuffle';
+  RepeatMode?: 'RepeatOne' | 'RepeatAll' | 'RepeatNone';
+}
+
+/** The group's queue as the music player shows it. */
+export interface SyncPlayQueueState {
+  queue: string[];
+  index: number;
+  repeat: 'off' | 'all' | 'one';
+  shuffled: boolean;
 }
 
 export interface GroupUpdate {
@@ -62,6 +72,8 @@ export interface SyncPlayOpenRequest {
   playlistItemId: string;
   startPositionTicks: number;
   queue: string[];
+  /** Where `itemId` is in `queue`. */
+  index: number;
 }
 
 export type SyncPlayNotice = { type: 'joined' | 'left'; user: string } | { type: 'info' | 'error'; message: string };

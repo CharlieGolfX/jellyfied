@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { generateId } from '@/api/device';
-import type { UserDto } from '@/api/types';
+import type { BaseItemDto, ItemsResult, UserDto } from '@/api/types';
 import { useApi, useAuth, useCurrentUser, useSession } from '@/auth/AuthProvider';
 import { Avatar } from '@/components/layout/UserMenu';
 import { ConfirmDialog } from '@/components/ui/Modal';
@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { useSocket } from '@/realtime/RealtimeProvider';
 import { getActiveVideo } from './activePlayer';
+import { useAudioPlayer } from './AudioPlayerProvider';
 import { SyncPlayManager, type SyncPlaySnapshot } from './syncplay';
 import { canSeeGroup } from './syncplayInviteList';
 import { setPickerOpen, usePicker, usePickerAction } from './syncplayPickerApi';
@@ -43,16 +44,37 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
   const socket = useSocket();
   const navigate = useNavigate();
   const toast = useToast();
+  const audio = useAudioPlayer();
 
-  const ctx = useRef({ navigate, toast });
+  const ctx = useRef({ navigate, toast, audio });
   useLayoutEffect(() => {
-    ctx.current = { navigate, toast };
+    ctx.current = { navigate, toast, audio };
   });
 
   useEffect(() => {
     if (!api || !socket) return;
     const m = new SyncPlayManager(api, socket);
-    m.onOpen = (req) => {
+    /** The group's queue as items, in its order. */
+    const itemsOf = async (ids: string[]): Promise<BaseItemDto[]> => {
+      try {
+        const found = (await api.get<ItemsResult>('/Items', { userId: api.userId, ids: ids.join(','), enableImages: true })).Items;
+        return ids.map((id) => found.find((i) => i.Id === id)).filter((i): i is BaseItemDto => Boolean(i));
+      } catch {
+        return [];
+      }
+    };
+    m.onOpen = async (req) => {
+      // Music plays along in the music player, everything else in the video player (which finds
+      // out for itself when the lookup fails).
+      const items = await itemsOf(req.queue);
+      const playing = items.find((i) => i.Id === req.itemId);
+      if (playing?.MediaType === 'Audio') {
+        getActiveVideo()?.stop();
+        const tracks = items.filter((i) => i.MediaType === 'Audio');
+        ctx.current.audio.playForGroup(m, tracks, Math.max(0, tracks.indexOf(playing)), req.startPositionTicks, req.playlistItemId);
+        return;
+      }
+      ctx.current.audio.leaveGroup();
       const state: VideoPlayerState = {
         token: generateId(),
         queue: req.queue.length > 1 ? req.queue : undefined,
@@ -62,7 +84,15 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
       // Coming from another video: replace it, so Back doesn't return to (and restart) the old one.
       ctx.current.navigate(`/play/${req.itemId}`, { state, replace: isPlayPath(window.location.pathname) });
     };
-    m.onStop = () => getActiveVideo()?.stop();
+    m.onQueue = async (state) => {
+      if (!ctx.current.audio.inGroup) return;
+      const items = (await itemsOf(state.queue)).filter((i) => i.MediaType === 'Audio');
+      ctx.current.audio.updateGroupQueue(items, state);
+    };
+    m.onStop = () => {
+      getActiveVideo()?.stop();
+      if (ctx.current.audio.inGroup) ctx.current.audio.stop();
+    };
     m.onNotice = (n) => {
       const notify = ctx.current.toast;
       if (n.type === 'joined') notify.info(t('player.syncPlay.joined', { user: n.user }));
@@ -70,8 +100,13 @@ export function SyncPlayProvider({ children }: { children: ReactNode }) {
       else if (n.type === 'error') notify.error(n.message);
       else if (n.type === 'info') notify.info(n.message);
     };
+    // Out of the group, the music that played along is this browser's own again.
+    const offGroup = m.subscribe(() => {
+      if (!m.getSnapshot().group && ctx.current.audio.inGroup) ctx.current.audio.leaveGroup();
+    });
     setCurrent(m);
     return () => {
+      offGroup();
       m.dispose();
       if (current === m) setCurrent(null);
     };
@@ -202,7 +237,7 @@ function CreateGroupForm({
           {t('common.cancel')}
         </button>
         <button
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
+          className="rounded-md bg-accent-fill px-3 py-1.5 text-sm font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
           disabled={busy || (inviteOnly && picked.size === 0)}
           onClick={() => onCreate(inviteOnly ? [...picked] : null)}
         >

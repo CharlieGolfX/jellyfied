@@ -68,7 +68,7 @@ export function Switch({
       <button
         type="button"
         role="switch"
-        aria-checked={checked}
+        aria-checked={Boolean(checked)}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={clsx('relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-accent' : 'bg-base-600')}

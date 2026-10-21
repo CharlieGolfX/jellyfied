@@ -16,16 +16,17 @@ import {
   type SyncPlayGroup,
   type SyncPlayNotice,
   type SyncPlayOpenRequest,
+  type SyncPlayQueueState,
 } from './syncplayProtocol';
 import { playingTab, setPlayingTab, storedGroup, storeGroup, type TabMessage } from './syncplayTabs';
 
-export type { SyncPlayGroup, SyncPlayNotice, SyncPlayOpenRequest } from './syncplayProtocol';
+export type { SyncPlayGroup, SyncPlayNotice, SyncPlayOpenRequest, SyncPlayQueueState } from './syncplayProtocol';
 
 /**
  * SyncPlay ("watch together"). The server owns the group state: clients ask it to pause, resume
  * or seek, and it answers every member with a command that says what to do and at which moment.
- * This class keeps track of the group, and has a SyncPlayFollower keep the local <video> element
- * following those commands.
+ * This class keeps track of the group, and has a SyncPlayFollower keep the local <video> (or, for
+ * music, <audio>) element following those commands.
  */
 
 /** How long joining or creating a group waits for the live connection. */
@@ -57,6 +58,8 @@ export class SyncPlayManager {
   private detachTimer: number | undefined;
 
   onOpen: ((req: SyncPlayOpenRequest) => void) | null = null;
+  /** Any change to the group's queue (added, removed, shuffled, repeat), while playing along. */
+  onQueue: ((state: SyncPlayQueueState) => void) | null = null;
   onStop: (() => void) | null = null;
   onNotice: ((notice: SyncPlayNotice) => void) | null = null;
 
@@ -298,6 +301,7 @@ export class SyncPlayManager {
     const current = this.currentQueueItem();
     this.update({ hasQueue: Boolean(current) });
     if (!current || !this.snapshot.following) return;
+    this.onQueue?.(this.queueState());
     if (!['NewPlaylist', 'SetCurrentItem', 'NextItem', 'PreviousItem'].includes(q.Reason)) return;
     // Already on this entry (e.g. the server re-sent the queue): nothing to open.
     if (this.follower?.playlistItemId === current.PlaylistItemId) return;
@@ -313,6 +317,7 @@ export class SyncPlayManager {
       playlistItemId: current.PlaylistItemId,
       startPositionTicks: Math.max(0, Math.round(start)),
       queue: q.Playlist.map((p) => p.ItemId),
+      index: q.PlayingItemIndex,
     });
   }
 
@@ -342,19 +347,75 @@ export class SyncPlayManager {
     this.open(current, this.queue);
   }
 
-  /** Move the group on to the next queue entry. Returns false when there is none. */
+  /** The group's queue, in the music player's terms. */
+  queueState(): SyncPlayQueueState {
+    const q = this.queue;
+    return {
+      queue: q?.Playlist.map((p) => p.ItemId) ?? [],
+      index: q?.PlayingItemIndex ?? 0,
+      repeat: q?.RepeatMode === 'RepeatOne' ? 'one' : q?.RepeatMode === 'RepeatAll' ? 'all' : 'off',
+      shuffled: q?.ShuffleMode === 'Shuffle',
+    };
+  }
+
+  /** Move the group on to the next queue entry (round to the start when repeating it all). Returns false when there is none. */
   requestNext(): boolean {
     const q = this.queue;
     const playlistItemId = this.follower?.playlistItemId;
-    if (!q || !playlistItemId || q.PlayingItemIndex >= q.Playlist.length - 1) return false;
+    if (!q || !playlistItemId) return false;
+    if (q.PlayingItemIndex >= q.Playlist.length - 1 && q.RepeatMode !== 'RepeatAll') return false;
     void this.api.post('/SyncPlay/NextItem', { PlaylistItemId: playlistItemId }).catch(() => {});
     return true;
   }
 
+  /** Move the group back to the previous queue entry. Returns false when there is none. */
+  requestPrevious(): boolean {
+    const q = this.queue;
+    const playlistItemId = this.follower?.playlistItemId;
+    if (!q || !playlistItemId || q.PlayingItemIndex <= 0) return false;
+    void this.api.post('/SyncPlay/PreviousItem', { PlaylistItemId: playlistItemId }).catch(() => {});
+    return true;
+  }
+
+  /** Move the group to another entry of its queue. */
+  jumpTo(index: number) {
+    const entry = this.queue?.Playlist[index];
+    if (entry) void this.api.post('/SyncPlay/SetPlaylistItem', { PlaylistItemId: entry.PlaylistItemId }).catch(() => {});
+  }
+
+  /** Repeat nothing, the whole queue, or the entry playing. */
+  setRepeat(mode: 'off' | 'all' | 'one') {
+    const Mode = mode === 'one' ? 'RepeatOne' : mode === 'all' ? 'RepeatAll' : 'RepeatNone';
+    void this.api.post('/SyncPlay/SetRepeatMode', { Mode }).catch(() => {});
+  }
+
+  setShuffle(on: boolean) {
+    void this.api.post('/SyncPlay/SetShuffleMode', { Mode: on ? 'Shuffle' : 'Sorted' }).catch(() => {});
+  }
+
+  /** Take an entry out of the group's queue. */
+  remove(index: number) {
+    const entry = this.queue?.Playlist[index];
+    if (entry) void this.api.post('/SyncPlay/RemoveFromPlaylist', { PlaylistItemIds: [entry.PlaylistItemId] }).catch(() => {});
+  }
+
+  /** Play the current entry again from the start, for everyone (repeating one song). */
+  restart() {
+    void this.api
+      .post('/SyncPlay/Seek', { PositionTicks: 0 })
+      .then(() => this.api.post('/SyncPlay/Unpause'))
+      .catch(() => {});
+  }
+
+  /** Add to the group's queue, at the end or right after what is playing. */
+  enqueue(itemIds: string[], next = false) {
+    void this.api.post('/SyncPlay/Queue', { ItemIds: itemIds, Mode: next ? 'QueueNext' : 'Queue' }).catch(() => {});
+  }
+
   // ---- Local player --------------------------------------------------------
 
-  /** Called by the video player when it starts on a group item. Returns the matching detach. */
-  attach(video: HTMLVideoElement, playlistItemId: string): () => void {
+  /** Called by the video or music player when it starts on a group item. Returns the matching detach. */
+  attach(video: HTMLMediaElement, playlistItemId: string): () => void {
     window.clearTimeout(this.detachTimer);
     this.releaseVideo();
     const follower = new SyncPlayFollower(this.api, this.clock, video, playlistItemId);

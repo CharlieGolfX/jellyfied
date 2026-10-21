@@ -26,7 +26,7 @@ export function PlayerError({
     >
       <p className={clsx('max-w-lg text-fg', !full && 'line-clamp-3')}>{message}</p>
       <div className="flex flex-wrap justify-center gap-2">
-        <button onClick={onRetry} className="rounded-md bg-accent px-4 py-2 font-semibold text-accent-ink hover:bg-accent-hover">
+        <button onClick={onRetry} className="rounded-md bg-accent-fill px-4 py-2 font-semibold text-accent-ink hover:bg-accent-fill-hover">
           {t('player.videoPlayer.retry')}
         </button>
         {onTranscode && (

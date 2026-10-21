@@ -1,5 +1,21 @@
 import clsx from 'clsx';
-import { ListMusic, Music, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Volume1, Volume2, VolumeX, X } from 'lucide-react';
+import {
+  ListMusic,
+  MicVocal,
+  Music,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Users,
+  Volume1,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '@/auth/AuthProvider';
@@ -8,6 +24,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { formatClock, ticksToSeconds } from '@/lib/format';
 import type { BaseItemDto } from '@/api/types';
 import { useAudioPlayer } from './AudioPlayerProvider';
+import { useLyrics } from './lyrics';
+import { LyricsPanel } from './LyricsPanel';
 import { SeekBar } from './SeekBar';
 import { useWheelVolume } from './useWheelVolume';
 import { t } from '@/i18n';
@@ -53,15 +71,22 @@ export function AudioBar() {
   const player = useAudioPlayer();
   // Turning the wheel over the speaker or its slider changes the volume.
   const volumeRef = useWheelVolume(player.muted ? 0 : player.volume, player.setVolume);
-  const [showQueue, setShowQueue] = useState(false);
+  // One panel at a time over the bar: the queue or the lyrics.
+  const [panel, setPanel] = useState<'queue' | 'lyrics' | null>(null);
   const art = useArt(player.current, 200);
   const item = player.current;
+  const lyrics = useLyrics(item?.Id).data;
   if (!item) return null;
+  const showQueue = panel === 'queue';
+  const toggle = (which: 'queue' | 'lyrics') => setPanel((p) => (p === which ? null : which));
 
   const VolumeIcon = player.muted || player.volume === 0 ? VolumeX : player.volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className="relative z-30 shrink-0 border-t border-black/50 bg-base-850 shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
+    <div
+      className="relative z-30 shrink-0 border-t border-black/50 bg-base-850 shadow-[0_-4px_20px_rgba(0,0,0,0.35)]"
+      data-testid="audio-bar"
+    >
       {showQueue && (
         <div className="animate-pop-in absolute right-2 bottom-full mb-2 flex max-h-[60vh] w-96 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-base-750 shadow-2xl ring-1 ring-black/40">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
@@ -69,12 +94,13 @@ export function AudioBar() {
             <div className="flex gap-1">
               <button
                 onClick={player.shuffleQueue}
-                className="rounded p-1.5 text-muted hover:bg-white/10 hover:text-fg"
-                title={t('player.audioBar.shuffleUpcoming')}
+                className={clsx('rounded p-1.5 hover:bg-white/10', player.shuffled ? 'text-accent' : 'text-muted hover:text-fg')}
+                title={player.inGroup ? t('player.audioBar.shuffleGroup') : t('player.audioBar.shuffleUpcoming')}
+                aria-pressed={player.inGroup ? player.shuffled : undefined}
               >
                 <Shuffle size={16} />
               </button>
-              <button onClick={() => setShowQueue(false)} className="rounded p-1.5 text-muted hover:bg-white/10 hover:text-fg">
+              <button onClick={() => setPanel(null)} className="rounded p-1.5 text-muted hover:bg-white/10 hover:text-fg">
                 <X size={16} />
               </button>
             </div>
@@ -85,6 +111,9 @@ export function AudioBar() {
             ))}
           </div>
         </div>
+      )}
+      {panel === 'lyrics' && lyrics && (
+        <LyricsPanel lines={lyrics} currentTime={player.currentTime} onSeek={player.seek} onClose={() => setPanel(null)} />
       )}
 
       <SeekBar
@@ -122,6 +151,11 @@ export function AudioBar() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          {player.inGroup && (
+            <span className="hidden p-2 text-accent sm:block" title={t('player.audioBar.withGroup')}>
+              <Users size={18} aria-label={t('player.audioBar.withGroup')} />
+            </span>
+          )}
           <button
             onClick={player.cycleRepeat}
             className={clsx('hidden rounded-full p-2 sm:block', player.repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-fg')}
@@ -178,8 +212,18 @@ export function AudioBar() {
               aria-label={t('player.audioBar.volume')}
             />
           </span>
+          {lyrics && (
+            <button
+              onClick={() => toggle('lyrics')}
+              className={clsx('rounded-full p-2', panel === 'lyrics' ? 'text-accent' : 'text-muted hover:text-fg')}
+              aria-label={t('player.audioBar.lyrics')}
+              aria-pressed={panel === 'lyrics'}
+            >
+              <MicVocal size={18} />
+            </button>
+          )}
           <button
-            onClick={() => setShowQueue((s) => !s)}
+            onClick={() => toggle('queue')}
             className={clsx('rounded-full p-2', showQueue ? 'text-accent' : 'text-muted hover:text-fg')}
             aria-label={t('player.audioBar.queue')}
           >

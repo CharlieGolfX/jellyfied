@@ -26,7 +26,9 @@ RUN apk upgrade --no-cache \
     && chmod +x /docker-entrypoint.d/40-jellyfied.sh \
     && rm -f /etc/nginx/conf.d/default.conf \
     && sed -i '1i load_module modules/ngx_http_js_module.so;' /etc/nginx/nginx.conf \
-    && chown -R 101:101 /etc/nginx/conf.d
+    && chown -R 101:101 /etc/nginx/conf.d \
+    && mkdir -p /var/lib/jellyfied \
+    && chown 101:101 /var/lib/jellyfied
 
 COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
 USER 101
@@ -36,6 +38,9 @@ ENV JELLYFIN_URL="" \
     JELLYFIED_BASE_PATH="" \
     JELLYFIED_TRUSTED_PROXIES="private" \
     JELLYFIED_PORT=80
+
+# The SyncPlay picker's state (suggestions, votes, spins), kept across restarts and updates.
+VOLUME /var/lib/jellyfied
 
 EXPOSE 80
 

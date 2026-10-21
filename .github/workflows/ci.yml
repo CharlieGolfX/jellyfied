@@ -43,6 +43,8 @@ jobs:
           path: coverage
           retention-days: 7
       - run: npm run build
+      # Fails when the first load or any one chunk grows past its budget (in the script).
+      - run: npm run size
 
   e2e:
     name: Browser tests (${{ matrix.browser }})
@@ -59,7 +61,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      # Runs against a mocked Jellyfin API; the playback tests need a real server and are skipped.
+      # Runs against a mocked Jellyfin API; the playback tests need a real server and run in "live".
       - run: npm run test:e2e
         env:
           E2E_BROWSERS: ${{ matrix.browser }}
@@ -70,6 +72,59 @@ jobs:
           path: |
             playwright-report
             test-results
+          retention-days: 7
+
+  live:
+    name: Playback and SyncPlay on Jellyfin ${{ matrix.jellyfin }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The supported release and the newest: 12 has broken things before (api_key).
+        jellyfin: ['10.11', '12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: docker build -t jellyfied:ci .
+      # A throwaway server with generated test media, and the image in front of it. Sets E2E_* for the tests.
+      - run: node e2e/server/setup.mjs up ${{ matrix.jellyfin }} jellyfied:ci
+      - run: npx playwright test e2e/live.spec.ts e2e/syncplay-live.spec.ts --workers=1
+        env:
+          E2E_BROWSERS: chromium
+      - name: Server logs
+        if: failure()
+        run: docker logs --tail 200 jellyfied-e2e-jellyfin
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report-live-${{ matrix.jellyfin }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  visual:
+    name: Player screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # In Playwright's container, where the reference pictures were made (npm run test:visual:update).
+      - run: npm run test:visual
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: player-screenshots
+          path: test-results
           retention-days: 7
 
   container:

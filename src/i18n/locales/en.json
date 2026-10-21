@@ -953,16 +953,58 @@
     }
   },
   "liveTv": {
+    "allEpisodes": "All episodes",
+    "anyChannel": "Any channel",
+    "atAnyTime": "At any time",
+    "cancelRecording": "Cancel recording",
+    "cancelRecordingOf": "Cancel recording {name}",
+    "cancelSeriesRecording": "Cancel series recording",
+    "cancelSeriesRecordingOf": "Stop recording {name}",
     "channels": "Channels",
+    "earlier": "Earlier",
+    "endLate": "End late",
+    "guide": "Guide",
+    "keep": "Keep",
+    "keepAll": "All recordings",
+    "keepLatest": {
+      "one": "The latest recording",
+      "other": "The latest {count} recordings"
+    },
+    "later": "Later",
     "liveTvHasNoChannels": "Live TV has no channels yet. A tuner and a guide are set up in the Jellyfin dashboard.",
+    "minutes": {
+      "one": "{count} minute",
+      "other": "{count} minutes"
+    },
+    "newEpisodesOnly": "New episodes only",
     "noChannels": "No channels",
     "noGuideInformation": "No guide information",
     "noRecordings": "No recordings",
     "nothingInTheGuideRight": "Nothing in the guide right now",
+    "now": "Now",
+    "onAnyChannel": "On any channel",
     "onNow": "On Now",
+    "record": "Record",
+    "recordSeries": "Record series",
+    "recordSeriesMenu": "Record series…",
+    "recordSeriesTitle": "Record {name}",
+    "recordingCancelled": "Recording cancelled",
+    "recordingNow": "recording now",
+    "recordingScheduled": "Will be recorded",
     "recordings": "Recordings",
     "recordingsHint": "Programmes recorded by the server show up here.",
-    "watch": "Watch {name}"
+    "scheduled": "Scheduled",
+    "seriesRecordingCancelled": "Series recording cancelled",
+    "seriesRecordingSaved": "Series recording saved",
+    "seriesRecordingScheduled": "Every airing will be recorded",
+    "seriesRecordingSettingsOf": "Settings for recording {name}",
+    "seriesRecordings": "Series recordings",
+    "seriesWillBeRecorded": "The series is being recorded",
+    "settings": "Settings",
+    "startEarly": "Start early",
+    "watch": "Watch {name}",
+    "watchNow": "Watch now",
+    "willBeRecorded": "Will be recorded"
   },
   "login": {
     "backToUsers": "Back to users",
@@ -977,13 +1019,13 @@
     "licences": "Licences",
     "notJellyfin": "That address did not respond like a Jellyfin server.",
     "password": "Password",
+    "pinLocked": "Locked with a PIN",
     "quickConnect": "Quick Connect",
     "quickConnectHelp": "On a device where you are already signed in, open Quick Connect in your user settings and enter this code:",
     "serverAddress": "Server address",
     "serverAddressHint": "For example http://192.168.1.10:8096 or https://jellyfin.example.com",
     "serverInfo": "{name} · Jellyfin {version}",
     "setupIncomplete": "This server has not finished its initial setup. Complete the setup wizard in the Jellyfin web interface first.",
-    "signedInHere": "Signed in on this device",
     "signIn": "Sign in",
     "signInManually": "Sign in manually",
     "signOutAccount": "Sign {name} out",
@@ -1029,6 +1071,27 @@
       "largerPosters": "Larger posters",
       "posterSize": "Poster size",
       "smallerPosters": "Smaller posters"
+    },
+    "downloadAll": {
+      "allStarted": "All downloads started. Your browser shows how they are getting on.",
+      "browserMayAsk": "They download one after the other; your browser may ask whether this site may download several files.",
+      "menu": "Download all…",
+      "nothing": "There is nothing here you can download.",
+      "progress": "Started {started} of {count}…",
+      "start": {
+        "one": "Download {count} file",
+        "other": "Download {count} files"
+      },
+      "started": "Started",
+      "summary": {
+        "one": "{count} file, {size} in all.",
+        "other": "{count} files, {size} in all."
+      },
+      "summaryNoSize": {
+        "one": "{count} file.",
+        "other": "{count} files."
+      },
+      "title": "Download {name}"
     },
     "featuredBanner": {
       "details": "Details",
@@ -1089,7 +1152,8 @@
       "details": "Details",
       "editMetadata": "Edit metadata: {name}",
       "identify": "Identify",
-      "images": "Images"
+      "images": "Images",
+      "segments": "Segments"
     },
     "metadataIdentifyTab": {
       "applyingMatch": "Applying match…",
@@ -1132,6 +1196,31 @@
       "moreActions": "More actions",
       "play": "Play {finalTitle}",
       "select": "Select {finalTitle}"
+    },
+    "segments": {
+      "add": "Add a segment",
+      "changedElsewhere": "The segments were changed somewhere else in the meantime. Here they are as they are now.",
+      "end": "End",
+      "hint": "The player offers to skip these. Times as minutes:seconds (1:23) or hours:minutes:seconds.",
+      "none": "No segments yet.",
+      "problem": {
+        "badEnd": "The end isn't a time.",
+        "badStart": "The start isn't a time.",
+        "endBeforeStart": "The end has to come after the start.",
+        "pastTheEnd": "This starts after the video ends."
+      },
+      "readOnly": "These come from the server's segment providers. To change them here, install the Intro Skipper plugin (10.11 or later), which lets Jellyfied edit them.",
+      "remove": "Remove segment",
+      "saved": "Segments saved",
+      "start": "Start",
+      "type": "Type",
+      "types": {
+        "Commercial": "Commercial",
+        "Intro": "Intro",
+        "Outro": "Credits",
+        "Preview": "Preview",
+        "Recap": "Recap"
+      }
     }
   },
   "nav": {
@@ -1151,6 +1240,7 @@
   "player": {
     "audioBar": {
       "closePlayer": "Close player",
+      "lyrics": "Lyrics",
       "mute": "Mute",
       "playQueue": "Play queue · {count}",
       "queue": "Queue",
@@ -1160,8 +1250,10 @@
         "off": "Repeat: off",
         "one": "Repeat: this track"
       },
+      "shuffleGroup": "Shuffle the group’s queue",
       "shuffleUpcoming": "Shuffle upcoming",
-      "volume": "Volume"
+      "volume": "Volume",
+      "withGroup": "Playing with your SyncPlay group"
     },
     "audioDelay": "Audio delay {delay}",
     "castButton": {
@@ -1593,6 +1685,32 @@
     "updatePassword": "Update password",
     "usedForClockTimesSuch": "Used for clock times such as “Ends at” in the player and dates in the dashboard."
   },
+  "stats": {
+    "episodesOfShows": {
+      "one": "Episodes, from {count} show",
+      "other": "Episodes, from {count} shows"
+    },
+    "films": "Films",
+    "howCounted": "From what this account has played. Jellyfin remembers how often and when last, not each time, so a rewatch counts the whole film again and a title counts in the week it was last played.",
+    "lastWeeks": "The last {count} weeks",
+    "lastWeeksNote": "Films and episodes, by the week they were last played",
+    "nothingYet": "Nothing watched yet",
+    "nothingYetHint": "Films, episodes and songs you play show up here.",
+    "rewatched": "Watched more than once",
+    "songPlays": "Song plays",
+    "thisWeek": "This week",
+    "timeWatched": "Time watched",
+    "times": {
+      "one": "once",
+      "other": "{count} times"
+    },
+    "title": "Your stats",
+    "topGenres": "Top genres",
+    "weekOf": {
+      "one": "Week of {date}: {count} title",
+      "other": "Week of {date}: {count} titles"
+    }
+  },
   "ui": {
     "crashState": {
       "crashed": "This page ran into an error and could not be shown. The rest of Jellyfied still works.",
@@ -1619,6 +1737,7 @@
     "licences": "Licences",
     "open": "Account menu",
     "signOut": "Sign out",
+    "stats": "Your stats",
     "switchTo": "Switch to {name}"
   }
 }

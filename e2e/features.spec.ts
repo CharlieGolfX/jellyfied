@@ -368,6 +368,43 @@ test('an account can be protected with a PIN that is asked for when switching to
   await expect(page.getByText('Recently Added in Movies')).toBeVisible();
 });
 
+test.describe('a show', () => {
+  test('going back returns the row of seasons to where it was scrolled to', async ({ page }) => {
+    await mockJellyfin(page, { big: true });
+    await signIn(page);
+    await expect(page.getByText('Recently Added in Movies')).toBeVisible();
+    await page.goto('/item/show-1');
+    const row = page.locator('[data-hub-scroller]').filter({ has: page.getByLabel('Season 1', { exact: true }) });
+    await expect(row.getByLabel('Season 12', { exact: true })).toBeAttached();
+    await row.evaluate((el) => el.scrollTo({ left: 600, behavior: 'instant' }));
+    await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBe(600);
+    // A season whose card is on screen, opened without the row scrolling to it first.
+    const name = await row.evaluate((el) => {
+      const view = el.getBoundingClientRect();
+      const cards = [...el.querySelectorAll<HTMLAnchorElement>('a[aria-label^="Season"]')];
+      const inside = cards.find((a) => a.getBoundingClientRect().left > view.left + 40 && a.getBoundingClientRect().right < view.right);
+      inside!.click();
+      return inside!.getAttribute('aria-label');
+    });
+    await expect(page).toHaveURL(/\/item\/season-/);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/item\/show-1/);
+    await expect.poll(() => row.evaluate((el) => el.scrollLeft)).toBe(600);
+    await expect(row.getByLabel(name!, { exact: true })).toBeInViewport();
+
+    // Opened again as a new page, the row starts at the beginning.
+    await page
+      .getByRole('link', { name: 'Season 1', exact: true })
+      .first()
+      .evaluate((a) => (a as HTMLElement).click());
+    await page.getByRole('link', { name: 'The Mock Show' }).click();
+    await expect(page).toHaveURL(/\/item\/show-1/);
+    await expect(row.getByLabel('Season 12', { exact: true })).toBeAttached();
+    expect(await row.evaluate((el) => el.scrollLeft)).toBe(0);
+  });
+});
+
 test.describe('the server dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await mockJellyfin(page, { admin: true });

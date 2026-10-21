@@ -48,7 +48,7 @@ export function PanelChip({
       aria-pressed={selected}
       className={clsx(
         'rounded px-2 py-1 text-xs font-medium tabular-nums transition-colors',
-        selected ? 'bg-accent text-accent-ink' : 'bg-white/10 text-white/80 hover:bg-white/20',
+        selected ? 'bg-accent-fill text-accent-ink' : 'bg-white/10 text-white/80 hover:bg-white/20',
       )}
     >
       {children}

@@ -15,11 +15,16 @@
 
   --color-fg: #eeeeee;
   --color-muted: #a6a6a6;
-  --color-faint: #747474;
+  /* Light enough for 4.5:1 on the paper steps (base-850 to base-750). */
+  --color-faint: #929292;
 
   /* Accent colours: primary blue, secondary purple. */
   --color-accent: #00a4dc;
   --color-accent-hover: #1fb5ea;
+  /* Filled surfaces with text on them (buttons, badges) use a deeper shade of the accent, so white
+     text on them reaches 4.5:1 (see accentColors in lib/theme.ts). */
+  --color-accent-fill: #007ea9;
+  --color-accent-fill-hover: #00719a;
   --color-accent-ink: #ffffff;
   --color-brand-purple: #aa5cc3;
   --color-star: #f2b01e;

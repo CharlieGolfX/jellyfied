@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import { Play, Tv } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { cardImage, imageSrc } from '@/api/images';
@@ -11,58 +10,26 @@ import { CardGrid } from '@/components/media/CardGrid';
 import { LibraryIcon } from '@/components/layout/libraryIcon';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState, Img } from '@/components/ui/States';
-import { formatTimeOfDay, useTimeFormat } from '@/lib/timeFormat';
-import { usePlay } from '@/player/usePlay';
+import { Guide } from './liveTv/Guide';
+import { Scheduled } from './liveTv/Scheduled';
+import { programProgress, ProgramTimes, useNow, usePlayChannel } from './liveTv/shared';
 import { t } from '@/i18n';
 
-type TabId = 'channels' | 'now' | 'recordings';
+export { programProgress };
+
+type TabId = 'channels' | 'guide' | 'now' | 'recordings';
 const TABS: { id: TabId; label: string }[] = [
   { id: 'channels', label: t('liveTv.channels') },
+  { id: 'guide', label: t('liveTv.guide') },
   { id: 'now', label: t('liveTv.onNow') },
   { id: 'recordings', label: t('liveTv.recordings') },
 ];
 
-/** How far through its slot a programme is, 0–100, or null when its times are unknown. */
-export function programProgress(program: Pick<BaseItemDto, 'StartDate' | 'EndDate'> | null | undefined, now: number): number | null {
-  const start = program?.StartDate ? Date.parse(program.StartDate) : NaN;
-  const end = program?.EndDate ? Date.parse(program.EndDate) : NaN;
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
-  return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
-}
-
-/** Re-renders every half minute, so progress bars and "on now" keep moving. */
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
-}
-
-function ProgramTimes({ program }: { program: BaseItemDto }) {
-  const [format] = useTimeFormat();
-  if (!program.StartDate || !program.EndDate) return null;
-  return (
-    <span className="tabular-nums">
-      {formatTimeOfDay(new Date(program.StartDate), format)} – {formatTimeOfDay(new Date(program.EndDate), format)}
-    </span>
-  );
-}
-
-/** Watching a programme means tuning to its channel. */
-function usePlayChannel() {
-  const play = usePlay();
-  return (channelId: string, name?: string | null) =>
-    play({ Id: channelId, Name: name, Type: 'TvChannel', MediaType: 'Video', IsFolder: false } as BaseItemDto, { fromStart: true });
-}
-
-function Channels() {
+/** The channels, each with what is on it now. Shared by the channel list and the guide. */
+function useChannels() {
   const api = useApi();
   const { userId } = useSession();
-  const playChannel = usePlayChannel();
-  const now = useNow();
-  const { data, isLoading, error, refetch } = useQuery({
+  return useQuery({
     queryKey: [MEDIA, 'livetv', 'channels', userId],
     queryFn: () =>
       api.get<ItemsResult>('/LiveTv/Channels', {
@@ -76,6 +43,13 @@ function Channels() {
     // What is on changes all the time.
     refetchInterval: 5 * 60_000,
   });
+}
+
+function Channels() {
+  const api = useApi();
+  const playChannel = usePlayChannel();
+  const now = useNow();
+  const { data, isLoading, error, refetch } = useChannels();
 
   if (isLoading) return <PageSpinner />;
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
@@ -129,7 +103,7 @@ function Channels() {
                   </span>
                 )}
               </span>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-fg transition-colors group-hover:bg-accent group-hover:text-accent-ink">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-fg transition-colors group-hover:bg-accent-fill group-hover:text-accent-ink">
                 <Play size={16} fill="currentColor" className="ml-0.5" />
               </span>
             </button>
@@ -189,7 +163,7 @@ function OnNow() {
                 }
               />
               <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-ink shadow-lg">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-fill text-accent-ink shadow-lg">
                   <Play size={22} fill="currentColor" className="ml-0.5" />
                 </span>
               </span>
@@ -216,6 +190,13 @@ function OnNow() {
   );
 }
 
+function GuideTab() {
+  const { data, isLoading, error, refetch } = useChannels();
+  if (isLoading) return <PageSpinner />;
+  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  return <Guide channels={data?.Items ?? []} />;
+}
+
 function Recordings() {
   const api = useApi();
   const { userId } = useSession();
@@ -232,17 +213,21 @@ function Recordings() {
       }),
   });
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
-  if (!isLoading && (data?.Items.length ?? 0) === 0) {
-    return <EmptyState title={t('liveTv.noRecordings')}>{t('liveTv.recordingsHint')}</EmptyState>;
-  }
   return (
-    <div className="px-4 pt-6 sm:px-8 lg:px-10">
-      <CardGrid items={data?.Items ?? []} shape="landscape" loading={isLoading} />
-    </div>
+    <>
+      <Scheduled />
+      {!isLoading && (data?.Items.length ?? 0) === 0 ? (
+        <EmptyState title={t('liveTv.noRecordings')}>{t('liveTv.recordingsHint')}</EmptyState>
+      ) : (
+        <div className="px-4 pt-6 sm:px-8 lg:px-10">
+          <CardGrid items={data?.Items ?? []} shape="landscape" loading={isLoading} />
+        </div>
+      )}
+    </>
   );
 }
 
-/** Live TV: the channels with what is on, what is airing now, and the recordings. */
+/** Live TV: the channels with what is on, the guide, what is airing now, and the recordings (made and to come). */
 export default function LiveTvPage({ library }: { library: BaseItemDto }) {
   const [params, setParams] = useSearchParams();
   const tab = TABS.find((option) => option.id === params.get('tab'))?.id ?? 'channels';
@@ -275,6 +260,7 @@ export default function LiveTvPage({ library }: { library: BaseItemDto }) {
         </div>
       </div>
       {tab === 'channels' && <Channels />}
+      {tab === 'guide' && <GuideTab />}
       {tab === 'now' && <OnNow />}
       {tab === 'recordings' && <Recordings />}
     </div>

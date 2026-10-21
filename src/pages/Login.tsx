@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { ArrowLeft, KeyRound, Server, User as UserIcon, X } from 'lucide-react';
+import { ArrowLeft, KeyRound, Lock, Server, User as UserIcon, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { JellyfinApi } from '@/api/client';
@@ -180,6 +180,68 @@ function ServerStep({
   );
 }
 
+/**
+ * Someone to pick on the "Who's watching?" screen: their picture (or initial) and name. An account
+ * still signed in on this browser can be signed out from its corner, and shows a lock when a PIN
+ * guards it.
+ */
+function ProfileTile({
+  name,
+  image,
+  label,
+  locked,
+  disabled,
+  onPick,
+  forgetLabel,
+  onForget,
+}: {
+  name: string;
+  image?: string;
+  label?: string;
+  locked?: boolean;
+  disabled?: boolean;
+  onPick: () => void;
+  forgetLabel?: string;
+  onForget?: () => void;
+}) {
+  const initial = name.charAt(0).toUpperCase();
+  return (
+    <div className="group relative">
+      <button
+        onClick={onPick}
+        disabled={disabled}
+        aria-label={label}
+        className="flex w-full flex-col items-center gap-2 rounded-lg p-2 transition hover:bg-white/5 focus-visible:bg-white/5"
+      >
+        <span className="relative h-20 w-20">
+          <span className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent-fill text-3xl font-bold text-accent-ink ring-2 ring-transparent transition group-hover:ring-accent">
+            {image ? <Img src={image} className="absolute inset-0 h-full w-full object-cover" fallback={initial} /> : initial}
+          </span>
+          {locked && (
+            <span
+              className="absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-base-750 text-fg ring-2 ring-base-850"
+              title={t('login.pinLocked')}
+            >
+              <Lock size={13} aria-label={t('login.pinLocked')} />
+            </span>
+          )}
+        </span>
+        <span className="w-full truncate text-sm">{name}</span>
+      </button>
+      {onForget && (
+        <button
+          onClick={onForget}
+          className="absolute top-0 right-1 rounded-full p-1.5 text-muted opacity-0 group-hover:opacity-100 hover:bg-white/10 hover:text-fg focus-visible:opacity-100"
+          aria-label={forgetLabel}
+          title={forgetLabel}
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function LoginStep({
   api,
   info,
@@ -307,7 +369,11 @@ function LoginStep({
     );
   }
 
-  const showPicker = users.length > 0 && !manual;
+  // Everyone who can be picked: the accounts still signed in here first, then the server's public
+  // users who aren't among them.
+  const others = users.filter((u) => !saved.some((a) => a.userId === u.Id));
+  const hasProfiles = saved.length + others.length > 0;
+  const showPicker = hasProfiles && !manual;
 
   return (
     <div className="space-y-6">
@@ -334,62 +400,29 @@ function LoginStep({
       )}
 
       {pinDialog}
-      {saved.length > 0 && (
-        <div data-testid="saved-accounts">
-          <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-faint uppercase">{t('login.signedInHere')}</div>
-          <ul className="space-y-1">
-            {saved.map((a) => (
-              <li key={a.userId} className="flex items-center gap-1">
-                <button
-                  onClick={() => switchTo(a)}
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left transition hover:bg-white/10"
-                >
-                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent font-bold text-accent-ink">
-                    <Img
-                      src={api.userImageUrl(a.userId, undefined, 96)}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      fallback={a.userName.charAt(0).toUpperCase()}
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('login.continueAs', { name: a.userName })}</span>
-                </button>
-                <button
-                  onClick={() => void forgetAccount(a)}
-                  className="rounded-full p-2 text-muted hover:bg-white/10 hover:text-fg"
-                  aria-label={t('login.signOutAccount', { name: a.userName })}
-                  title={t('login.signOutAccount', { name: a.userName })}
-                >
-                  <X size={16} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {showPicker ? (
         <>
-          <div className="grid grid-cols-3 gap-4">
-            {users.map((u) => (
-              <button
+          <div className="grid grid-cols-3 gap-x-2 gap-y-4" data-testid="profiles">
+            {saved.map((a) => (
+              <ProfileTile
+                key={a.userId}
+                name={a.userName}
+                image={api.userImageUrl(a.userId, undefined, 192)}
+                label={t('login.continueAs', { name: a.userName })}
+                locked={Boolean(a.sealed)}
+                onPick={() => switchTo(a)}
+                forgetLabel={t('login.signOutAccount', { name: a.userName })}
+                onForget={() => void forgetAccount(a)}
+              />
+            ))}
+            {others.map((u) => (
+              <ProfileTile
                 key={u.Id}
-                onClick={() => pickUser(u)}
+                name={u.Name}
+                image={u.PrimaryImageTag ? api.userImageUrl(u.Id, u.PrimaryImageTag, 192) : undefined}
+                onPick={() => pickUser(u)}
                 disabled={loading}
-                className="group flex flex-col items-center gap-2 rounded-lg p-2 transition hover:bg-white/5"
-              >
-                <span className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-brand-purple to-accent text-2xl font-bold text-accent-ink ring-2 ring-transparent transition group-hover:ring-accent">
-                  {u.PrimaryImageTag ? (
-                    <Img
-                      src={api.userImageUrl(u.Id, u.PrimaryImageTag, 160)}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      fallback={u.Name.charAt(0).toUpperCase()}
-                    />
-                  ) : (
-                    u.Name.charAt(0).toUpperCase()
-                  )}
-                </span>
-                <span className="w-full truncate text-sm">{u.Name}</span>
-              </button>
+              />
             ))}
           </div>
           {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
@@ -431,8 +464,8 @@ function LoginStep({
           <Button type="submit" variant="primary" size="lg" className="w-full justify-center" loading={loading} disabled={!username.trim()}>
             {t('login.signIn')}
           </Button>
-          <div className={clsx('flex gap-2', users.length > 0 ? 'justify-between' : 'justify-center')}>
-            {users.length > 0 && (
+          <div className={clsx('flex gap-2', hasProfiles ? 'justify-between' : 'justify-center')}>
+            {hasProfiles && (
               <Button variant="ghost" size="sm" onClick={() => setManual(false)}>
                 {t('login.backToUsers')}
               </Button>

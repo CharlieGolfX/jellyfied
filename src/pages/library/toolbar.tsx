@@ -42,7 +42,7 @@ export function AlphabetBar({ value, onChange }: { value: string; onChange: (let
           title={l === '#' ? t('library.toolbar.goToSymbols') : t('library.toolbar.goToLetter', { l })}
           className={clsx(
             'h-7 min-w-7 shrink-0 rounded px-1.5 text-xs font-semibold transition-colors',
-            value === l ? 'bg-accent text-accent-ink' : 'text-muted hover:bg-white/10 hover:text-fg',
+            value === l ? 'bg-accent-fill text-accent-ink' : 'text-muted hover:bg-white/10 hover:text-fg',
           )}
         >
           {l}

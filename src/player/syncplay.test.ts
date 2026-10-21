@@ -200,7 +200,9 @@ describe('SyncPlayManager: queue', () => {
     server.update('GroupJoined', group);
     server.update('PlayQueue', queue());
     expect(manager.getSnapshot().hasQueue).toBe(true);
-    expect(opened).toEqual([{ itemId: 'item-1', playlistItemId: 'p1', startPositionTicks: 50_000_000, queue: ['item-1', 'item-2'] }]);
+    expect(opened).toEqual([
+      { itemId: 'item-1', playlistItemId: 'p1', startPositionTicks: 50_000_000, queue: ['item-1', 'item-2'], index: 0 },
+    ]);
   });
 
   it('adds the time that has passed since the update when the group is already playing', () => {
@@ -209,6 +211,35 @@ describe('SyncPlayManager: queue', () => {
     server.update('PlayQueue', queue({ IsPlaying: true }));
     // Ten seconds later than the 5 s the update named.
     expect(opened[0].startPositionTicks).toBe(150_000_000);
+  });
+
+  it('tells the music player about every change to the queue, in its terms', () => {
+    const states: unknown[] = [];
+    manager.onQueue = (q) => states.push(q);
+    server.update('GroupJoined', group);
+    server.update('PlayQueue', queue({ Reason: 'RepeatMode', RepeatMode: 'RepeatAll', ShuffleMode: 'Shuffle', PlayingItemIndex: 1 }));
+    expect(states).toEqual([{ queue: ['item-1', 'item-2'], index: 1, repeat: 'all', shuffled: true }]);
+  });
+
+  it('sends repeat, shuffle and removing an entry to the group', () => {
+    server.update('GroupJoined', group);
+    server.update('PlayQueue', queue());
+    manager.setRepeat('one');
+    manager.setShuffle(true);
+    manager.remove(1);
+    expect(post).toHaveBeenCalledWith('/SyncPlay/SetRepeatMode', { Mode: 'RepeatOne' });
+    expect(post).toHaveBeenCalledWith('/SyncPlay/SetShuffleMode', { Mode: 'Shuffle' });
+    expect(post).toHaveBeenCalledWith('/SyncPlay/RemoveFromPlaylist', { PlaylistItemIds: ['p2'] });
+  });
+
+  it('moves past the last entry only when the whole queue repeats', () => {
+    server.update('GroupJoined', group);
+    server.update('PlayQueue', queue({ PlayingItemIndex: 1 }));
+    manager.attach(document.createElement('audio'), 'p2');
+    expect(manager.requestNext()).toBe(false);
+    server.update('PlayQueue', queue({ Reason: 'RepeatMode', PlayingItemIndex: 1, RepeatMode: 'RepeatAll' }));
+    expect(manager.requestNext()).toBe(true);
+    expect(post).toHaveBeenCalledWith('/SyncPlay/NextItem', { PlaylistItemId: 'p2' });
   });
 
   it('does not open anything for queue changes that keep the current item', () => {

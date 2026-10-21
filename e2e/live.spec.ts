@@ -444,6 +444,216 @@ test.describe('playback on a real server', () => {
     await page.getByRole('button', { name: 'Grid view' }).click();
   });
 
+  test("shows a song's lyrics in time with it, and jumps to a line", async ({ page }) => {
+    const songs = await items(page, '/Items', { includeItemTypes: 'Audio', recursive: 'true', sortBy: 'SortName', limit: '50' });
+    const withLyrics = await page.evaluate(
+      async (ids) => {
+        const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string };
+        for (const id of ids) {
+          const res = await fetch(`${s.serverUrl}/Audio/${id}/Lyrics`, {
+            headers: {
+              Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+            },
+          });
+          if (res.ok && ((await res.json()) as { Lyrics?: { Start?: number }[] }).Lyrics?.some((l) => typeof l.Start === 'number'))
+            return id;
+        }
+        return null;
+      },
+      songs.map((song) => song.Id),
+    );
+    test.skip(!withLyrics, 'no song with timed lyrics in the first 50');
+    const song = songs.find((x) => x.Id === withLyrics)!;
+    await page.goto(`/item/${song.Id}`);
+    await page.getByRole('button', { name: 'Play', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Lyrics' }).click();
+    const lyrics = page.getByTestId('lyrics');
+    await expect(lyrics).toBeVisible();
+    // The line being sung is marked, and moves on with the song.
+    const current = lyrics.locator('[aria-current="true"]');
+    await expect(current).toBeVisible({ timeout: 15_000 });
+    const first = await current.textContent();
+    await expect(current).not.toHaveText(first!, { timeout: 15_000 });
+    // Clicking a line plays from there.
+    const lines = lyrics.locator('button[data-line]');
+    await lines.last().click();
+    await expect(current).toHaveText((await lines.last().textContent())!);
+    await page.getByRole('button', { name: 'Close player' }).click();
+  });
+
+  test("downloads a season's episodes one after the other", async ({ page }) => {
+    const [season] = await items(page, '/Items', { includeItemTypes: 'Season', recursive: 'true', sortBy: 'SortName', limit: '1' });
+    test.skip(!season, 'the server has no seasons');
+    await page.goto(`/item/${season.Id}`);
+    await page.getByRole('button', { name: 'More' }).first().click();
+    await page.getByRole('menuitem', { name: 'Download all…' }).click();
+    const list = page.getByTestId('download-list').getByRole('listitem');
+    await expect(list.first()).toBeVisible();
+    const count = await list.count();
+    const downloads: string[] = [];
+    page.on('download', (d) => downloads.push(d.suggestedFilename()));
+    await page.getByRole('button', { name: /^Download \d+ files?$/ }).click();
+    await expect(page.getByText('All downloads started.', { exact: false })).toBeVisible({ timeout: 10_000 + count * 2000 });
+    await expect.poll(() => downloads.length).toBe(count);
+    expect(downloads.every((name) => /\.\w+$/.test(name))).toBe(true);
+  });
+
+  test("an administrator edits an episode's skippable segments", async ({ page }) => {
+    const [episode] = await items(page, '/Items', { includeItemTypes: 'Episode', recursive: 'true', sortBy: 'SortName', limit: '1' });
+    test.skip(!episode, 'the server has no episodes');
+    await page.goto(`/item/${episode.Id}`);
+    const more = page.getByRole('button', { name: 'More' }).first();
+    await more.click();
+    const edit = page.getByRole('menuitem', { name: 'Edit metadata' });
+    test.skip(!(await edit.isVisible()), 'the test account is not an administrator');
+    await edit.click();
+    await page.getByRole('tab', { name: 'Segments' }).click();
+    const tab = page.getByTestId('segments-tab');
+    await expect(tab).toBeVisible();
+    if (await tab.getByText('install the Intro Skipper plugin').isVisible()) {
+      // Without the plugin they can only be looked at.
+      await expect(tab.getByRole('button', { name: 'Add a segment' })).toHaveCount(0);
+      return;
+    }
+    // Start from none, add an intro, save, and find it on the server.
+    while ((await tab.getByRole('button', { name: 'Remove segment' }).count()) > 0)
+      await tab.getByRole('button', { name: 'Remove segment' }).first().click();
+    await tab.getByRole('button', { name: 'Add a segment' }).click();
+    await tab.getByLabel('Start').fill('0:01');
+    await tab.getByLabel('End').fill('0:00');
+    await expect(tab.getByText('The end has to come after the start.')).toBeVisible();
+    await expect(tab.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await tab.getByLabel('End').fill('0:05.5');
+    await tab.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Segments saved')).toBeVisible();
+    const onServer = () =>
+      page.evaluate(async (id) => {
+        const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string };
+        const res = await fetch(`${s.serverUrl}/MediaSegments/${id}`, {
+          headers: {
+            Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+          },
+        });
+        return ((await res.json()) as { Items: { Type: string; StartTicks: number; EndTicks: number }[] }).Items;
+      }, episode.Id);
+    expect(await onServer()).toEqual([expect.objectContaining({ Type: 'Intro', StartTicks: 10_000_000, EndTicks: 55_000_000 })]);
+    // And back to none.
+    await page.getByText('Segments saved').waitFor({ state: 'hidden' });
+    await tab.getByRole('button', { name: 'Remove segment' }).click();
+    await tab.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Segments saved')).toBeVisible();
+    expect(await onServer()).toEqual([]);
+  });
+
+  test('the Live TV guide schedules and cancels recordings, of a programme and of a series', async ({ page }) => {
+    test.setTimeout(90_000);
+    // Start without recordings left from an earlier run.
+    await page.evaluate(async () => {
+      const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string };
+      const headers = {
+        Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+      };
+      for (const kind of ['SeriesTimers', 'Timers']) {
+        const res = await fetch(`${s.serverUrl}/LiveTv/${kind}`, { headers });
+        if (!res.ok) continue;
+        for (const timer of ((await res.json()) as { Items: { Id: string }[] }).Items) {
+          await fetch(`${s.serverUrl}/LiveTv/${kind}/${timer.Id}`, { method: 'DELETE', headers });
+        }
+      }
+    });
+    const views = await items(page, '/UserViews', {});
+    const liveTv = views.find((v) => (v as Item & { CollectionType?: string }).CollectionType === 'livetv');
+    test.skip(!liveTv, 'the server has no Live TV');
+    await page.goto(`/library/${liveTv!.Id}?tab=guide`);
+    const guide = page.getByTestId('livetv-guide');
+    const cells = guide.getByRole('gridcell');
+    await expect(cells.first()).toBeVisible();
+    // A programme later on: it can be recorded, but not watched yet.
+    const later = cells.nth(2);
+    const name = (await later.getAttribute('title'))!;
+    await later.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button', { name: 'Watch now' })).toHaveCount(0);
+    const record = dialog.getByRole('button', { name: 'Record', exact: true });
+    // The buttons come once the programme's details are in.
+    await record.waitFor({ timeout: 10_000 }).catch(() => {});
+    test.skip(!(await record.isVisible()), 'the test account may not record');
+    await record.click();
+    await expect(dialog.getByRole('button', { name: 'Cancel recording' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(later.getByLabel('Will be recorded')).toBeVisible();
+
+    // It is in the list of what will be recorded, and can be called off from there.
+    await page.getByRole('button', { name: 'Recordings' }).click();
+    const scheduled = page.getByTestId('livetv-scheduled');
+    await expect(scheduled.getByText(name).first()).toBeVisible();
+    await scheduled
+      .getByRole('button', { name: `Cancel recording ${name}` })
+      .first()
+      .click();
+    await expect(scheduled).toBeHidden();
+
+    // A series: every airing.
+    await page.getByRole('button', { name: 'Guide' }).click();
+    await expect(cells.first()).toBeVisible();
+    const episode = cells.filter({ hasText: 'Test Series' }).nth(1);
+    test.skip((await episode.count()) === 0, 'the guide has no series');
+    await episode.click();
+    await dialog.getByRole('button', { name: 'Record series…' }).click();
+    // Which airings, and how many to keep.
+    const series = page.getByTestId('series-recording');
+    // Whatever the server's defaults are.
+    const newOnly = series.getByRole('switch', { name: 'New episodes only' });
+    if ((await newOnly.getAttribute('aria-checked')) !== 'true') await newOnly.click();
+    await series.getByLabel('Keep').selectOption({ label: 'The latest 5 recordings' });
+    await page.getByRole('dialog').getByRole('button', { name: 'Record series' }).click();
+    await expect(page.getByText('Every airing will be recorded')).toBeVisible();
+    // Back in the programme, which says so.
+    await expect(dialog.getByText('The series is being recorded')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // It is listed with what was chosen, and can be changed and called off there.
+    await page.getByRole('button', { name: 'Recordings' }).click();
+    const recurring = page.getByTestId('livetv-scheduled');
+    await expect(recurring.getByText('New episodes only')).toBeVisible();
+    await recurring
+      .getByRole('button', { name: /^Settings for recording / })
+      .first()
+      .click();
+    await expect(series.getByRole('switch', { name: 'New episodes only' })).toHaveAttribute('aria-checked', 'true');
+    await expect(series.getByLabel('Keep')).toHaveValue('5');
+    await series.getByLabel('Start early').selectOption('2');
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Series recording saved')).toBeVisible();
+    const saved = await page.evaluate(async () => {
+      const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string };
+      const res = await fetch(`${s.serverUrl}/LiveTv/SeriesTimers`, {
+        headers: {
+          Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+        },
+      });
+      return ((await res.json()) as { Items: { RecordNewOnly: boolean; KeepUpTo: number; PrePaddingSeconds: number }[] }).Items;
+    });
+    expect(saved).toEqual([expect.objectContaining({ RecordNewOnly: true, KeepUpTo: 5, PrePaddingSeconds: 120 })]);
+    await recurring
+      .getByRole('button', { name: /^Stop recording / })
+      .first()
+      .click();
+    await expect(recurring).toBeHidden();
+  });
+
+  test('the Live TV guide tunes to what is on', async ({ page }) => {
+    const views = await items(page, '/UserViews', {});
+    const liveTv = views.find((v) => (v as Item & { CollectionType?: string }).CollectionType === 'livetv');
+    test.skip(!liveTv, 'the server has no Live TV');
+    await page.goto(`/library/${liveTv!.Id}?tab=guide`);
+    await page.getByTestId('livetv-guide').getByRole('gridcell').first().click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Watch now' }).click();
+    await expectPlaying(page);
+    await showControls(page);
+    await page.getByRole('button', { name: 'Stop playback' }).click();
+  });
+
   test('preferences are stored with the account on the server', async ({ page }) => {
     const stored = () =>
       page.evaluate(async () => {

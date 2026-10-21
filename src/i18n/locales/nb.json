@@ -953,16 +953,58 @@
     }
   },
   "liveTv": {
+    "allEpisodes": "Alle episoder",
+    "anyChannel": "Alle kanaler",
+    "atAnyTime": "Til alle tider",
+    "cancelRecording": "Avbryt opptak",
+    "cancelRecordingOf": "Avbryt opptak av {name}",
+    "cancelSeriesRecording": "Avbryt serieopptak",
+    "cancelSeriesRecordingOf": "Slutt å ta opp {name}",
     "channels": "Kanaler",
+    "earlier": "Tidligere",
+    "endLate": "Slutt senere",
+    "guide": "Programguide",
+    "keep": "Behold",
+    "keepAll": "Alle opptak",
+    "keepLatest": {
+      "one": "Det siste opptaket",
+      "other": "De siste {count} opptakene"
+    },
+    "later": "Senere",
     "liveTvHasNoChannels": "Direkte-TV har ingen kanaler ennå. Tuner og programoversikt settes opp i Jellyfins kontrollpanel.",
+    "minutes": {
+      "one": "{count} minutt",
+      "other": "{count} minutter"
+    },
+    "newEpisodesOnly": "Bare nye episoder",
     "noChannels": "Ingen kanaler",
     "noGuideInformation": "Ingen programinformasjon",
     "noRecordings": "Ingen opptak",
     "nothingInTheGuideRight": "Ingenting i programoversikten akkurat nå",
+    "now": "Nå",
+    "onAnyChannel": "På alle kanaler",
     "onNow": "Sendes nå",
+    "record": "Ta opp",
+    "recordSeries": "Ta opp serien",
+    "recordSeriesMenu": "Ta opp serien …",
+    "recordSeriesTitle": "Ta opp {name}",
+    "recordingCancelled": "Opptaket er avbrutt",
+    "recordingNow": "tar opp nå",
+    "recordingScheduled": "Blir tatt opp",
     "recordings": "Opptak",
     "recordingsHint": "Programmer serveren har tatt opp, vises her.",
-    "watch": "Se {name}"
+    "scheduled": "Planlagt",
+    "seriesRecordingCancelled": "Serieopptaket er avbrutt",
+    "seriesRecordingSaved": "Serieopptaket er lagret",
+    "seriesRecordingScheduled": "Alle sendinger blir tatt opp",
+    "seriesRecordingSettingsOf": "Innstillinger for opptak av {name}",
+    "seriesRecordings": "Serieopptak",
+    "seriesWillBeRecorded": "Serien blir tatt opp",
+    "settings": "Innstillinger",
+    "startEarly": "Start tidligere",
+    "watch": "Se {name}",
+    "watchNow": "Se nå",
+    "willBeRecorded": "Blir tatt opp"
   },
   "login": {
     "backToUsers": "Tilbake til brukere",
@@ -977,13 +1019,13 @@
     "licences": "Lisenser",
     "notJellyfin": "Den adressen svarte ikke som en Jellyfin-server.",
     "password": "Passord",
+    "pinLocked": "Låst med PIN-kode",
     "quickConnect": "Quick Connect",
     "quickConnectHelp": "På en enhet der du allerede er logget inn, åpner du Quick Connect i brukerinnstillingene og skriver inn denne koden:",
     "serverAddress": "Serveradresse",
     "serverAddressHint": "For eksempel http://192.168.1.10:8096 eller https://jellyfin.example.com",
     "serverInfo": "{name} · Jellyfin {version}",
     "setupIncomplete": "Denne serveren er ikke ferdig med førstegangsoppsettet. Fullfør oppsettsveiviseren i Jellyfins nettgrensesnitt først.",
-    "signedInHere": "Logget inn på denne enheten",
     "signIn": "Logg inn",
     "signInManually": "Logg inn manuelt",
     "signOutAccount": "Logg ut {name}",
@@ -1029,6 +1071,27 @@
       "largerPosters": "Større plakater",
       "posterSize": "Plakatstørrelse",
       "smallerPosters": "Mindre plakater"
+    },
+    "downloadAll": {
+      "allStarted": "Alle nedlastingene er startet. Nettleseren viser hvordan det går.",
+      "browserMayAsk": "De lastes ned etter hverandre; nettleseren kan spørre om dette nettstedet får laste ned flere filer.",
+      "menu": "Last ned alle …",
+      "nothing": "Det er ingenting her du kan laste ned.",
+      "progress": "Startet {started} av {count} …",
+      "start": {
+        "one": "Last ned {count} fil",
+        "other": "Last ned {count} filer"
+      },
+      "started": "Startet",
+      "summary": {
+        "one": "{count} fil, {size} til sammen.",
+        "other": "{count} filer, {size} til sammen."
+      },
+      "summaryNoSize": {
+        "one": "{count} fil.",
+        "other": "{count} filer."
+      },
+      "title": "Last ned {name}"
     },
     "featuredBanner": {
       "details": "Detaljer",
@@ -1089,7 +1152,8 @@
       "details": "Detaljer",
       "editMetadata": "Rediger metadata: {name}",
       "identify": "Identifiser",
-      "images": "Bilder"
+      "images": "Bilder",
+      "segments": "Segmenter"
     },
     "metadataIdentifyTab": {
       "applyingMatch": "Tar i bruk treffet…",
@@ -1132,6 +1196,31 @@
       "moreActions": "Flere handlinger",
       "play": "Spill av {finalTitle}",
       "select": "Velg {finalTitle}"
+    },
+    "segments": {
+      "add": "Legg til et segment",
+      "changedElsewhere": "Segmentene ble endret et annet sted i mellomtiden. Her er de slik de er nå.",
+      "end": "Slutt",
+      "hint": "Avspilleren tilbyr å hoppe over disse. Tider som minutter:sekunder (1:23) eller timer:minutter:sekunder.",
+      "none": "Ingen segmenter ennå.",
+      "problem": {
+        "badEnd": "Slutten er ikke et tidspunkt.",
+        "badStart": "Starten er ikke et tidspunkt.",
+        "endBeforeStart": "Slutten må komme etter starten.",
+        "pastTheEnd": "Dette starter etter at videoen er slutt."
+      },
+      "readOnly": "Disse kommer fra serverens segmentleverandører. For å endre dem her, installer utvidelsen Intro Skipper (10.11 eller nyere), som lar Jellyfied redigere dem.",
+      "remove": "Fjern segmentet",
+      "saved": "Segmentene er lagret",
+      "start": "Start",
+      "type": "Type",
+      "types": {
+        "Commercial": "Reklame",
+        "Intro": "Intro",
+        "Outro": "Rulletekst",
+        "Preview": "Forhåndsvisning",
+        "Recap": "Oppsummering"
+      }
     }
   },
   "nav": {
@@ -1151,6 +1240,7 @@
   "player": {
     "audioBar": {
       "closePlayer": "Lukk avspilleren",
+      "lyrics": "Sangtekst",
       "mute": "Demp",
       "playQueue": "Avspillingskø · {count}",
       "queue": "Kø",
@@ -1160,8 +1250,10 @@
         "off": "Gjenta: av",
         "one": "Gjenta: dette sporet"
       },
+      "shuffleGroup": "Bland gruppens kø",
       "shuffleUpcoming": "Bland de neste",
-      "volume": "Volum"
+      "volume": "Volum",
+      "withGroup": "Spiller med SyncPlay-gruppen din"
     },
     "audioDelay": "Lydforsinkelse {delay}",
     "castButton": {
@@ -1593,6 +1685,32 @@
     "updatePassword": "Oppdater passord",
     "usedForClockTimesSuch": "Brukes til klokkeslett som «Slutter» i avspilleren og datoer i kontrollpanelet."
   },
+  "stats": {
+    "episodesOfShows": {
+      "one": "Episoder, fra {count} serie",
+      "other": "Episoder, fra {count} serier"
+    },
+    "films": "Filmer",
+    "howCounted": "Basert på det denne kontoen har spilt. Jellyfin husker hvor ofte og når sist, ikke hver gang, så en ny titt teller hele filmen igjen, og en tittel teller i uken den sist ble spilt.",
+    "lastWeeks": "De siste {count} ukene",
+    "lastWeeksNote": "Filmer og episoder, etter uken de sist ble spilt",
+    "nothingYet": "Ingenting sett ennå",
+    "nothingYetHint": "Filmer, episoder og sanger du spiller, vises her.",
+    "rewatched": "Sett mer enn én gang",
+    "songPlays": "Avspilte sanger",
+    "thisWeek": "Denne uken",
+    "timeWatched": "Tid sett",
+    "times": {
+      "one": "én gang",
+      "other": "{count} ganger"
+    },
+    "title": "Din statistikk",
+    "topGenres": "Mest sette sjangre",
+    "weekOf": {
+      "one": "Uken fra {date}: {count} tittel",
+      "other": "Uken fra {date}: {count} titler"
+    }
+  },
   "ui": {
     "crashState": {
       "crashed": "Denne siden støtte på en feil og kunne ikke vises. Resten av Jellyfied fungerer fortsatt.",
@@ -1619,6 +1737,7 @@
     "licences": "Lisenser",
     "open": "Kontomeny",
     "signOut": "Logg ut",
+    "stats": "Din statistikk",
     "switchTo": "Bytt til {name}"
   }
 }

@@ -79,7 +79,9 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   them watched or unwatched, add them to a playlist or collection, or delete them in one go.
 - Pages update on their own: new media after a library scan, and watched state, favorites and
   resume positions changed on your other devices, appear without a reload.
-- Live TV: the channels with what is on, what is airing now, and your recordings.
+- Live TV: the channels with what is on, a programme guide, what is airing now, and your
+  recordings. Record a programme or every airing of a series from the guide, and see and cancel
+  what is scheduled (needs the Live TV management permission).
 - Photo slideshow, from a photo folder or from any photo (`Space` starts and pauses it).
 - Adjustable poster size on every page (top-bar zoom button, or the slider in library views). The
   setting applies to every row and grid and is remembered.
@@ -133,8 +135,8 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   playback speed.
 - Picture-in-picture, from the player or the mini player, plus OS media controls (media keys,
   lock screen) for video.
-- SyncPlay: create or join a group from the top bar and watch together. Play, pause, seek and
-  moving on to the next episode apply to everyone, and playback is kept in step across devices.
+- SyncPlay: create or join a group from the top bar and watch, or listen, together. Play, pause,
+  seek and moving on to the next episode or song apply to everyone, and playback is kept in step across devices.
   A group can be open to everyone on the server or for the people you pick, who are asked in a
   popup whether to join. Its creator can delete it, which makes everyone in it leave.
 - SyncPlay picker: in a group, everyone can suggest films, shows and episodes (from the picker's
@@ -152,10 +154,13 @@ The posters and descriptions are what the Jellyfin server fetched for them from
 - Mini player: press Back (or `Esc`) in the player and the video keeps playing in a small window,
   so you can browse and read media info while streaming. Click it to expand, or use its controls to
   pause or stop. Starting music pauses the video.
-- Persistent music player bar with queue, shuffle, repeat and OS media keys.
+- Persistent music player bar with queue, shuffle, repeat, OS media keys and lyrics (timed ones
+  follow the song, and a line can be clicked to jump there; Jellyfin 10.9 or newer).
 - Instant Mix: start a queue of similar music from any song, album, artist, genre or playlist.
 - Playback progress and watched state are synced with Jellyfin, so you can continue on any other
   Jellyfin app.
+- Download a single file, or everything in a season, show, album, collection or playlist (one file
+  after the other) from the item's menu, where the server allows downloads.
 
 **Server dashboard (administrators)**
 - Dashboard: active streams with transcode details and remote pause/stop/message, active devices,
@@ -171,7 +176,9 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   API keys and a Log viewer.
 - Metadata editor ("Edit metadata" in an item's menu): titles, overview, dates, ratings, genres,
   tags, studios and external IDs; upload, delete or find artwork online; and Identify to match an
-  item against the server's metadata providers again.
+  item against the server's metadata providers again. For videos, a Segments tab lists the
+  intro, credits, recap, preview and commercial markers the player offers to skip, and edits them
+  when the server has the Intro Skipper plugin.
 
 **Account**
 - Quick Connect sign-in and authorization, profile picture, password, playback language and subtitle
@@ -180,9 +187,12 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   and background tone).
 - Several accounts on one device: "Add another account" in the account menu keeps the current one
   signed in, and you switch between them from the same menu or the sign-in screen without typing
-  a password again. An account can be given a PIN (Account settings) that is asked for before
-  anyone switches to it on that device; while another account is in use, its sign-in is stored
-  encrypted with that PIN.
+  a password again. The sign-in screen asks "Who's watching?" with everyone's picture: the
+  accounts signed in on the device and the server's public users. An account can be given a PIN
+  (Account settings) that is asked for before anyone switches to it on that device, and shows a
+  lock there; while another account is in use, its sign-in is stored encrypted with that PIN.
+- Your stats (account menu): time watched, films, episodes and song plays, your top genres, what
+  you have rewatched and the last twelve weeks, worked out from your play state.
 - Your preferences follow your account: colours, subtitle appearance, skip lengths, time display,
   the home page layout and the tracks remembered per show are the same in every browser you sign
   in to. This can be switched off under Account settings.

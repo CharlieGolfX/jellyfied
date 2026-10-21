@@ -173,7 +173,7 @@ export function ServerStatusButton() {
       >
         <Activity size={20} className={clsx(scanning && 'animate-pulse')} />
         {playing.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-ink tabular-nums">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-fill px-1 text-[10px] font-bold text-accent-ink tabular-nums">
             {playing.length}
           </span>
         )}
