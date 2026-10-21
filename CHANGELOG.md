@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-21
+
 ### Added
 - A programme guide for Live TV: channels down the side, time along the top, a few hours at a time.
   A programme opens with what it is about, Watch now while it airs, and, for those allowed to
@@ -46,6 +48,8 @@ shown in the account menu and on the login screen.
 
 ### Fixed
 - Switches in the settings had no on/off state for screen readers until their value had loaded.
+- The logo link at the top was called "Home" for screen readers and speech control while it shows
+  "Jellyfied"; it is now "Jellyfied · Home".
 - Going back to a page puts its rows, such as a show's seasons, where they were scrolled to
   sideways, instead of at the start.
 
@@ -306,7 +310,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.3.1...v1.4.0
