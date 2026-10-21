@@ -2,7 +2,7 @@
 
 # ---- Build ------------------------------------------------------------------
 # The site is the same for every CPU architecture, so it is built once, on the build machine's own.
-FROM --platform=$BUILDPLATFORM node:24-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
