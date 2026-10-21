@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { CardShape } from '@/api/images';
 import { defaultShape } from '@/api/images';
@@ -74,6 +74,15 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
     // Other cards mean another width, so measure again when the children change.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [update, children]);
+
+  // Also remember the place when the row goes away, while it is still on the page: a scroll right
+  // before a click that leaves the page may only report itself once the page has changed (WebKit).
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    return () => {
+      if (el && restoring.current === 0) rowPositions.set(memoryKeyRef.current, el.scrollLeft);
+    };
+  }, []);
 
   const page = (dir: 1 | -1) => {
     const el = scrollerRef.current;
