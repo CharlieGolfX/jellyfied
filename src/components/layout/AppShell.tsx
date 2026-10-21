@@ -3,6 +3,7 @@ import { t } from '@/i18n';
 import { LayoutDashboard, Menu as MenuIcon } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigationType } from 'react-router-dom';
+import { APP_NAME } from '@/config';
 import { useIsAdmin } from '@/auth/AuthProvider';
 import { CrashState } from '@/components/ui/CrashState';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -121,7 +122,8 @@ export function AppShell() {
         >
           <MenuIcon size={22} />
         </button>
-        <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label={t('common.home')}>
+        {/* The name starts with the word on screen, so saying "Jellyfied" (speech control) finds it. */}
+        <Link to="/" className="mr-2 hidden shrink-0 sm:block" aria-label={`${APP_NAME} · ${t('common.home')}`}>
           <Logo className="text-2xl" />
         </Link>
         <Link to="/" className="shrink-0 sm:hidden" aria-label={t('common.home')}>
