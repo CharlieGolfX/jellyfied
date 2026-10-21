@@ -7,6 +7,7 @@ import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped } from './reporting';
 import { getCastTarget, sendRemotePlay, type RemotePlayCommand } from './castTarget';
 import { castPlay, getChromecast } from './chromecast';
+import { usePlaytimeTracker } from './usePlaytimeTracker';
 import type { SyncPlayManager, SyncPlayQueueState } from './syncplay';
 
 export type RepeatMode = 'off' | 'all' | 'one';
@@ -130,6 +131,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   });
 
   const current = queue[index] ?? null;
+  // Time actually played, for the account's stats.
+  usePlaytimeTracker(audioRef, current?.Id, 'audio', current?.RunTimeTicks ? ticksToSeconds(current.RunTimeTicks) : undefined);
 
   // Mutable refs so event handlers always see fresh state.
   const stateRef = useRef({ queue, index, repeat, api, group });

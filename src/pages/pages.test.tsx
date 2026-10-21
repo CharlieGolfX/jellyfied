@@ -67,16 +67,20 @@ describe('pages', () => {
     page.unmount();
   });
 
-  it('stats add up what was played', async () => {
-    const hour = 3600 * 10_000_000;
-    const played = { Played: true, PlayCount: 2, LastPlayedDate: new Date().toISOString() };
+  it('stats count only what was actually played', async () => {
+    const playtime = {
+      since: '2026-10-01',
+      days: { [new Date().toISOString().slice(0, 10)]: { v: 7200, a: 300 } },
+      items: { 'movie-1': { s: 7200, n: 2, k: 'video' }, 'song-1': { s: 300, n: 1, k: 'audio' } },
+    };
+    const marked = { ...movie, Id: 'movie-2', Name: 'Marked Only', UserData: { Played: true, PlayCount: 1, IsFavorite: false } };
     const page = await renderPage(<StatsPage />, {
       server: (path, init, url) => {
-        if (path === '/Items' && url.searchParams.get('filters') === 'IsPlayed') {
-          return url.searchParams.get('includeItemTypes') === 'Audio'
-            ? list([{ Id: 'song-1', Name: 'Song', Type: 'Audio', UserData: { Played: true, PlayCount: 7 } }])
-            : list([{ ...movie, RunTimeTicks: hour, Genres: ['Drama'], UserData: played }]);
-        }
+        if (path === '/DisplayPreferences/jellyfied-playtime')
+          return { Id: 'jellyfied-playtime', CustomPrefs: { playtime: JSON.stringify(playtime) } };
+        // What the server says was played (including what was only marked) is not asked for.
+        if (path === '/Items' && url.searchParams.get('filters') === 'IsPlayed') return list([marked]);
+        if (path === '/Items' && url.searchParams.get('ids')) return list([{ ...movie, Genres: ['Drama'] }]);
         return server(path, init, url);
       },
     });
@@ -85,7 +89,7 @@ describe('pages', () => {
     expect(page.text()).toContain('2 hr');
     expect(page.text()).toContain('Drama');
     expect(page.text()).toContain('The Mock Movie2 times');
-    expect(page.text()).toContain('7Song plays');
+    expect(page.text()).not.toContain('Marked Only');
     page.unmount();
   });
 });

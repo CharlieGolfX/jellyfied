@@ -10,6 +10,7 @@ import HomePage from '@/pages/Home';
 import LibraryPage from '@/pages/Library';
 import LoginPage from '@/pages/Login';
 import NotFoundPage from '@/pages/NotFound';
+import { PlaytimeSync } from '@/player/PlaytimeSync';
 import { RemoteControlReceiver } from '@/player/RemoteControl';
 import { SyncPlayInvites } from '@/player/SyncPlayInvites';
 import { SyncPlayPicker } from '@/player/SyncPlayPicker';
@@ -74,6 +75,7 @@ function PlayerHost() {
       <RemoteControlReceiver />
       <LiveUpdates />
       <PrefsSync />
+      <PlaytimeSync />
       <SyncPlayInvites />
       <SyncPlayPicker />
       {session && (

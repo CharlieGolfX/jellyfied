@@ -11,6 +11,7 @@ import { episodeLabel, ticksToSeconds } from '@/lib/format';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { audioDelaySupported, getLastAudioDelay } from './audioDelay';
 import { useAudioPlayer } from './AudioPlayerProvider';
+import { usePlaytimeTracker } from './usePlaytimeTracker';
 import { chromecastSupported, connectChromecast } from './chromecast';
 import { useSeekSteps } from './seekSteps';
 import { PlaybackInfo } from './PlaybackInfo';
@@ -75,6 +76,8 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Time actually played, for the account's stats.
+  usePlaytimeTracker(videoRef, item?.Id, 'video', item?.RunTimeTicks ? ticksToSeconds(item.RunTimeTicks) : undefined);
   /** Styled (ASS) subtitles draw in this layer, image (PGS) subtitles in the one that follows the picture. */
   const assLayerRef = useRef<HTMLDivElement>(null);
   const pgsLayerRef = useRef<HTMLDivElement>(null);

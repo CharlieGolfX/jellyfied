@@ -1687,17 +1687,21 @@
   },
   "stats": {
     "episodesOfShows": {
-      "one": "Episoder, fra {count} serie",
-      "other": "Episoder, fra {count} serier"
+      "one": "Episoder · {count} serie",
+      "other": "Episoder · {count} serier"
     },
-    "films": "Filmer",
-    "howCounted": "Basert på det denne kontoen har spilt. Jellyfin husker hvor ofte og når sist, ikke hver gang, så en ny titt teller hele filmen igjen, og en tittel teller i uken den sist ble spilt.",
+    "films": "Filmer sett",
+    "howCounted": "Tid som faktisk er spilt i Jellyfied med denne kontoen, i alle nettlesere. Å merke noe som sett teller ikke, og heller ikke avspilling i andre Jellyfin-apper. En film eller episode teller som sett når mesteparten er spilt, en sang når halvparten (eller fire minutter) er spilt.",
     "lastWeeks": "De siste {count} ukene",
-    "lastWeeksNote": "Filmer og episoder, etter uken de sist ble spilt",
+    "lastWeeksNote": "Tid spilt hver uke, video og musikk",
+    "musicListened": {
+      "one": "Musikk · {count} sang",
+      "other": "Musikk · {count} sanger"
+    },
     "nothingYet": "Ingenting sett ennå",
-    "nothingYetHint": "Filmer, episoder og sanger du spiller, vises her.",
+    "nothingYetHint": "Spill en film, en episode eller litt musikk, så vises tiden du bruker her.",
     "rewatched": "Sett mer enn én gang",
-    "songPlays": "Avspilte sanger",
+    "since": "Målt siden {date}.",
     "thisWeek": "Denne uken",
     "timeWatched": "Tid sett",
     "times": {
@@ -1706,10 +1710,7 @@
     },
     "title": "Din statistikk",
     "topGenres": "Mest sette sjangre",
-    "weekOf": {
-      "one": "Uken fra {date}: {count} tittel",
-      "other": "Uken fra {date}: {count} titler"
-    }
+    "weekOf": "Uken fra {date}: {time}"
   },
   "ui": {
     "crashState": {

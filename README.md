@@ -191,8 +191,10 @@ The posters and descriptions are what the Jellyfin server fetched for them from
   accounts signed in on the device and the server's public users. An account can be given a PIN
   (Account settings) that is asked for before anyone switches to it on that device, and shows a
   lock there; while another account is in use, its sign-in is stored encrypted with that PIN.
-- Your stats (account menu): time watched, films, episodes and song plays, your top genres, what
-  you have rewatched and the last twelve weeks, worked out from your play state.
+- Your stats (account menu): time watched and listened, films, episodes and songs played through,
+  your top genres, what you have rewatched and the last twelve weeks. Only time actually played in
+  Jellyfied counts (in any browser, saved with your account); marking something as watched
+  doesn't.
 - Your preferences follow your account: colours, subtitle appearance, skip lengths, time display,
   the home page layout and the tracks remembered per show are the same in every browser you sign
   in to. This can be switched off under Account settings.

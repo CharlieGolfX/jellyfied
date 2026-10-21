@@ -1687,17 +1687,21 @@
   },
   "stats": {
     "episodesOfShows": {
-      "one": "Episodes, from {count} show",
-      "other": "Episodes, from {count} shows"
+      "one": "Episodes · {count} show",
+      "other": "Episodes · {count} shows"
     },
-    "films": "Films",
-    "howCounted": "From what this account has played. Jellyfin remembers how often and when last, not each time, so a rewatch counts the whole film again and a title counts in the week it was last played.",
+    "films": "Films watched",
+    "howCounted": "Time actually played in Jellyfied with this account, in any browser. Marking something as watched doesn't count, and nor does playing in other Jellyfin apps. A film or episode counts as watched once most of it has played, a song once half of it (or four minutes) has.",
     "lastWeeks": "The last {count} weeks",
-    "lastWeeksNote": "Films and episodes, by the week they were last played",
+    "lastWeeksNote": "Time played each week, video and music",
+    "musicListened": {
+      "one": "Music · {count} song",
+      "other": "Music · {count} songs"
+    },
     "nothingYet": "Nothing watched yet",
-    "nothingYetHint": "Films, episodes and songs you play show up here.",
+    "nothingYetHint": "Play a film, an episode or some music and the time you spend on it shows up here.",
     "rewatched": "Watched more than once",
-    "songPlays": "Song plays",
+    "since": "Measured since {date}.",
     "thisWeek": "This week",
     "timeWatched": "Time watched",
     "times": {
@@ -1706,10 +1710,7 @@
     },
     "title": "Your stats",
     "topGenres": "Top genres",
-    "weekOf": {
-      "one": "Week of {date}: {count} title",
-      "other": "Week of {date}: {count} titles"
-    }
+    "weekOf": "Week of {date}: {time}"
   },
   "ui": {
     "crashState": {

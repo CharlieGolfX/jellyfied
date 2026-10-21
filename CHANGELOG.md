@@ -18,8 +18,10 @@ shown in the account menu and on the login screen.
   follow the song, and clicking a line jumps there.
 - "Who's watching?" on the sign-in screen: everyone's picture, for the accounts signed in on this
   device (with a lock on those with a PIN) and the server's public users.
-- Your stats, in the account menu: time watched, films, episodes and song plays, top genres, what
-  you have rewatched and the last twelve weeks.
+- Your stats, in the account menu: time watched and listened, films, episodes and songs played
+  through, top genres, what you have rewatched and the last twelve weeks. It counts only time
+  actually played in Jellyfied, measured while playing and saved with the account, not what is
+  marked as watched.
 - "Download all…" for a season, show, album, collection or playlist, one file after the other.
 - A Segments tab in the metadata editor, for a video's intro, credits, recap, preview and
   commercial markers. They can be changed when the server has the Intro Skipper plugin.

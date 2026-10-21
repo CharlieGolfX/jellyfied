@@ -654,6 +654,40 @@ test.describe('playback on a real server', () => {
     await page.getByRole('button', { name: 'Stop playback' }).click();
   });
 
+  test('Your stats counts what was played, not what was marked as watched', async ({ page }) => {
+    const films = await items(page, '/Items', { includeItemTypes: 'Movie', recursive: 'true', sortBy: 'SortName', limit: '2' });
+    test.skip(films.length < 2, 'the server needs two films');
+    const [played, marked] = films;
+    // Marked as watched without playing a second of it.
+    await page.evaluate(async (id) => {
+      const s = JSON.parse(localStorage.getItem('jellyfied.session')!) as { serverUrl: string; accessToken: string; userId: string };
+      await fetch(`${s.serverUrl}/UserPlayedItems/${id}?userId=${s.userId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `MediaBrowser Client="Jellyfied e2e", Device="e2e", DeviceId="e2e", Version="1", Token="${s.accessToken}"`,
+        },
+      });
+    }, marked.Id);
+    await page.goto('/stats');
+    await expect(page.getByRole('heading', { name: 'Your stats' })).toBeVisible();
+    const before = (await page.locator('main').textContent()) ?? '';
+
+    // A few seconds of the other one, played for real.
+    await page.goto(`/play/${played.Id}`);
+    await expectPlaying(page);
+    await expect.poll(() => time(page), { timeout: 30_000 }).toBeGreaterThan(6);
+    await showControls(page);
+    await page.getByRole('button', { name: 'Stop playback' }).click();
+
+    await page.goto('/stats');
+    const watched = page.getByText('Time watched').locator('..');
+    await expect(watched).toContainText(/\d+ sec|\d+ min/);
+    expect(before).not.toContain(marked.Name);
+    // Neither film was played through: the marked one doesn't count as watched.
+    await expect(page.getByText('Films watched').locator('..')).toHaveText(/^0\s*Films watched$/);
+    await page.screenshot({ path: test.info().outputPath('stats.png') });
+  });
+
   test('preferences are stored with the account on the server', async ({ page }) => {
     const stored = () =>
       page.evaluate(async () => {

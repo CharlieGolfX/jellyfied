@@ -3,44 +3,41 @@ import { Clapperboard, Clock, Music, Tv } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { MEDIA } from '@/api/queries';
-import type { ItemsResult } from '@/api/types';
+import type { BaseItemDto, ItemsResult } from '@/api/types';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { formatDate, formatDuration, formatNumber } from '@/lib/format';
 import { usePageTitle } from '@/lib/usePageTitle';
+import { syncPlaytime } from '@/lib/playtime';
 import { watchStats, type WatchStats } from '@/lib/watchStats';
 import { t } from '@/i18n';
 
-/** What the signed-in user has watched and played, worked out from their play state. */
+/** What the signed-in user has actually played, from the playtime Jellyfied measures. */
 function useWatchStats() {
   const api = useApi();
   const { userId } = useSession();
   return useQuery({
     queryKey: [MEDIA, 'watch-stats', userId],
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
     queryFn: async ({ signal }): Promise<WatchStats> => {
-      const played = (types: string, fields: string) =>
-        api.get<ItemsResult>(
-          '/Items',
-          {
-            userId,
-            recursive: true,
-            filters: 'IsPlayed',
-            includeItemTypes: types,
-            fields,
-            enableImages: false,
-            enableTotalRecordCount: false,
-          },
-          signal,
+      // Saving this browser's latest first, so what was just played is in.
+      const playtime = await syncPlaytime(api, userId);
+      const ids = Object.entries(playtime.items)
+        .filter(([, p]) => p.k === 'video')
+        .map(([id]) => id);
+      const items: BaseItemDto[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        items.push(
+          ...(await api.get<ItemsResult>('/Items', { userId, ids: chunk.join(','), fields: 'Genres', enableImages: false }, signal)).Items,
         );
-      const [watched, songs] = await Promise.all([played('Movie,Episode', 'Genres'), played('Audio', '')]);
-      const seriesIds = [...new Set(watched.Items.map((i) => i.SeriesId).filter((id): id is string => Boolean(id)))];
+      }
+      const seriesIds = [...new Set(items.map((i) => i.SeriesId).filter((id): id is string => Boolean(id)))];
       const series = seriesIds.length
         ? await api.get<ItemsResult>('/Items', { userId, ids: seriesIds.join(','), fields: 'Genres', enableImages: false }, signal)
         : { Items: [] };
-      const genres = new Map(series.Items.map((s) => [s.Id, s.Genres ?? []]));
-      return watchStats(watched.Items, genres, songs.Items);
+      return watchStats(playtime, new Map(items.map((i) => [i.Id, i])), new Map(series.Items.map((s) => [s.Id, s.Genres ?? []])));
     },
   });
 }
@@ -90,9 +87,12 @@ function GenreBars({ genres }: { genres: WatchStats['genres'] }) {
 
 /** One bar a week; the count shows on hover and focus, and the list is there for screen readers. */
 function WeekBars({ weeks }: { weeks: WatchStats['weeks'] }) {
-  const max = Math.max(1, ...weeks.map((w) => w.count));
+  const max = Math.max(1, ...weeks.map((w) => w.seconds));
   const label = (w: WatchStats['weeks'][number]) =>
-    t('stats.weekOf', { date: formatDate(w.start.toISOString(), { day: 'numeric', month: 'short' }), count: w.count });
+    t('stats.weekOf', {
+      date: formatDate(w.start.toISOString(), { day: 'numeric', month: 'short' }),
+      time: formatDuration(w.seconds) || '0',
+    });
   return (
     <div>
       <div className="flex h-32 items-end gap-1 border-b border-white/10" role="list">
@@ -107,7 +107,7 @@ function WeekBars({ weeks }: { weeks: WatchStats['weeks'] }) {
           >
             <div
               className="w-full rounded-t bg-accent transition-opacity group-hover:opacity-80 group-focus-visible:opacity-80"
-              style={{ height: w.count ? `${Math.max(4, (w.count / max) * 100)}%` : '0' }}
+              style={{ height: w.seconds ? `${Math.max(4, (w.seconds / max) * 100)}%` : '0' }}
             />
             <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded bg-base-950 px-1.5 py-0.5 text-xs whitespace-nowrap text-fg shadow group-hover:block group-focus-visible:block">
               {label(w)}
@@ -130,12 +130,15 @@ export default function StatsPage() {
   if (isLoading) return <PageSpinner />;
   if (error || !stats) return <ErrorState error={error} onRetry={() => refetch()} />;
 
-  const empty = stats.films + stats.episodes + stats.songPlays === 0;
+  const empty = stats.seconds + stats.musicSeconds < 1;
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-8 lg:px-10">
       <div>
         <h1 className="text-2xl font-bold">{t('stats.title')}</h1>
-        <p className="mt-1 text-sm text-muted">{t('stats.howCounted')}</p>
+        <p className="mt-1 text-sm text-muted">
+          {t('stats.howCounted')}
+          {stats.since && ` ${t('stats.since', { date: formatDate(stats.since.toISOString(), { dateStyle: 'long' }) })}`}
+        </p>
       </div>
       {empty ? (
         <EmptyState title={t('stats.nothingYet')}>{t('stats.nothingYetHint')}</EmptyState>
@@ -145,7 +148,11 @@ export default function StatsPage() {
             <Tile icon={<Clock size={18} />} label={t('stats.timeWatched')} value={formatDuration(stats.seconds) || '0'} />
             <Tile icon={<Clapperboard size={18} />} label={t('stats.films')} value={formatNumber(stats.films)} />
             <Tile icon={<Tv size={18} />} label={t('stats.episodesOfShows', { count: stats.shows })} value={formatNumber(stats.episodes)} />
-            <Tile icon={<Music size={18} />} label={t('stats.songPlays')} value={formatNumber(stats.songPlays)} />
+            <Tile
+              icon={<Music size={18} />}
+              label={t('stats.musicListened', { count: stats.songPlays })}
+              value={formatDuration(stats.musicSeconds) || '0'}
+            />
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <Section title={t('stats.lastWeeks', { count: stats.weeks.length })} note={t('stats.lastWeeksNote')}>

@@ -13,9 +13,11 @@
   Jellyfied uses (Jellyfin itself only lists them). Without it the Segments tab is read-only.
 - "Download all" starts one download per file, since a browser can't build one archive without
   holding all of it in memory. Browsers ask once whether the site may download several files.
-- Watch statistics come from Jellyfin's play state, which keeps how often and when something was
-  last played, not every play: a rewatch adds the whole run time again, and a title counts in the
-  week it was last played.
+- Your stats only count what Jellyfied's own players play, measured while playing and saved with
+  the account (in Jellyfin's display preferences for the client "jellyfied"). Playing in other
+  Jellyfin apps, and marking something as watched, adds nothing, and nothing played before this
+  version is in it. Jellyfin itself keeps no such record; the Playback Reporting plugin does,
+  for all apps, but only administrators can read it.
 - Every account signed in on a device can be switched to from that device without a password,
   like in other apps with an account switcher, unless it has a PIN. With a PIN, the account's
   sign-in is stored encrypted while someone else uses the browser. Two limits: the account that

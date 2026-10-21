@@ -1687,17 +1687,21 @@
   },
   "stats": {
     "episodesOfShows": {
-      "one": "Episodios, de {count} serie",
-      "other": "Episodios, de {count} series"
+      "one": "Episodios · {count} serie",
+      "other": "Episodios · {count} series"
     },
-    "films": "Películas",
-    "howCounted": "A partir de lo que ha reproducido esta cuenta. Jellyfin recuerda cuántas veces y cuándo fue la última, no cada vez, así que volver a ver una película cuenta toda la película otra vez y un título cuenta en la semana en que se reprodujo por última vez.",
+    "films": "Películas vistas",
+    "howCounted": "Tiempo realmente reproducido en Jellyfied con esta cuenta, en cualquier navegador. Marcar algo como visto no cuenta, ni tampoco reproducir en otras aplicaciones de Jellyfin. Una película o un episodio cuenta como visto cuando se ha reproducido la mayor parte, y una canción cuando se ha reproducido la mitad (o cuatro minutos).",
     "lastWeeks": "Las últimas {count} semanas",
-    "lastWeeksNote": "Películas y episodios, por la semana en que se reprodujeron por última vez",
+    "lastWeeksNote": "Tiempo reproducido cada semana, vídeo y música",
+    "musicListened": {
+      "one": "Música · {count} canción",
+      "other": "Música · {count} canciones"
+    },
     "nothingYet": "Aún no has visto nada",
-    "nothingYetHint": "Aquí aparecen las películas, episodios y canciones que reproduzcas.",
+    "nothingYetHint": "Reproduce una película, un episodio o algo de música y aquí aparecerá el tiempo que le dedicas.",
     "rewatched": "Vistas más de una vez",
-    "songPlays": "Reproducciones de canciones",
+    "since": "Medido desde el {date}.",
     "thisWeek": "Esta semana",
     "timeWatched": "Tiempo visto",
     "times": {
@@ -1706,10 +1710,7 @@
     },
     "title": "Tus estadísticas",
     "topGenres": "Géneros más vistos",
-    "weekOf": {
-      "one": "Semana del {date}: {count} título",
-      "other": "Semana del {date}: {count} títulos"
-    }
+    "weekOf": "Semana del {date}: {time}"
   },
   "ui": {
     "crashState": {
