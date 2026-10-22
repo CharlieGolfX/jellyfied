@@ -10,6 +10,11 @@ shown in the account menu and on the login screen.
 - Media info on a video's page no longer shows where its file is on the server, also not to
   administrators.
 
+### Security
+- The image is built with Node.js 26.12, which has the fixes from Node's October 2026 security
+  releases, and building Jellyfied yourself needs Node.js 22.23.4, 24.22.1 or 26.12.1 or newer.
+  The image itself has no Node.js in it.
+
 ## [1.6.0] - 2026-10-21
 
 ### Added
