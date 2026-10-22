@@ -6,6 +6,8 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-22
+
 ### Changed
 - Media info on a video's page no longer shows where its file is on the server, also not to
   administrators.
@@ -319,7 +321,8 @@ other devices, the metadata editor and the server dashboard. See the
   and `npm run test:e2e`, and on every push and pull request by GitHub Actions.
 - The video player is split into smaller parts under `src/player/video/`.
 
-[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/CharlieGolfX/jellyfied/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/CharlieGolfX/jellyfied/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/CharlieGolfX/jellyfied/compare/v1.4.0...v1.5.0
