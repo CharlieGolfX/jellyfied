@@ -12,6 +12,15 @@ import picker from './docker/syncplay-picker.js';
 import statsCompare from './docker/stats-compare.js';
 import { createHash } from 'node:crypto';
 
+/** A request body, as nginx's njs reads it: a body that isn't JSON counts as an empty one. */
+function readJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw || '{}');
+  } catch {
+    return {};
+  }
+}
+
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 // In development, /jellyfin is proxied to the Jellyfin server from .env (JELLYFIN_DEV_URL, or
@@ -71,7 +80,7 @@ export default defineConfig(({ mode }) => {
                   store,
                   method: req.method,
                   groupId: (req.url ?? '').replace(/^\//, '').split('?')[0],
-                  body: req.method === 'POST' ? JSON.parse(raw || '{}') : null,
+                  body: req.method === 'POST' ? readJson(raw) : null,
                   jellyfin: {
                     me: () => ask('/Users/Me'),
                     group: (id: string) => ask(`/SyncPlay/${id}`),
@@ -114,7 +123,7 @@ export default defineConfig(({ mode }) => {
                   store,
                   method: req.method,
                   range: new URL(req.url ?? '/', 'http://x').searchParams.get('range'),
-                  body: req.method === 'POST' ? JSON.parse(raw || '{}') : null,
+                  body: req.method === 'POST' ? readJson(raw) : null,
                   minUsers: Number(env.JELLYFIED_STATS_MIN_USERS) || 3,
                   hash: (id: string) =>
                     createHash('sha256')
@@ -180,6 +189,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts', 'docker/**/*.test.ts'],
+      setupFiles: ['src/test/setup.ts'],
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],
