@@ -6,6 +6,59 @@ shown in the account menu and on the login screen.
 
 ## [Unreleased]
 
+### Changed
+- Pages no longer fetch every list again each time something is played, paused or marked on any of
+  your devices. The new watched state, progress and favourites go straight onto what is shown, and
+  lists such as Continue Watching are fetched again when you next open them.
+- While music plays, only the music bar and the lyrics update with the position, not every poster
+  on the page. Browsing is smoother on phones and TVs.
+- The server status button gets sessions and tasks pushed over the live connection instead of asking
+  every 15 seconds. Polling and syncing in the background yield to what you are loading.
+- Typing a server address without `http://` or `https://` uses the same scheme as the page.
+- Streaming quality in Settings offers the same choices as the player (3 Mbps and 720 kbps added).
+- After a laptop wakes or the network comes back, the live connection (SyncPlay, remote control)
+  reconnects right away instead of waiting out its backoff.
+- Comparing your stats: a summary can be replaced at most twice a day, and numbers are kept in
+  steps a quarter apart. This keeps anyone from working out the others' numbers by sending made-up
+  ones.
+
+### Fixed
+- Signing in as someone else on the same browser no longer carries the previous person's theme,
+  home layout, language and remembered audio and subtitle choices over into their account. Each
+  person's are kept apart, and come back when they sign in again.
+- Play time is no longer lost when two devices save it at the same moment.
+- A request turned away by something in front of Jellyfin no longer signs you out and forgets the
+  account and its PIN. The server is asked first. When it really has ended the sign-in, the account
+  stays on "Who's watching?" and asks for its password.
+- With the server locked, a server that doesn't answer at first shows "Try again" instead of a field
+  for another address.
+- Quick Connect keeps waiting through a dropped request instead of giving up.
+- Removing the only song in the queue left the queue stuck; songs added next play again.
+- The system's play and pause buttons (headphones, lock screen) no longer do the opposite after a
+  Bluetooth reconnect.
+- Retry after a playback error tries the browser's own player and stream copying again.
+- A video resumed through a transcode starts on the server where it resumes.
+- SyncPlay timing is no longer thrown off when the computer's clock is adjusted, and is measured
+  again when the tab comes back.
+- A tab closed without warning (common on phones) no longer keeps the other tabs from playing along
+  in SyncPlay.
+- When the SyncPlay group's creator has left, the host who can delete the group is told so, rather
+  than "only the creator".
+- A browser that refuses all storage no longer stops Jellyfied from starting.
+- The update check no longer asks GitHub again on every page load after a failure.
+
+### Security
+- The SyncPlay picker only accepts starting rounds that were spun, so one member can't fill the
+  shared store and push out other groups' state. It also reads a group with a few lookups instead
+  of going through every key.
+- Container images are only published after CI passes for that commit, release tags included. The
+  base images are pinned by digest.
+- The container warns at startup, and the docs now explain, that with the default
+  `JELLYFIED_TRUSTED_PROXIES=private` a port published straight to the internet lets visitors claim
+  a LAN address.
+- `JELLYFIED_BASE_PATH` values with a `.` are matched exactly, and line breaks in configuration
+  values can no longer break `config.js`.
+
 ## [1.6.1] - 2026-10-22
 
 ### Changed
