@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
+# The base images are pinned by digest, so the same commit builds from the same images; Dependabot
+# moves the pins (tag and digest together) when new ones come out.
 
 # ---- Build ------------------------------------------------------------------
 # The site is the same for every CPU architecture, so it is built once, on the build machine's own.
-FROM --platform=$BUILDPLATFORM node:26.12-alpine AS build
+FROM --platform=$BUILDPLATFORM node:26.12-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -11,7 +13,7 @@ RUN npm run build && node scripts/precompress.mjs dist
 
 # ---- Runtime ----------------------------------------------------------------
 # nginx without root: the image's own entrypoint and nginx itself run as the "nginx" user (101).
-FROM nginxinc/nginx-unprivileged:1.30-alpine
+FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 
 LABEL org.opencontainers.image.title="Jellyfied" \
       org.opencontainers.image.description="A web frontend for Jellyfin"
@@ -22,6 +24,8 @@ USER root
 COPY docker/40-jellyfied.sh /docker-entrypoint.d/40-jellyfied.sh
 COPY docker/syncplay-picker.js docker/stats-compare.js /etc/nginx/njs/
 # The base image's packages are brought up to date, so fixes published after it was built are in.
+# A deliberate trade: security fixes reach the image without waiting for a new base image, at the
+# cost of a rebuild of the same commit possibly getting newer Alpine packages than the last one.
 RUN apk upgrade --no-cache \
     && chmod +x /docker-entrypoint.d/40-jellyfied.sh \
     && rm -f /etc/nginx/conf.d/default.conf \

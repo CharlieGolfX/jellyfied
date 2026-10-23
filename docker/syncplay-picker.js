@@ -30,26 +30,45 @@ function readJson(text, fallback) {
   }
 }
 
+/**
+ * How many members a group's records can be kept for. Each member who writes something takes a
+ * slot that names their record, so a group is read with a few lookups instead of going through
+ * every key of every group.
+ */
+const SLOTS = 64;
+
+/** Takes a slot for the user's record, or keeps theirs (writing it again so it lasts as long as the record). */
+function register(store, gid, uid) {
+  let free = -1;
+  for (let i = 0; i < SLOTS; i++) {
+    const v = store.get(gid + '|slot|' + i);
+    if (v === uid) {
+      store.set(gid + '|slot|' + i, uid);
+      return;
+    }
+    if (v == null && free < 0) free = i;
+  }
+  // "add" only succeeds for one of two members taking the same slot at once; the other takes the next.
+  for (let i = free < 0 ? SLOTS : free; i < SLOTS; i++) if (store.add(gid + '|slot|' + i, uid)) return;
+}
+
 /** Everything known about one group, read from the store. */
 function load(store, gid) {
   const prefix = gid + '|';
-  const users = [];
-  const spins = [];
-  for (const key of store.keys()) {
-    if (key.indexOf(prefix) !== 0) continue;
-    const rest = key.slice(prefix.length);
-    if (rest.indexOf('u|') === 0) {
-      const u = readJson(store.get(key), null);
-      if (u) users.push(u);
-    } else if (rest.indexOf('spin|') === 0) {
-      const s = readJson(store.get(key), null);
-      if (s) spins.push(s);
-    }
+  // Groups from before the slots: their records are found once by going through the keys.
+  if (store.add(prefix + 'slotted', '1')) {
+    for (const key of store.keys()) if (key.indexOf(prefix + 'u|') === 0) register(store, gid, key.slice(prefix.length + 2));
   }
-  spins.sort((a, b) => a.round - b.round);
+  const users = [];
+  for (let i = 0; i < SLOTS; i++) {
+    const uid = store.get(prefix + 'slot|' + i);
+    const u = uid ? readJson(store.get(prefix + 'u|' + uid), null) : null;
+    if (u && users.every((x) => x.id !== u.id)) users.push(u);
+  }
   // The round is the first one nobody has spun yet.
+  const spins = [];
   let round = 0;
-  while (spins.some((s) => s.round === round)) round++;
+  for (let s; (s = readJson(store.get(prefix + 'spin|' + round), null)); round++) spins.push(s);
   return { users, spins, round, creator: store.get(prefix + 'creator') || null };
 }
 
@@ -68,7 +87,10 @@ function suggestions(state) {
   return list;
 }
 
-/** The member who may spin the wheel by hand: whoever made the group, or else the longest there. */
+/**
+ * The member who may spin the wheel and delete the group: whoever made it, or once they have left,
+ * the longest there, so a group is never left without one.
+ */
 function host(state, participants) {
   return state.creator && participants.indexOf(state.creator) >= 0 ? state.creator : participants[0] || null;
 }
@@ -122,6 +144,7 @@ async function handle(opts) {
   mine.name = me.Name;
   const save = () => {
     store.set(myKey, JSON.stringify(mine));
+    register(store, gid, mine.id);
     state = load(store, gid);
   };
   let extra = {};
@@ -178,13 +201,17 @@ async function handle(opts) {
         break;
       }
       case 'close':
-        if (host(state, participants) !== me.Name) return fail(403, 'notCreator', 'Only the creator can delete the group');
+        if (host(state, participants) !== me.Name) return fail(403, 'notCreator', 'Only the host can delete the group');
         store.add(gid + '|closed', me.Name);
         break;
-      case 'start':
+      case 'start': {
         // After the wheel stops, every member asks; the first one starts the winner for the group.
-        extra = { go: store.add(gid + '|started|' + Number(body.round), me.Name) };
+        // Only for a round that was spun, so the store can't be filled with made-up rounds.
+        const round = Number(body.round);
+        if (!state.spins.some((s) => s.round === round)) return fail(409, 'noSpin', 'That round was not spun');
+        extra = { go: store.add(gid + '|started|' + round, me.Name) };
         break;
+      }
       default:
         return fail(400, 'unknownAction', 'Unknown action');
     }

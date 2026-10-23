@@ -1297,7 +1297,7 @@
         "notAlone": "Only whoever created the group can claim it.",
         "notAnItem": "That can’t be suggested.",
         "notAvailable": "The picker isn’t available on this server.",
-        "notCreator": "Only whoever created the group can delete it.",
+        "notCreator": "Only the host can delete the group.",
         "notHost": "Only the host can spin the wheel.",
         "notMember": "You’re not in this SyncPlay group.",
         "notSignedIn": "Sign in again to use the picker.",

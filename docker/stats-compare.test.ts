@@ -42,10 +42,14 @@ async function as(user: string | null, method: string, opts: { range?: string; b
   return res as { status: number; body: Record<string, unknown> & { statements?: Record<string, unknown>[] } };
 }
 
-const share = (user: string, s: ReturnType<typeof summary>, now = NOW) => as(user, 'POST', { body: { summaries: { '30d': s } }, now });
+// Each share a day apart, as the app sends them, so none is turned away for coming too soon.
+let clock = 0;
+const share = (user: string, s: ReturnType<typeof summary>, now = NOW) =>
+  as(user, 'POST', { body: { summaries: { '30d': s } }, now: now - DAY + (clock += 1) });
 
 beforeEach(() => {
   store = memoryStore();
+  clock = 0;
 });
 
 describe('comparing stats', () => {
@@ -94,13 +98,32 @@ describe('comparing stats', () => {
   it('forgets someone who stops taking part', async () => {
     await share('ann', summary(100));
     expect((await as('ann', 'DELETE')).body).toEqual({ joined: false });
-    expect(store.map.size).toBe(0);
+    expect([...store.map.keys()].filter((k) => k.startsWith('u|'))).toEqual([]);
+  });
+
+  it('lets a summary be replaced only twice a day, leaving and joining again included', async () => {
+    await share('bob', summary(4000));
+    await share('cat', summary(1000));
+    await as('ann', 'POST', { body: { summaries: { '30d': summary(100) } } });
+    // Probing: a made-up number right after is ignored, so the answer doesn't change.
+    expect((await as('ann', 'POST', { body: { summaries: { '30d': summary(4500) } } })).body.statements).toEqual([]);
+    await as('ann', 'DELETE');
+    expect((await as('ann', 'POST', { body: { summaries: { '30d': summary(4500) } } })).body.joined).toBe(false);
+    const later = await as('ann', 'POST', { body: { summaries: { '30d': summary(6000) } }, now: NOW + 13 * 3600_000 });
+    expect(later.body.statements).toEqual([{ type: 'most', metric: 'video' }]);
+  });
+
+  it('keeps numbers rounded down to steps a quarter apart, so close ones can’t be told apart', async () => {
+    await share('bob', summary(4000));
+    await share('cat', summary(1000));
+    await share('ann', summary(4100));
+    expect((await as('ann', 'GET')).body.statements).toEqual([{ type: 'more', metric: 'video', share: 50 }]);
   });
 
   it('keeps only numbers and a few genres of what is sent', async () => {
     const genres = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`G${i}`, 10]));
     await as('ann', 'POST', { body: { summaries: { '30d': { video: 'lots', genres, title: 'Secret film' }, other: {} } } });
-    const kept = JSON.parse([...store.map.values()][0]);
+    const kept = JSON.parse([...store.map.entries()].find(([k]) => k.startsWith('u|'))![1]);
     expect(Object.keys(kept.s)).toEqual(['30d']);
     expect(kept.s['30d'].video).toBe(0);
     expect(Object.keys(kept.s['30d'].genres)).toHaveLength(25);

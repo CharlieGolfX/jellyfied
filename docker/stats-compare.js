@@ -7,6 +7,11 @@
  * gets to see another user's numbers, names or titles, and with fewer than `minUsers` people taking
  * part there are no statements at all, since with two even a ranking says too much about the other.
  *
+ * Since what is sent can't be checked, someone could send made-up numbers and watch the statements
+ * change to work out the others'. Two things make that impractical: a summary can only be replaced
+ * every `CHANGE_EVERY` (leaving and joining again included), and numbers are kept rounded down to
+ * steps a quarter apart, so the statements can't tell close numbers apart.
+ *
  * Every request is checked against Jellyfin itself: the caller's token has to belong to a user.
  * The same file runs in nginx (see the default export), in the dev server and in the tests.
  */
@@ -20,12 +25,19 @@ const STALE_MS = 7 * 86400000;
 /** Below this many seconds a genre isn't something to boast about. */
 const GENRE_FLOOR = 600;
 const MAX_GENRES = 25;
+/** How often a summary can be replaced. The app sends one about once a day. */
+const CHANGE_EVERY = 12 * 3600000;
+const STEP = Math.log(1.25);
 
 function fail(status, code, error) {
   return { status, body: { code, error } };
 }
 
-const num = (v) => (typeof v === 'number' && isFinite(v) && v >= 0 ? Math.round(v) : 0);
+/** A number as kept: rounded down to the nearest power of 1.25 (1, 2, 3, 4, 5, 6, 7, 9, 12, 15…). */
+function num(v) {
+  if (typeof v !== 'number' || !isFinite(v) || v < 1) return 0;
+  return Math.round(Math.exp(Math.floor(Math.log(v) / STEP + 1e-9) * STEP));
+}
 
 /** A summary as sent, cut down to what is kept: known periods, numbers, at most 25 genres. */
 function clean(body) {
@@ -87,14 +99,23 @@ async function handle(opts) {
   const minUsers = Math.max(2, opts.minUsers || 3);
   const me = await opts.jellyfin.me();
   if (!me || !me.Id) return fail(401, 'notSignedIn', 'Not signed in');
-  const key = 'u|' + opts.hash(String(me.Id).replace(/-/g, '').toLowerCase());
+  const hashed = opts.hash(String(me.Id).replace(/-/g, '').toLowerCase());
+  const key = 'u|' + hashed;
+  // When the caller's summary last changed; kept when they stop taking part, so leaving and joining
+  // again doesn't get around the wait.
+  const changedKey = 't|' + hashed;
 
   if (opts.method === 'DELETE') {
     store.del(key);
     return { status: 200, body: { joined: false } };
   }
   if (opts.method === 'POST') {
-    store.set(key, JSON.stringify({ at: now, s: clean(opts.body) }));
+    const changed = Number(store.get(changedKey)) || 0;
+    // Too soon: what is kept stays, and the caller hears how that compares.
+    if (!(now - changed < CHANGE_EVERY)) {
+      store.set(key, JSON.stringify({ at: now, s: clean(opts.body) }));
+      store.set(changedKey, String(now));
+    }
   } else if (opts.method !== 'GET') {
     return fail(405, 'method', 'GET, POST or DELETE');
   }

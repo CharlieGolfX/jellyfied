@@ -42,6 +42,13 @@ Docker Compose additionally understands these:
   Jellyfied then passes on one address: the last one in `X-Forwarded-For` that is not a trusted
   proxy. With Docker Desktop (macOS, Windows), visitors who reach the published port directly
   still all appear as Docker's gateway, because Docker hides their addresses from the container.
+
+  **If the published port is reachable from the internet without a reverse proxy in front**, the
+  default (`private`) is not safe: where Docker's gateway is the peer for every visitor (Docker
+  Desktop, rootless Docker, the userland proxy, IPv6 publishing), anyone can send
+  `X-Forwarded-For: 192.168.1.10` and Jellyfin treats them as being on the LAN, which skips
+  "allow remote connections" and the remote bitrate limit. Set `JELLYFIED_TRUSTED_PROXIES` to the
+  proxy's own address, or to `none` when there is no proxy.
 - HTTPS: put Jellyfied behind your usual reverse proxy (Traefik, Caddy, nginx, …) the same way
   you would any web app. In proxy mode, Jellyfin doesn't need to be exposed at all.
 - The container serves a health check at `/healthz`.

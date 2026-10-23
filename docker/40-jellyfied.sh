@@ -18,7 +18,10 @@
 #   JELLYFIED_TRUSTED_PROXIES  Addresses or networks (CIDR), separated by spaces or commas, whose
 #                          X-Forwarded-For header is believed: a reverse proxy or tunnel in front
 #                          of Jellyfied, and Docker's own gateway. Default "private" (loopback
-#                          and the private ranges); "none" trusts nobody.
+#                          and the private ranges); "none" trusts nobody. Where the port is
+#                          reachable from the internet without a proxy in front, the peer can be
+#                          Docker's gateway for everyone, so anyone could claim a LAN address:
+#                          set the proxy's address, or "none", there.
 #
 # nginx runs as an unprivileged user, so everything written here lives in places that user owns.
 set -eu
@@ -43,6 +46,8 @@ case "$BASE" in
     BASE=""
     ;;
 esac
+# The same for nginx's regular expressions, where "." would match any character.
+BASE_RE=$(printf '%s' "$BASE" | sed 's/[.]/\\./g')
 
 # Who may say where a request really came from. Behind a reverse proxy, a tunnel or Docker's port
 # forwarding, the peer nginx sees is that middleman; the visitor's address is in X-Forwarded-For.
@@ -50,7 +55,10 @@ esac
 # address it logs and hands to Jellyfin.
 TRUSTED=$(printf '%s' "${JELLYFIED_TRUSTED_PROXIES:-private}" | tr ',' ' ')
 case "$TRUSTED" in
-  private) TRUSTED="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ::1 fc00::/7 fe80::/10" ;;
+  private)
+    [ -z "${JELLYFIED_TRUSTED_PROXIES:-}" ] &&
+      log "trusting X-Forwarded-For from private addresses (the default); if this port is reachable from the internet without a reverse proxy, set JELLYFIED_TRUSTED_PROXIES to the proxy's address or none"
+    TRUSTED="127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 ::1 fc00::/7 fe80::/10" ;;
   none | off | false) TRUSTED="" ;;
 esac
 REAL_IP=""
@@ -88,7 +96,13 @@ case "$(printf '%s' "${JELLYFIED_LOCK_SERVER:-$DEFAULT_LOCK}" | tr '[:upper:]' '
   *) LOCK=false ;;
 esac
 
-js_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/</\\u003c/g'; }
+# A JavaScript string literal's contents: line breaks (U+2028 and U+2029 among them) would end it.
+js_escape() {
+  printf '%s' "$1" |
+    LC_ALL=C sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/</\\u003c/g' -e "s/$(printf '\r')/\\\\r/g" \
+      -e "s/$(printf '\342\200\250')/\\\\u2028/g" -e "s/$(printf '\342\200\251')/\\\\u2029/g" |
+    awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }'
+}
 
 cat >"$HTML_DIR/config.js" <<EOF
 window.JELLYFIED_CONFIG = {
@@ -113,7 +127,7 @@ if [ -n "$BASE" ]; then
     }
 
     location ^~ ${BASE}/ {
-        rewrite ^${BASE}(/.*)\$ \$1 last;
+        rewrite ^${BASE_RE}(/.*)\$ \$1 last;
     }
 "
 fi
@@ -338,7 +352,7 @@ log_format jellyfied '\$remote_addr - \$remote_user [\$time_local] "\$jellyfied_
                      '\$status \$body_bytes_sent "\$http_referer" "\$http_user_agent"';
 
 map \$request_uri \$jellyfin_path {
-    ~^${BASE}${PROXY_PATH}(?<rest>/.*)\$ \$rest;
+    ~^${BASE_RE}${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     ~^${PROXY_PATH}(?<rest>/.*)\$ \$rest;
     default /;
 }

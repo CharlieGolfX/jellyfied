@@ -1297,7 +1297,7 @@
         "notAlone": "Solo quien creó el grupo puede reclamarlo.",
         "notAnItem": "Eso no se puede sugerir.",
         "notAvailable": "La ruleta no está disponible en este servidor.",
-        "notCreator": "Solo quien creó el grupo puede eliminarlo.",
+        "notCreator": "Solo el anfitrión puede eliminar el grupo.",
         "notHost": "Solo el anfitrión puede girar la ruleta.",
         "notMember": "No estás en este grupo de SyncPlay.",
         "notSignedIn": "Vuelve a iniciar sesión para usar la ruleta.",

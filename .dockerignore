@@ -9,3 +9,10 @@ README.md
 test-results
 playwright-report
 e2e
+coverage
+docs
+.github
+REVIEW.md
+SUGGESTIONS.md
+CONTRIBUTING.md
+SECURITY.md

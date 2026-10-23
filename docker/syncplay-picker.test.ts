@@ -132,10 +132,32 @@ describe('the SyncPlay picker', () => {
     expect((await as('ann', 'POST', { action: 'start', round: 0 })).body.go).toBe(false);
   });
 
+  it('only starts rounds that were spun, so the store can’t be filled with made-up ones', async () => {
+    for (const round of [0, 1, 99, -1, 'x']) expect((await as('bob', 'POST', { action: 'start', round })).status).toBe(409);
+    expect(store.keys().filter((k) => k.includes('|started|'))).toEqual([]);
+  });
+
+  it('reads the records of a group from before they were indexed', async () => {
+    store.set(`${GID}|u|a1`, JSON.stringify({ id: 'a1', name: 'ann', s: [{ id: MOVIE, at: 1 }], v: [], r: -1 }));
+    const res = await as('bob');
+    expect(res.body.suggestions.map((s) => [s.id, s.by])).toEqual([[MOVIE, 'ann']]);
+    // Indexed now: the records are found without going through the keys again.
+    store.keys = () => [];
+    expect((await as('bob')).body.suggestions).toHaveLength(1);
+  });
+
   it('cannot spin an empty wheel', async () => {
     expect((await as('ann', 'POST', { action: 'spin' })).status).toBe(409);
     await as('ann', 'POST', { action: 'ready', on: true });
     expect((await as('bob', 'POST', { action: 'ready', on: true })).body.spin).toBeNull();
+  });
+
+  it('can be deleted by the host once its creator has left', async () => {
+    members = ['ann'];
+    await as('ann', 'POST', { action: 'claim' });
+    members = ['bob', 'cat'];
+    expect((await as('cat', 'POST', { action: 'close' })).status).toBe(403);
+    expect((await as('bob', 'POST', { action: 'close' })).body.closed).toBe('bob');
   });
 
   it('can be deleted by its creator only, after which it takes nothing more', async () => {

@@ -1297,7 +1297,7 @@
         "notAlone": "Bare den som opprettet gruppen, kan ta den.",
         "notAnItem": "Det kan ikke foreslås.",
         "notAvailable": "Velgeren er ikke tilgjengelig på denne serveren.",
-        "notCreator": "Bare den som opprettet gruppen kan slette den.",
+        "notCreator": "Bare verten kan slette gruppen.",
         "notHost": "Bare verten kan snurre hjulet.",
         "notMember": "Du er ikke med i denne SyncPlay-gruppen.",
         "notSignedIn": "Logg inn på nytt for å bruke velgeren.",
