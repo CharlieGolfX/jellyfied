@@ -2,6 +2,15 @@ import type { JellyfinApi } from '@/api/client';
 import { parseTime } from './syncplayProtocol';
 
 /**
+ * The local time in ms since 1970, from a clock that only ever runs forward: the wall clock can jump
+ * (synced over the network, changed by hand), which would throw the offset and the timing of
+ * commands off until the next measurement.
+ */
+export function localNow(): number {
+  return performance.timeOrigin + performance.now();
+}
+
+/**
  * The server's clock, as seen from here. Commands say at which moment on the server's clock to act,
  * so the offset between the two is measured now and then while in a group.
  */
@@ -21,7 +30,7 @@ export class ServerClock {
   }
 
   now(): number {
-    return Date.now() + this.offset;
+    return localNow() + this.offset;
   }
 
   /** A moment on the server's clock, on the local one. */
@@ -31,9 +40,9 @@ export class ServerClock {
 
   private async sample() {
     try {
-      const t0 = Date.now();
+      const t0 = localNow();
       const r = await this.api.get<{ RequestReceptionTime: string; ResponseTransmissionTime: string }>('/GetUtcTime');
-      const t3 = Date.now();
+      const t3 = localNow();
       const t1 = parseTime(r.RequestReceptionTime);
       const t2 = parseTime(r.ResponseTransmissionTime);
       if (!Number.isFinite(t1) || !Number.isFinite(t2)) return;
@@ -56,10 +65,17 @@ export class ServerClock {
       for (let i = 0; i < 3; i++) await this.sample();
     })();
     this.timer = window.setInterval(() => void this.sample(), 30_000);
+    document.addEventListener('visibilitychange', this.onVisible);
   }
+
+  /** Back from the background (or a computer waking from sleep): measure again without waiting. */
+  private readonly onVisible = () => {
+    if (document.visibilityState === 'visible') void this.sample();
+  };
 
   stop() {
     window.clearInterval(this.timer);
     this.timer = undefined;
+    document.removeEventListener('visibilitychange', this.onVisible);
   }
 }

@@ -18,7 +18,7 @@ import {
   type SyncPlayOpenRequest,
   type SyncPlayQueueState,
 } from './syncplayProtocol';
-import { playingTab, setPlayingTab, storedGroup, storeGroup, type TabMessage } from './syncplayTabs';
+import { playingTab, setPlayingTab, storedGroup, storeGroup, TAB_CLAIM_EVERY, type TabMessage } from './syncplayTabs';
 
 export type { SyncPlayGroup, SyncPlayNotice, SyncPlayOpenRequest, SyncPlayQueueState } from './syncplayProtocol';
 
@@ -80,8 +80,13 @@ export class SyncPlayManager {
       if (playingTab() === this.tabId) setPlayingTab(null);
     };
     window.addEventListener('pagehide', leaving);
+    // Keeps this tab's claim to play along fresh, for as long as it has one.
+    const renew = window.setInterval(() => {
+      if (playingTab() === this.tabId) setPlayingTab(this.tabId);
+    }, TAB_CLAIM_EVERY);
     this.unsubscribe.push(
       () => window.removeEventListener('pagehide', leaving),
+      () => window.clearInterval(renew),
       socket.on<GroupUpdate>('SyncPlayGroupUpdate', (u) => {
         this.toTabs({ kind: 'update', data: u });
         this.handleUpdate(u, true);

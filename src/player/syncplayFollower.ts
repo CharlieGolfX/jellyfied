@@ -1,5 +1,5 @@
 import type { JellyfinApi } from '@/api/client';
-import type { ServerClock } from './syncplayClock';
+import { localNow, type ServerClock } from './syncplayClock';
 import { TICKS_PER_MS, type SyncCommand } from './syncplayProtocol';
 
 /**
@@ -154,7 +154,7 @@ export class SyncPlayFollower {
   command(c: SyncCommand) {
     const video = this.video;
     const position = (c.PositionTicks ?? 0) / TICKS_PER_MS / 1000;
-    const delay = this.clock.toLocal(c.When) - Date.now();
+    const delay = this.clock.toLocal(c.When) - localNow();
     window.clearTimeout(this.playTimer);
     this.resetRate();
 
@@ -162,7 +162,7 @@ export class SyncPlayFollower {
       case 'Unpause': {
         this.desired = 'playing';
         this.buffering = false;
-        this.lastUnpause = { at: Date.now() + delay, position };
+        this.lastUnpause = { at: localNow() + delay, position };
         if (delay > 0) {
           if (Math.abs(video.currentTime - position) > 0.25) this.seekLocal(position);
           this.playTimer = window.setTimeout(() => void video.play().catch(() => {}), delay);
@@ -201,7 +201,7 @@ export class SyncPlayFollower {
     const video = this.video;
     const ref = this.lastUnpause;
     if (!ref || this.desired !== 'playing' || video.paused || video.seeking || this.buffering) return;
-    const elapsed = (Date.now() - ref.at) / 1000;
+    const elapsed = (localNow() - ref.at) / 1000;
     if (elapsed < 1) return;
     const diff = video.currentTime - (ref.position + elapsed);
     if (Math.abs(diff) > 1) {

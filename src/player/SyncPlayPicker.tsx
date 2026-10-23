@@ -13,6 +13,7 @@ import { Img } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { t } from '@/i18n';
 import { episodeLabel } from '@/lib/format';
+import { useLatest } from '@/lib/useLatest';
 import {
   finalRotation,
   markSpinSeen,
@@ -410,62 +411,67 @@ export function SyncPlayPicker() {
   const manager = useSyncPlayManager();
   const closedBy = state?.closed ?? null;
   const left = useRef<string | null>(null);
+  const me = state?.me;
   useEffect(() => {
+    // Once per group: `left` keeps a later answer from the server from leaving it again.
     if (!closedBy || !groupId || !manager || left.current === groupId) return;
     left.current = groupId;
     setPickerOpen(false);
-    if (closedBy !== state?.me) toast.info(t('player.picker.deletedBy', { name: closedBy }));
+    if (closedBy !== me) toast.info(t('player.picker.deletedBy', { name: closedBy }));
     void manager.leaveGroup().catch((err) => toast.error(err));
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [closedBy, groupId, manager]);
+  }, [closedBy, groupId, manager, me, toast]);
 
   // Whoever is alone in a new group made it, and keeps the right to spin by hand.
   const claim = state && !state.claimed && state.participants.length === 1;
   useEffect(() => {
     if (claim) act.mutate({ action: 'claim' });
+    // Once each time this member finds themselves alone in a group. `act` is a new object on every
+    // render, and claiming again with each one would send a request per render until the answer comes.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [claim, groupId]);
 
   // A new spin: open the window and watch it, unless this tab has already seen it or it is long over.
   const spin = state?.spin ?? null;
+  const clockOffset = state?.clockOffset ?? 0;
   useEffect(() => {
-    if (!spin || !groupId || !state || spinSeen(groupId, spin.round)) return;
+    // Once per spin: the next answers from the server find it marked as seen.
+    if (!spin || !groupId || spinSeen(groupId, spin.round)) return;
     markSpinSeen(groupId, spin.round);
-    if (Date.now() + state.clockOffset - spin.at > SPIN_MS + WINNER_MS + 10_000) return;
+    if (Date.now() + clockOffset - spin.at > SPIN_MS + WINNER_MS + 10_000) return;
     setShowing(spin);
     setPickerOpen(true);
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [spin?.round, groupId]);
+  }, [spin, groupId, clockOffset]);
 
-  const clockOffset = state?.clockOffset ?? 0;
   const elapsed = showing ? now + clockOffset - showing.at : 0;
+
+  // What the timer below calls, as it is when the wheel stops: the timer is set once per spin shown,
+  // and must not start over with every render or answer from the server.
+  const startWinner = useLatest(async (round: number, winner: string) => {
+    try {
+      const answer = await act.mutateAsync({ action: 'start', round });
+      if (answer.go) {
+        const item = await api.get<BaseItemDto>(`/Items/${winner}`, { userId });
+        await localPlay(item);
+      }
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setShowing(null);
+      setPickerOpen(false);
+    }
+  });
+  const offsetAtSpin = useLatest(clockOffset);
 
   useEffect(() => {
     if (!showing) return;
     const tick = window.setInterval(() => setNow(Date.now()), 250);
-    const startIn = Math.max(0, SPIN_MS + WINNER_MS - (Date.now() + clockOffset - showing.at));
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const answer = await act.mutateAsync({ action: 'start', round: showing.round });
-          if (answer.go) {
-            const item = await api.get<BaseItemDto>(`/Items/${showing.winner}`, { userId });
-            await localPlay(item);
-          }
-        } catch (err) {
-          toast.error(err);
-        } finally {
-          setShowing(null);
-          setPickerOpen(false);
-        }
-      })();
-    }, startIn);
+    const startIn = Math.max(0, SPIN_MS + WINNER_MS - (Date.now() + offsetAtSpin.current - showing.at));
+    const timer = window.setTimeout(() => void startWinner.current(showing.round, showing.winner), startIn);
     return () => {
       window.clearInterval(tick);
       window.clearTimeout(timer);
     };
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [showing]);
+  }, [showing, startWinner, offsetAtSpin]);
 
   // A window over a full-screen video would never be seen.
   useEffect(() => {

@@ -68,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   manager.dispose();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('SyncPlayManager: groups', () => {
@@ -206,7 +207,8 @@ describe('SyncPlayManager: queue', () => {
   });
 
   it('adds the time that has passed since the update when the group is already playing', () => {
-    vi.setSystemTime(new Date('2026-10-11T18:00:10Z'));
+    // The clock it goes by only runs forward (see localNow), so it is moved rather than the date.
+    vi.spyOn(performance, 'now').mockReturnValue(Date.parse('2026-10-11T18:00:10Z') - performance.timeOrigin);
     server.update('GroupJoined', group);
     server.update('PlayQueue', queue({ IsPlaying: true }));
     // Ten seconds later than the 5 s the update named.
