@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { onPrefPulled, prefChanged } from './prefsBus';
+import { readString, writeJson } from '@/lib/storage';
 
 /**
  * Which rows the home page shows and in what order. Synced with the account (see prefsSync).
@@ -58,11 +59,7 @@ export function moveRowTo(ids: string[], id: string, index: number): string[] {
 }
 
 function read(): HomeLayout {
-  try {
-    return parseHomeLayout(localStorage.getItem(KEY));
-  } catch {
-    return DEFAULT_HOME_LAYOUT;
-  }
+  return parseHomeLayout(readString(KEY));
 }
 
 let current = read();
@@ -70,11 +67,7 @@ const listeners = new Set<() => void>();
 
 export function setHomeLayout(patch: Partial<HomeLayout>) {
   current = { ...current, ...patch };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, current);
   listeners.forEach((l) => l());
   prefChanged(KEY);
 }

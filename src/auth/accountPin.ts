@@ -1,4 +1,5 @@
 import type { StoredSession } from './AuthProvider';
+import { readJson, writeJson } from '@/lib/storage';
 
 /**
  * A PIN that protects an account that is signed in on this browser while someone else is using it.
@@ -180,20 +181,12 @@ async function open(saved: StoredPin, pin: string): Promise<{ ok: boolean; acces
 }
 
 function load(): Record<string, StoredPin> {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, StoredPin>) : {};
-  } catch {
-    return {};
-  }
+  const parsed = readJson(KEY);
+  return parsed && typeof parsed === 'object' ? (parsed as Record<string, StoredPin>) : {};
 }
 
 function store(pins: Record<string, StoredPin>) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(pins));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, pins);
 }
 
 export function hasPin(account: Pick<StoredSession, 'serverUrl' | 'userId'>): boolean {

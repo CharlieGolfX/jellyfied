@@ -2,6 +2,7 @@ import type { BaseItemDto, MediaSourceInfo, MediaStream, TrickplayInfo } from '@
 import { MAX_BITRATE, type SubtitleMode } from '../deviceProfile';
 import type { PlayMethod } from '../reporting';
 import { t } from '@/i18n';
+import { readString } from '@/lib/storage';
 
 /** Which of the player's menus is open. */
 export type PlayerPanel = 'none' | 'settings' | 'subtitles' | 'chapters' | 'picture';
@@ -94,12 +95,8 @@ export function streamName(s: MediaStream): string {
 }
 
 export function readNumber(key: string, fallback: number): number {
-  try {
-    const v = Number(localStorage.getItem(key));
-    return Number.isFinite(v) && v > 0 ? v : fallback;
-  } catch {
-    return fallback;
-  }
+  const v = Number(readString(key));
+  return Number.isFinite(v) && v > 0 ? v : fallback;
 }
 
 export function formatSubtitleDelay(seconds: number): string {

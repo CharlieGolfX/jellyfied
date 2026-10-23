@@ -9,6 +9,7 @@ import { t } from '@/i18n';
 import { isGroupCreator } from './syncplayInviteList';
 import { isPlayPath } from './VideoSession';
 import { useServerUsers, useSyncPlay, useSyncPlayGroups, useSyncPlayManager } from './SyncPlayProvider';
+import { readJson, writeJson } from '@/lib/storage';
 
 /** How often to look for new invitations. Jellyfin says nothing when a group is created. */
 const CHECK_INTERVAL = 15_000;
@@ -17,20 +18,12 @@ const ANSWERED_KEY = 'jellyfied.syncPlayInvitesAnswered';
 const ANSWERED_LIMIT = 50;
 
 function readAnswered(): string[] {
-  try {
-    const list: unknown = JSON.parse(localStorage.getItem(ANSWERED_KEY) ?? '[]');
-    return Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
+  const list = readJson(ANSWERED_KEY);
+  return Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : [];
 }
 
 function saveAnswered(list: string[]) {
-  try {
-    localStorage.setItem(ANSWERED_KEY, JSON.stringify(list.slice(-ANSWERED_LIMIT)));
-  } catch {
-    /* ignore */
-  }
+  writeJson(ANSWERED_KEY, list.slice(-ANSWERED_LIMIT));
 }
 
 /**

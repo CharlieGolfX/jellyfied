@@ -1,5 +1,6 @@
 import type { MediaStream } from '@/api/types';
 import { prefChanged } from '@/lib/prefsBus';
+import { readJson, writeJson } from '@/lib/storage';
 
 /**
  * Remembers the audio and subtitle track chosen for a show, so the next episode starts with the
@@ -26,12 +27,8 @@ const KEY = 'jellyfied.trackMemory';
 const MAX_SERIES = 300;
 
 function readAll(): Record<string, SeriesMemory> {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    return raw && typeof raw === 'object' ? (raw as Record<string, SeriesMemory>) : {};
-  } catch {
-    return {};
-  }
+  const raw = readJson(KEY);
+  return raw && typeof raw === 'object' ? (raw as Record<string, SeriesMemory>) : {};
 }
 
 function update(seriesId: string, patch: SeriesMemory) {
@@ -42,11 +39,7 @@ function update(seriesId: string, patch: SeriesMemory) {
   all[seriesId] = entry;
   const ids = Object.keys(all);
   for (const id of ids.slice(0, Math.max(0, ids.length - MAX_SERIES))) delete all[id];
-  try {
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, all);
   prefChanged(KEY);
 }
 

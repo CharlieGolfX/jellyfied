@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { onPrefPulled, prefChanged } from './prefsBus';
 import { t } from '@/i18n';
+import { readJson, writeJson } from '@/lib/storage';
 
 /** Interface colours: the accent colour and the background tone. Synced with the account (see prefsSync). */
 export interface Theme {
@@ -90,15 +91,12 @@ export function accentColors(accent: string): { fill: string; hover: string; ink
 }
 
 function read(): Theme {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Theme>;
-    return {
-      accent: isHexColor(raw.accent) ? raw.accent.toLowerCase() : DEFAULT_THEME.accent,
-      background: BACKGROUNDS.some((b) => b.value === raw.background) ? raw.background! : DEFAULT_THEME.background,
-    };
-  } catch {
-    return DEFAULT_THEME;
-  }
+  const stored = readJson(KEY);
+  const raw = (stored && typeof stored === 'object' ? stored : {}) as Partial<Theme>;
+  return {
+    accent: isHexColor(raw.accent) ? raw.accent.toLowerCase() : DEFAULT_THEME.accent,
+    background: BACKGROUNDS.some((b) => b.value === raw.background) ? raw.background! : DEFAULT_THEME.background,
+  };
 }
 
 /** Overrides the colour variables from index.css; the defaults there are left alone. */
@@ -129,11 +127,7 @@ const listeners = new Set<() => void>();
 
 export function setTheme(patch: Partial<Theme>) {
   current = { ...current, ...patch };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, current);
   apply(current);
   listeners.forEach((l) => l());
   prefChanged(KEY);

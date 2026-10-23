@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { onPrefPulled, prefChanged } from '@/lib/prefsBus';
+import { readString, writeJson } from '@/lib/storage';
 
 /** How far the skip buttons and arrow keys jump, in seconds. Synced with the account (see prefsSync). */
 export interface SeekSteps {
@@ -26,11 +27,7 @@ export function parseSeekSteps(raw: string | null): SeekSteps {
 }
 
 function read(): SeekSteps {
-  try {
-    return parseSeekSteps(localStorage.getItem(KEY));
-  } catch {
-    return DEFAULT_SEEK_STEPS;
-  }
+  return parseSeekSteps(readString(KEY));
 }
 
 let current = read();
@@ -42,11 +39,7 @@ export function getSeekSteps(): SeekSteps {
 
 export function setSeekSteps(patch: Partial<SeekSteps>) {
   current = { ...current, ...patch };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, current);
   listeners.forEach((l) => l());
   prefChanged(KEY);
 }

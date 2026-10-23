@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { currentLanguage } from '@/i18n';
 import { onPrefPulled, prefChanged } from './prefsBus';
+import { readString, writeString } from '@/lib/storage';
 
 /** Clock style for wall-clock times (24-hour by default). Synced with the account (see prefsSync). */
 export type TimeFormat = '24h' | '12h';
@@ -8,11 +9,7 @@ export type TimeFormat = '24h' | '12h';
 const KEY = 'jellyfied.timeFormat';
 
 function read(): TimeFormat {
-  try {
-    return localStorage.getItem(KEY) === '12h' ? '12h' : '24h';
-  } catch {
-    return '24h';
-  }
+  return readString(KEY) === '12h' ? '12h' : '24h';
 }
 
 let current = read();
@@ -24,11 +21,7 @@ export function getTimeFormat(): TimeFormat {
 
 export function setTimeFormat(v: TimeFormat) {
   current = v;
-  try {
-    localStorage.setItem(KEY, v);
-  } catch {
-    /* ignore */
-  }
+  writeString(KEY, v);
   listeners.forEach((l) => l());
   prefChanged(KEY);
 }

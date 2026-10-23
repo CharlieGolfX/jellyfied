@@ -4,6 +4,7 @@ import type { BaseItemDto, ItemsResult } from '@/api/types';
 import { appPath } from './basePath';
 import { readPlaytimeSetting, syncPlaytime, type Playtime } from './playtime';
 import { RANGES, summarize, watchStats, type Range, type StatsSummary } from './watchStats';
+import { readString, writeString } from '@/lib/storage';
 
 /**
  * Comparing Your stats with the other people on the server, anonymously: Jellyfied's container
@@ -88,11 +89,7 @@ export function summaries(source: StatsSource, now = new Date()): Record<Range, 
 /** Sends this account's summaries, so the others' comparisons include them (and theirs are fresh). */
 export async function shareSummaries(api: JellyfinApi, userId: string, source: StatsSource) {
   await request(api, 'POST', undefined, { summaries: summaries(source) });
-  try {
-    localStorage.setItem(`${UPLOADED_KEY}.${userId}`, String(Date.now()));
-  } catch {
-    /* ignore */
-  }
+  writeString(`${UPLOADED_KEY}.${userId}`, String(Date.now()));
 }
 
 export async function comparing(api: JellyfinApi, userId: string): Promise<boolean> {
@@ -108,12 +105,7 @@ export async function setComparing(api: JellyfinApi, userId: string, on: boolean
 
 /** Once a day, for those taking part: keeps their summaries current while they don't open Your stats. */
 export async function shareDaily(api: JellyfinApi, userId: string) {
-  let last = 0;
-  try {
-    last = Number(localStorage.getItem(`${UPLOADED_KEY}.${userId}`)) || 0;
-  } catch {
-    /* ignore */
-  }
+  const last = Number(readString(`${UPLOADED_KEY}.${userId}`)) || 0;
   if (Date.now() - last < UPLOAD_EVERY) return;
   if (!(await comparing(api, userId))) return;
   await shareSummaries(api, userId, await loadStatsSource(api, userId));

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { readString, writeString } from '@/lib/storage';
 
 /** How library pages lay their items out. Stored in this browser only. */
 export type LibraryView = 'grid' | 'list';
@@ -6,11 +7,7 @@ export type LibraryView = 'grid' | 'list';
 const KEY = 'jellyfied.libraryView';
 
 function read(): LibraryView {
-  try {
-    return localStorage.getItem(KEY) === 'list' ? 'list' : 'grid';
-  } catch {
-    return 'grid';
-  }
+  return readString(KEY) === 'list' ? 'list' : 'grid';
 }
 
 let current = read();
@@ -18,11 +15,7 @@ const listeners = new Set<() => void>();
 
 export function setLibraryView(view: LibraryView) {
   current = view;
-  try {
-    localStorage.setItem(KEY, view);
-  } catch {
-    /* ignore */
-  }
+  writeString(KEY, view);
   listeners.forEach((l) => l());
 }
 

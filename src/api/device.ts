@@ -1,3 +1,5 @@
+import { readString, writeString } from '@/lib/storage';
+
 const DEVICE_ID_KEY = 'jellyfied.deviceId';
 
 /** UUID generator that also works on insecure (plain http) origins, where crypto.randomUUID is unavailable. */
@@ -14,19 +16,10 @@ let cachedDeviceId: string | null = null;
 
 export function getDeviceId(): string {
   if (cachedDeviceId) return cachedDeviceId;
-  let id: string | null = null;
-  try {
-    id = localStorage.getItem(DEVICE_ID_KEY);
-  } catch {
-    /* storage unavailable */
-  }
+  let id = readString(DEVICE_ID_KEY);
   if (!id) {
     id = generateId();
-    try {
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    } catch {
-      /* storage unavailable */
-    }
+    writeString(DEVICE_ID_KEY, id);
   }
   cachedDeviceId = id;
   return id;

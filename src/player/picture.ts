@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { t } from '@/i18n';
+import { readString, writeString } from '@/lib/storage';
 
 /** How the picture is scaled to the player. */
 export type PictureFit = 'fit' | 'fill' | 'stretch';
@@ -24,20 +25,12 @@ export const MAX_PICTURE_ZOOM = 2;
 const FIT_KEY = 'jellyfied.pictureFit';
 
 export function readPictureFit(): PictureFit {
-  try {
-    const v = localStorage.getItem(FIT_KEY);
-    return PICTURE_FITS.some((f) => f.value === v) ? (v as PictureFit) : 'fit';
-  } catch {
-    return 'fit';
-  }
+  const v = readString(FIT_KEY);
+  return PICTURE_FITS.some((f) => f.value === v) ? (v as PictureFit) : 'fit';
 }
 
 export function storePictureFit(fit: PictureFit) {
-  try {
-    localStorage.setItem(FIT_KEY, fit);
-  } catch {
-    /* ignore */
-  }
+  writeString(FIT_KEY, fit);
 }
 
 /**

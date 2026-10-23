@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { onPrefPulled, prefChanged } from '@/lib/prefsBus';
 import { t } from '@/i18n';
+import { readJson, writeJson } from '@/lib/storage';
 
 /** How text subtitles are drawn in the player. Synced with the account (see prefsSync). */
 export interface SubtitleStyle {
@@ -61,18 +62,15 @@ function pick<T extends { value: string }>(options: T[], value: unknown, fallbac
 }
 
 function read(): SubtitleStyle {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<SubtitleStyle>;
-    return {
-      size: pick(SUBTITLE_SIZES, raw.size, DEFAULT_SUBTITLE_STYLE.size),
-      color: pick(SUBTITLE_COLORS, raw.color, DEFAULT_SUBTITLE_STYLE.color),
-      background: pick(SUBTITLE_BACKGROUNDS, raw.background, DEFAULT_SUBTITLE_STYLE.background),
-      edge: pick(SUBTITLE_EDGES, raw.edge, DEFAULT_SUBTITLE_STYLE.edge),
-      styled: raw.styled !== false,
-    };
-  } catch {
-    return DEFAULT_SUBTITLE_STYLE;
-  }
+  const stored = readJson(KEY);
+  const raw = (stored && typeof stored === 'object' ? stored : {}) as Partial<SubtitleStyle>;
+  return {
+    size: pick(SUBTITLE_SIZES, raw.size, DEFAULT_SUBTITLE_STYLE.size),
+    color: pick(SUBTITLE_COLORS, raw.color, DEFAULT_SUBTITLE_STYLE.color),
+    background: pick(SUBTITLE_BACKGROUNDS, raw.background, DEFAULT_SUBTITLE_STYLE.background),
+    edge: pick(SUBTITLE_EDGES, raw.edge, DEFAULT_SUBTITLE_STYLE.edge),
+    styled: raw.styled !== false,
+  };
 }
 
 let current = read();
@@ -80,11 +78,7 @@ const listeners = new Set<() => void>();
 
 export function setSubtitleStyle(patch: Partial<SubtitleStyle>) {
   current = { ...current, ...patch };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
+  writeJson(KEY, current);
   listeners.forEach((l) => l());
   prefChanged(KEY);
 }

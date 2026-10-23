@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { readString, writeString } from '@/lib/storage';
 
 /**
  * Global poster/card size. The value is exposed to CSS as `--card-scale` on <html>, so every hub,
@@ -13,12 +14,8 @@ function clamp(v: number): number {
 }
 
 function read(): number {
-  try {
-    const v = Number(localStorage.getItem(KEY));
-    return Number.isFinite(v) && v > 0 ? clamp(v) : 1;
-  } catch {
-    return 1;
-  }
+  const v = Number(readString(KEY));
+  return Number.isFinite(v) && v > 0 ? clamp(v) : 1;
 }
 
 let current = read();
@@ -32,11 +29,7 @@ apply(current);
 export function setCardScale(v: number) {
   current = clamp(Math.round(v * 100) / 100);
   apply(current);
-  try {
-    localStorage.setItem(KEY, String(current));
-  } catch {
-    /* ignore */
-  }
+  writeString(KEY, String(current));
   listeners.forEach((l) => l());
 }
 

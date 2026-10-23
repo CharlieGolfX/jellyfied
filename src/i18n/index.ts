@@ -1,6 +1,7 @@
 import { createElement, Fragment, useSyncExternalStore, type ReactNode } from 'react';
 import { flushPrefs, onPrefPulled, prefChanged } from '@/lib/prefsBus';
 import en from './locales/en.json';
+import { readString, writeString } from '@/lib/storage';
 
 /**
  * Interface text.
@@ -92,12 +93,8 @@ export function format(catalogue: Catalogue, language: string, key: string, vars
 }
 
 function stored(): string | null {
-  try {
-    const value = localStorage.getItem(KEY);
-    return value && LANGUAGES.includes(value) ? value : null;
-  } catch {
-    return null;
-  }
+  const value = readString(KEY);
+  return value && LANGUAGES.includes(value) ? value : null;
 }
 
 const browserLanguages = () => (typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]));
@@ -136,12 +133,7 @@ function restartIfChanged() {
 
 export function setLanguage(code: string | null) {
   choice = code && LANGUAGES.includes(code) ? code : null;
-  try {
-    if (choice) localStorage.setItem(KEY, choice);
-    else localStorage.removeItem(KEY);
-  } catch {
-    /* ignore */
-  }
+  writeString(KEY, choice);
   prefChanged(KEY);
   listeners.forEach((l) => l());
   restartIfChanged();

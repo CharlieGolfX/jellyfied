@@ -53,6 +53,7 @@ import { useUpNext } from './video/useUpNext';
 import { useVideoAudioDelay } from './video/useVideoAudioDelay';
 import { useVideoMediaSession } from './video/useVideoMediaSession';
 import { t } from '@/i18n';
+import { writeString } from '@/lib/storage';
 
 /** App-level player: renders the current video session full screen or as the mini player. */
 export default function GlobalVideoPlayer() {
@@ -216,11 +217,7 @@ function VideoPlayer({ itemId, navState }: { itemId: string; navState: VideoPlay
     if (!video) return;
     video.volume = volume;
     video.muted = muted;
-    try {
-      localStorage.setItem(VOLUME_KEY, String(volume));
-    } catch {
-      /* ignore */
-    }
+    writeString(VOLUME_KEY, String(volume));
   }, [volume, muted]);
 
   useVideoAudioDelay({
