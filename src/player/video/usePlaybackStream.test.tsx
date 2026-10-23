@@ -25,7 +25,7 @@ vi.mock('@/auth/AuthProvider', () => ({
   useSession: () => ({ userId: 'user-1', serverId: 'server-1' }),
 }));
 vi.mock('@/api/device', () => ({ generateId: () => 'generated-id', isChromium: () => m.chromium }));
-vi.mock('../AudioPlayerProvider', () => ({ useAudioPlayer: () => ({ pause: m.audioPause }) }));
+vi.mock('../AudioPlayerProvider', () => ({ useAudioActions: () => ({ pause: m.audioPause }) }));
 vi.mock('../SyncPlayProvider', () => ({ useSyncPlayManager: () => null }));
 vi.mock('../deviceProfile', () => ({
   MAX_BITRATE: 120_000_000,

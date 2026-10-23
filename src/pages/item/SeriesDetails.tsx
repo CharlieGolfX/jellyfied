@@ -7,7 +7,7 @@ import { Hub } from '@/components/media/Hub';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/States';
 import { episodeLabel, plural } from '@/lib/format';
-import { useAudioPlayer } from '@/player/AudioPlayerProvider';
+import { useAudioActions } from '@/player/AudioPlayerProvider';
 import type { VideoPlayerState } from '@/player/usePlay';
 import { ActionBar, CastHub, CreditsList, DetailFrame, ExpandableText, MetaLine } from './common';
 import { EpisodeRow } from './EpisodeList';
@@ -62,7 +62,7 @@ export function SeriesDetails({ item }: { item: BaseItemDto }) {
 /** Plays an episode and queues the rest of the season around it. */
 function usePlayEpisodes(episodes: BaseItemDto[]) {
   const navigate = useNavigate();
-  const audio = useAudioPlayer();
+  const audio = useAudioActions();
   return useCallback(
     (episode: BaseItemDto) => {
       const ids = episodes.filter((e) => e.LocationType !== 'Virtual').map((e) => e.Id);

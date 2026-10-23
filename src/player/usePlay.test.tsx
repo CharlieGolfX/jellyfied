@@ -23,7 +23,7 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => m.navigate }));
 vi.mock('@/auth/AuthProvider', () => ({ useApi: () => m.api, useSession: () => ({ userId: 'user-1', serverId: 'server-1' }) }));
 vi.mock('@/components/ui/Toast', () => ({ useToast: () => m.toast }));
 vi.mock('@/api/device', () => ({ generateId: () => 'token-1' }));
-vi.mock('./AudioPlayerProvider', () => ({ useAudioPlayer: () => m.audio }));
+vi.mock('./AudioPlayerProvider', () => ({ useAudioActions: () => m.audio }));
 vi.mock('./VideoSession', () => ({ useVideoSession: () => m.video, isPlayPath: (p: string) => p.startsWith('/play/') }));
 vi.mock('./SyncPlayProvider', () => ({ useSyncPlayManager: () => m.sync }));
 vi.mock('./castTarget', () => ({ getCastTarget: () => m.castTarget, sendRemotePlay: m.sendRemotePlay }));

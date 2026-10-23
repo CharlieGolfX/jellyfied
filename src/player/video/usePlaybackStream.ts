@@ -7,7 +7,7 @@ import { useApi, useSession } from '@/auth/AuthProvider';
 import { errorMessage } from '@/components/ui/Toast';
 import { secondsToTicks, ticksToSeconds } from '@/lib/format';
 import { hasAudioGraph } from '../audioDelay';
-import { useAudioPlayer } from '../AudioPlayerProvider';
+import { useAudioActions } from '../AudioPlayerProvider';
 import { buildDeviceProfile, MAX_BITRATE } from '../deviceProfile';
 import { reportPlaybackProgress, reportPlaybackStart, reportPlaybackStopped, stopTranscoding } from '../reporting';
 import { useSyncPlayManager } from '../SyncPlayProvider';
@@ -20,6 +20,7 @@ import { attachHlsJs } from './hlsPlayer';
 import { pickDelivery, playbackInfoError, transcodeReasons } from './streamDelivery';
 import { useStreamSubtitles } from './useStreamSubtitles';
 import { t } from '@/i18n';
+import { writeString } from '@/lib/storage';
 
 /**
  * Everything between the video element and the server for one playback: asking for a stream,
@@ -64,7 +65,7 @@ export function usePlaybackStream({
 }) {
   const api = useApi();
   const { userId } = useSession();
-  const audioPlayer = useAudioPlayer();
+  const audioPlayer = useAudioActions();
   const syncManager = useSyncPlayManager();
   const syncItemId = navState.syncPlaylistItemId;
 
@@ -151,7 +152,9 @@ export function usePlaybackStream({
       try {
         const info = await api.post<PlaybackInfoResponse>(`/Items/${item.Id}/PlaybackInfo`, {
           UserId: userId,
-          StartTimeTicks: 0,
+          // Lets the server begin the transcode where playback resumes. Video is always transcoded to
+          // HLS, whose addresses don't carry the start, so the timeline still begins at 0.
+          StartTimeTicks: item.MediaType === 'Video' && opts.start > 0 ? secondsToTicks(opts.start) : 0,
           IsPlayback: true,
           AutoOpenLiveStream: true,
           MaxStreamingBitrate: opts.bitrate,
@@ -579,11 +582,7 @@ export function usePlaybackStream({
 
   const changeQuality = (bitrate: number) => {
     setMaxBitrate(bitrate);
-    try {
-      localStorage.setItem(BITRATE_KEY, String(bitrate));
-    } catch {
-      /* ignore */
-    }
+    writeString(BITRATE_KEY, String(bitrate));
     if (!stream) return;
     void load({
       start: videoRef.current?.currentTime ?? 0,
@@ -595,7 +594,10 @@ export function usePlaybackStream({
   };
 
   const retry = () => {
+    // A fresh start: what failed before may have been passing trouble.
     fallbackTried.current = false;
+    nativeHlsFailed.current = false;
+    videoCopyFailed.current = false;
     void load({
       start: videoRef.current?.currentTime || currentTime,
       audioIndex: stream?.audioIndex,

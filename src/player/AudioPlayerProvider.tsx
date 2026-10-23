@@ -9,16 +9,17 @@ import { getCastTarget, sendRemotePlay, type RemotePlayCommand } from './castTar
 import { castPlay, getChromecast } from './chromecast';
 import { usePlaytimeTracker } from './usePlaytimeTracker';
 import type { SyncPlayManager, SyncPlayQueueState } from './syncplay';
+import { VOLUME_KEY } from './video/shared';
+import { readString, writeString } from '@/lib/storage';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
-interface AudioPlayerState {
+interface AudioPlayerStatus {
   queue: BaseItemDto[];
   index: number;
   current: BaseItemDto | null;
   isPlaying: boolean;
   isLoading: boolean;
-  currentTime: number;
   duration: number;
   volume: number;
   muted: boolean;
@@ -27,6 +28,12 @@ interface AudioPlayerState {
   inGroup: boolean;
   /** The group's queue is shuffled (in a group, shuffling is a mode rather than a one-off). */
   shuffled: boolean;
+}
+
+/** What the player can be asked to do. These never change, so using them doesn't re-render anything. */
+interface AudioPlayerActions {
+  /** Where in the track the player is, in seconds, right now. */
+  getTime: () => number;
   play: (items: BaseItemDto[], startIndex?: number) => void;
   /**
    * Plays a SyncPlay group's queue from `index`, at `startTicks`, following the group: playing,
@@ -53,7 +60,13 @@ interface AudioPlayerState {
   stop: () => void;
 }
 
+type AudioPlayerState = AudioPlayerStatus & AudioPlayerActions;
+
+// Three parts, so that what only needs to start music doesn't re-render whenever the player does,
+// and only what shows the position re-renders with it (a few times a second while music plays).
 const AudioPlayerContext = createContext<AudioPlayerState | null>(null);
+const AudioActionsContext = createContext<AudioPlayerActions | null>(null);
+const AudioTimeContext = createContext(0);
 
 /** The group this player follows, and the queue entry it is on. */
 interface GroupPlayback {
@@ -96,6 +109,11 @@ function streamUrl(api: JellyfinApi, item: BaseItemDto, playSessionId: string): 
   );
 }
 
+function readVolume(): number {
+  const v = Number(readString(VOLUME_KEY));
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 1;
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -117,10 +135,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(() => {
-    const v = Number(localStorage.getItem('jellyfied.volume'));
-    return Number.isFinite(v) && v > 0 && v <= 1 ? v : 1;
-  });
+  const [volume, setVolumeState] = useState(readVolume);
   const [muted, setMuted] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>('off');
   const [group, setGroup] = useState<GroupPlayback | null>(null);
@@ -320,11 +335,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (!audio) return;
     audio.volume = volume;
     audio.muted = muted;
-    try {
-      localStorage.setItem('jellyfied.volume', String(volume));
-    } catch {
-      /* ignore */
-    }
+    writeString(VOLUME_KEY, String(volume));
   }, [volume, muted]);
 
   // SyncPlay: hand the audio element to the group for as long as this track plays along.
@@ -444,6 +455,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const pause = useCallback(() => audioRef.current?.pause(), []);
+  const resume = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio?.src && audio.paused) void audio.play();
+  }, []);
+  const getTime = useCallback(() => audioRef.current?.currentTime ?? 0, []);
 
   const next = useCallback(() => {
     const { queue: q, index: i, repeat: r, group: g } = stateRef.current;
@@ -493,7 +509,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const nextQueue = q.filter((_, idx) => idx !== i);
     setQueue(nextQueue);
     if (i < cur) setIndex(cur - 1);
-    else if (i === cur) setIndex(Math.min(cur, nextQueue.length - 1));
+    else if (i === cur) setIndex(Math.max(0, Math.min(cur, nextQueue.length - 1)));
   }, []);
 
   const stop = useCallback(() => {
@@ -543,27 +559,17 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       album: current.Album ?? '',
       artwork: artTag ? [{ src: api.imageUrl(artId, 'Primary', { tag: artTag, maxWidth: 512 }), sizes: '512x512' }] : [],
     });
-    ms.setActionHandler('play', toggle);
-    ms.setActionHandler('pause', toggle);
+    // Not a toggle: after a Bluetooth reconnect the system's idea of the state can be the wrong way round.
+    ms.setActionHandler('play', resume);
+    ms.setActionHandler('pause', pause);
     ms.setActionHandler('nexttrack', next);
     ms.setActionHandler('previoustrack', previous);
     ms.setActionHandler('seekto', (d) => d.seekTime !== undefined && seek(d.seekTime));
-  }, [current, api, toggle, next, previous, seek]);
+  }, [current, api, resume, pause, next, previous, seek]);
 
-  const value = useMemo<AudioPlayerState>(
+  const actions = useMemo<AudioPlayerActions>(
     () => ({
-      queue,
-      index,
-      current,
-      isPlaying,
-      isLoading,
-      currentTime,
-      duration,
-      volume,
-      muted,
-      repeat,
-      inGroup: group !== null,
-      shuffled,
+      getTime,
       play,
       playForGroup,
       leaveGroup,
@@ -584,18 +590,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       stop,
     }),
     [
-      queue,
-      index,
-      current,
-      isPlaying,
-      isLoading,
-      currentTime,
-      duration,
-      volume,
-      muted,
-      repeat,
-      group,
-      shuffled,
+      getTime,
       play,
       playForGroup,
       leaveGroup,
@@ -617,11 +612,35 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AudioPlayerContext.Provider value={value}>{children}</AudioPlayerContext.Provider>;
+  const inGroup = group !== null;
+  const value = useMemo<AudioPlayerState>(
+    () => ({ ...actions, queue, index, current, isPlaying, isLoading, duration, volume, muted, repeat, inGroup, shuffled }),
+    [actions, queue, index, current, isPlaying, isLoading, duration, volume, muted, repeat, inGroup, shuffled],
+  );
+
+  return (
+    <AudioActionsContext.Provider value={actions}>
+      <AudioPlayerContext.Provider value={value}>
+        <AudioTimeContext.Provider value={currentTime}>{children}</AudioTimeContext.Provider>
+      </AudioPlayerContext.Provider>
+    </AudioActionsContext.Provider>
+  );
 }
 
 export function useAudioPlayer(): AudioPlayerState {
   const ctx = useContext(AudioPlayerContext);
   if (!ctx) throw new Error('useAudioPlayer must be used inside AudioPlayerProvider');
   return ctx;
+}
+
+/** Only what the player can do: for starting music and the like, without re-rendering as it plays. */
+export function useAudioActions(): AudioPlayerActions {
+  const ctx = useContext(AudioActionsContext);
+  if (!ctx) throw new Error('useAudioActions must be used inside AudioPlayerProvider');
+  return ctx;
+}
+
+/** The position in the track, in seconds. Changes a few times a second while music plays. */
+export function useAudioTime(): number {
+  return useContext(AudioTimeContext);
 }

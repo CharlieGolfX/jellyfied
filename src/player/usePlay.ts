@@ -5,7 +5,7 @@ import { CARD_FIELDS } from '@/api/queries';
 import type { BaseItemDto, ItemsResult } from '@/api/types';
 import { useToast } from '@/components/ui/Toast';
 import { generateId } from '@/api/device';
-import { useAudioPlayer } from './AudioPlayerProvider';
+import { useAudioActions } from './AudioPlayerProvider';
 import { getCastTarget, sendRemotePlay } from './castTarget';
 import { castPlay, getChromecast } from './chromecast';
 import { useSyncPlayManager } from './SyncPlayProvider';
@@ -232,7 +232,7 @@ export function useLocalPlay() {
   const api = useApi();
   const { userId } = useSession();
   const navigate = useNavigate();
-  const audio = useAudioPlayer();
+  const audio = useAudioActions();
   const videoSession = useVideoSession();
   const toast = useToast();
   const sync = useSyncPlayManager();
@@ -356,7 +356,7 @@ export function supportsInstantMix(item: BaseItemDto): boolean {
 export function useInstantMix() {
   const api = useApi();
   const { userId } = useSession();
-  const audio = useAudioPlayer();
+  const audio = useAudioActions();
   const toast = useToast();
   const sync = useSyncPlayManager();
   return useCallback(

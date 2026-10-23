@@ -17,7 +17,7 @@ vi.mock('@/api/device', () => ({ generateId: () => `session-${++m.ids}` }));
 vi.mock('./castTarget', () => ({ getCastTarget: () => m.castTarget, sendRemotePlay: m.sendRemotePlay }));
 vi.mock('./chromecast', () => ({ getChromecast: () => m.chromecast, castPlay: m.castPlay }));
 
-import { AudioPlayerProvider, useAudioPlayer } from './AudioPlayerProvider';
+import { AudioPlayerProvider, useAudioPlayer, useAudioTime } from './AudioPlayerProvider';
 
 const track = (Id: string, patch: Partial<BaseItemDto> = {}) =>
   ({ Id, Name: `Song ${Id}`, Type: 'Audio', MediaType: 'Audio', RunTimeTicks: 1_800_000_000, ...patch }) as BaseItemDto;
@@ -39,7 +39,9 @@ let audio: HTMLAudioElement;
 const fire = (type: string) => act(() => void audio.dispatchEvent(new Event(type)));
 
 function start() {
-  const hook = renderHook(() => useAudioPlayer(), { wrapper: (children) => <AudioPlayerProvider>{children}</AudioPlayerProvider> });
+  const hook = renderHook(() => ({ ...useAudioPlayer(), currentTime: useAudioTime() }), {
+    wrapper: (children) => <AudioPlayerProvider>{children}</AudioPlayerProvider>,
+  });
   return hook;
 }
 
@@ -221,6 +223,10 @@ describe('changing the queue', () => {
     expect(result.current.current?.Id).toBe('c');
     act(() => result.current.removeAt(0));
     expect(result.current.current).toBeNull();
+    expect(result.current.index).toBe(0);
+    // With the queue emptied that way, what is added next still plays.
+    act(() => result.current.enqueue([track('d')]));
+    expect(result.current.current?.Id).toBe('d');
   });
 
   it('jumps to a track in the queue', () => {

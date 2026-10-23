@@ -193,10 +193,10 @@ export function RemoteControlReceiver() {
           c.audio.seek(seconds);
           break;
         case 'Rewind':
-          c.audio.seek(c.audio.currentTime - getSeekSteps().back);
+          c.audio.seek(c.audio.getTime() - getSeekSteps().back);
           break;
         case 'FastForward':
-          c.audio.seek(c.audio.currentTime + getSeekSteps().forward);
+          c.audio.seek(c.audio.getTime() + getSeekSteps().forward);
           break;
         case 'NextTrack':
           c.audio.next();

@@ -23,7 +23,7 @@ import { Img } from '@/components/ui/States';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatClock, ticksToSeconds } from '@/lib/format';
 import type { BaseItemDto } from '@/api/types';
-import { useAudioPlayer } from './AudioPlayerProvider';
+import { useAudioActions, useAudioPlayer, useAudioTime } from './AudioPlayerProvider';
 import { useLyrics } from './lyrics';
 import { LyricsPanel } from './LyricsPanel';
 import { SeekBar } from './SeekBar';
@@ -40,7 +40,7 @@ function useArt(item: BaseItemDto | null, size: number): string | undefined {
 }
 
 function QueueRow({ item, index, active }: { item: BaseItemDto; index: number; active: boolean }) {
-  const player = useAudioPlayer();
+  const player = useAudioActions();
   const art = useArt(item, 96);
   return (
     <div className={clsx('group flex items-center gap-3 rounded px-2 py-1.5', active ? 'bg-white/10' : 'hover:bg-white/5')}>
@@ -69,6 +69,7 @@ function QueueRow({ item, index, active }: { item: BaseItemDto; index: number; a
 
 export function AudioBar() {
   const player = useAudioPlayer();
+  const currentTime = useAudioTime();
   // Turning the wheel over the speaker or its slider changes the volume.
   const volumeRef = useWheelVolume(player.muted ? 0 : player.volume, player.setVolume);
   // One panel at a time over the bar: the queue or the lyrics.
@@ -113,16 +114,10 @@ export function AudioBar() {
         </div>
       )}
       {panel === 'lyrics' && lyrics && (
-        <LyricsPanel lines={lyrics} currentTime={player.currentTime} onSeek={player.seek} onClose={() => setPanel(null)} />
+        <LyricsPanel lines={lyrics} currentTime={currentTime} onSeek={player.seek} onClose={() => setPanel(null)} />
       )}
 
-      <SeekBar
-        className="absolute inset-x-0 -top-1.5"
-        current={player.currentTime}
-        duration={player.duration}
-        onSeek={player.seek}
-        compact
-      />
+      <SeekBar className="absolute inset-x-0 -top-1.5" current={currentTime} duration={player.duration} onSeek={player.seek} compact />
 
       <div className="flex h-[76px] items-center gap-4 px-3 sm:px-5">
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -188,7 +183,7 @@ export function AudioBar() {
             <SkipForward size={20} fill="currentColor" />
           </button>
           <span className="hidden w-24 text-center text-xs text-muted tabular-nums md:block">
-            {formatClock(player.currentTime)} / {formatClock(player.duration)}
+            {formatClock(currentTime)} / {formatClock(player.duration)}
           </span>
         </div>
 
