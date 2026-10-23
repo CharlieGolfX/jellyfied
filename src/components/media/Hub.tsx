@@ -24,6 +24,15 @@ interface HubRowProps {
 
 /** How far each row was scrolled sideways, by the history entry it was on and the row's title. */
 const rowPositions = new Map<string, number>();
+/** A page has a few rows: this keeps those of the last hundred or so pages, not every one ever seen. */
+const KEPT_ROWS = 400;
+
+function keepRowPosition(key: string, left: number) {
+  // Newest last, so the oldest is the first to go.
+  rowPositions.delete(key);
+  rowPositions.set(key, left);
+  if (rowPositions.size > KEPT_ROWS) rowPositions.delete(rowPositions.keys().next().value!);
+}
 
 /** A titled horizontal scroller with paging arrows. */
 export function HubRow({ title, to, actions, children, className }: HubRowProps) {
@@ -57,7 +66,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
       el.scrollTo({ left: restoring.current, behavior: 'instant' });
       if (Math.abs(el.scrollLeft - restoring.current) < 2) restoring.current = 0;
     } else {
-      rowPositions.set(memoryKeyRef.current, el.scrollLeft);
+      keepRowPosition(memoryKeyRef.current, el.scrollLeft);
     }
     setCanLeft(el.scrollLeft > 4);
     setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
@@ -80,7 +89,7 @@ export function HubRow({ title, to, actions, children, className }: HubRowProps)
   useLayoutEffect(() => {
     const el = scrollerRef.current;
     return () => {
-      if (el && restoring.current === 0) rowPositions.set(memoryKeyRef.current, el.scrollLeft);
+      if (el && restoring.current === 0) keepRowPosition(memoryKeyRef.current, el.scrollLeft);
     };
   }, []);
 

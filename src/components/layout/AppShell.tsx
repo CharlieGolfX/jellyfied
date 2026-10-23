@@ -18,19 +18,39 @@ import { SearchBox } from './SearchBox';
 import { ServerStatusButton } from './ServerStatusButton';
 import { Sidebar } from './Sidebar';
 import { UserMenu } from './UserMenu';
+import { readString, writeString } from '@/lib/storage';
 
 const COLLAPSE_KEY = 'jellyfied.sidebarCollapsed';
+/*
+ * Scrolling: four parts move the same scroller (#main-scroll), each for its own reason.
+ *
+ *   - AppShell (here) remembers each history entry's position and, going back, scrolls there again
+ *     for a few frames while the page grows into it. It stops at the user's first wheel or touch.
+ *   - useRowWindow renders only the rows near the view. When a resize changes the row height, it
+ *     scrolls by the difference (`shift`), so the same rows stay in view.
+ *   - LibraryGrid scrolls to a letter of the A–Z bar, and by the height of rows that a page loaded
+ *     *above* the view adds. It notes the time of its own scrolls (`ownScroll`), so that those aren't
+ *     taken for the user scrolling up, which is what loads the titles above a letter.
+ *   - Hub keeps each horizontal row's position per history entry, the way AppShell does the page's.
+ *
+ * They don't step on each other because each one only acts on its own trigger: a new path (AppShell),
+ * a resize (useRowWindow), a letter or rows added above (LibraryGrid), a row's own scroll (Hub). A
+ * new scroll writer should do the same, and mark its scrolls if a scroll listener could misread them.
+ */
 /** How far each page in the history was scrolled, by the key the router gives its history entry. */
 const scrollPositions = new Map<string, number>();
+/** Going back further than this many pages starts at the top: the map doesn't grow without end. */
+const KEPT_POSITIONS = 100;
+
+function keepPosition(key: string, top: number) {
+  // Newest last, so the oldest is the first to go.
+  scrollPositions.delete(key);
+  scrollPositions.set(key, top);
+  if (scrollPositions.size > KEPT_POSITIONS) scrollPositions.delete(scrollPositions.keys().next().value!);
+}
 
 export function AppShell() {
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(COLLAPSE_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [collapsed, setCollapsed] = useState(() => readString(COLLAPSE_KEY) === '1');
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
@@ -40,11 +60,7 @@ export function AppShell() {
   const miniPlayerPad = video.session && video.mode === 'mini' ? 'calc(min(420px, 100vw - 2rem) * 9 / 16 + 2rem)' : undefined;
 
   useEffect(() => {
-    try {
-      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
-    } catch {
-      /* ignore */
-    }
+    writeString(COLLAPSE_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
 
   // A new page closes the mobile drawer…
@@ -64,7 +80,7 @@ export function AppShell() {
     const samePage = entryPath.current === location.pathname && entryKey.current !== location.key;
     entryKey.current = location.key;
     entryPath.current = location.pathname;
-    if (samePage && mainRef.current) scrollPositions.set(location.key, mainRef.current.scrollTop);
+    if (samePage && mainRef.current) keepPosition(location.key, mainRef.current.scrollTop);
   }, [location.key, location.pathname]);
   // A change of filter or tab is the same page: it has the same path, and keeps its place. So this
   // runs for a new path only, whatever else changed with it.
@@ -76,7 +92,7 @@ export function AppShell() {
     // Not while the old position is being returned to: the page may be too short for it at first.
     let restoring = target > 0;
     const remember = () => {
-      if (!restoring) scrollPositions.set(entryKey.current, main.scrollTop);
+      if (!restoring) keepPosition(entryKey.current, main.scrollTop);
     };
     main.addEventListener('scroll', remember, { passive: true });
     main.scrollTo({ top: target });
