@@ -3,6 +3,7 @@ name: Container image
 # Publishes ghcr.io/<owner>/jellyfied:
 #   push to main  ->  :edge
 #   tag v1.2.3    ->  :1.2.3, :1.2, :1 and :latest, plus a GitHub release with that version's changelog
+# Only once CI passes for that commit: it runs here first.
 on:
   push:
     branches: [main]
@@ -18,14 +19,18 @@ concurrency:
 
 # Actions are pinned to the commit of a release; Dependabot keeps the pins current.
 jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   publish:
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      # For the signed build provenance attached to the image.
-      id-token: write
-      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
