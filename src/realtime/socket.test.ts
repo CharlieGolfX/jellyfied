@@ -45,11 +45,14 @@ beforeEach(() => {
   FakeWebSocket.instances = [];
   vi.stubGlobal('WebSocket', FakeWebSocket);
   vi.useFakeTimers();
+  // The longest of the spread-out waits, so the steps are whole seconds.
+  vi.spyOn(Math, 'random').mockReturnValue(1);
 });
 
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('JellyfinSocket', () => {
@@ -139,6 +142,36 @@ describe('JellyfinSocket', () => {
     vi.advanceTimersByTime(1000);
     expect(FakeWebSocket.instances).toHaveLength(4);
     socket.close();
+  });
+
+  it('spreads the waits out between half and all of the step', () => {
+    vi.mocked(Math.random).mockReturnValue(0);
+    const socket = new JellyfinSocket(api);
+    last().drop();
+    vi.advanceTimersByTime(500);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    socket.close();
+  });
+
+  it('tries again right away when the browser is back online or the tab is shown again', () => {
+    const socket = new JellyfinSocket(api);
+    for (let i = 0; i < 6; i++) {
+      last().drop();
+      vi.advanceTimersByTime(30_000);
+    }
+    const before = FakeWebSocket.instances.length;
+    last().drop();
+    window.dispatchEvent(new Event('online'));
+    expect(FakeWebSocket.instances).toHaveLength(before + 1);
+    // Still connecting: nothing more.
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(FakeWebSocket.instances).toHaveLength(before + 1);
+    last().drop();
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(FakeWebSocket.instances).toHaveLength(before + 2);
+    socket.close();
+    window.dispatchEvent(new Event('online'));
+    expect(FakeWebSocket.instances).toHaveLength(before + 2);
   });
 
   it('never waits longer than half a minute between attempts', () => {

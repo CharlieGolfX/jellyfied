@@ -346,10 +346,18 @@ export function patchUserData<T>(data: T, id: string, patch: Partial<UserItemDat
  */
 function showAtOnce(qc: QueryClient, id: string, patch: Partial<UserItemData>): () => void {
   const before = qc.getQueriesData({ queryKey: [MEDIA] });
-  // Answers that are on their way would put the old state back.
-  void qc.cancelQueries({ queryKey: [MEDIA] });
-  qc.setQueriesData({ queryKey: [MEDIA] }, (data: unknown) => patchUserData(data, id, patch));
+  // Answers on their way for lists with the item in them would put the old state back. Others,
+  // such as the next page of a library being scrolled, carry on.
+  for (const query of qc.getQueryCache().findAll({ queryKey: [MEDIA] })) {
+    if (patchUserData(query.state.data, id, patch) !== query.state.data) void qc.cancelQueries({ queryKey: query.queryKey, exact: true });
+  }
+  patchCachedUserData(qc, id, patch);
   return () => before.forEach(([key, data]) => qc.setQueryData(key, data));
+}
+
+/** Changes an item's user data wherever it is cached. */
+export function patchCachedUserData(qc: QueryClient, id: string, patch: Partial<UserItemData>) {
+  qc.setQueriesData({ queryKey: [MEDIA] }, (data: unknown) => patchUserData(data, id, patch));
 }
 
 export function useSetPlayed() {

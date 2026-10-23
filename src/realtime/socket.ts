@@ -25,7 +25,17 @@ export class JellyfinSocket {
   constructor(api: JellyfinApi) {
     this.api = api;
     this.connect();
+    // Back online, or a tab woken up (a laptop opened, a phone unlocked): no need to sit out the backoff.
+    window.addEventListener('online', this.reconnectNow);
+    document.addEventListener('visibilitychange', this.reconnectNow);
   }
+
+  private readonly reconnectNow = () => {
+    if (this.closed || this.ws || document.visibilityState === 'hidden') return;
+    window.clearTimeout(this.retryTimer);
+    this.retry = 0;
+    this.connect();
+  };
 
   get isOpen(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
@@ -88,7 +98,8 @@ export class JellyfinSocket {
 
   private scheduleReconnect() {
     if (this.closed) return;
-    const delay = Math.min(30_000, 1000 * 2 ** Math.min(this.retry++, 5));
+    // Spread out, so the tabs and devices a server restart cut off don't all come back at once.
+    const delay = Math.min(30_000, 1000 * 2 ** Math.min(this.retry++, 5)) * (0.5 + Math.random() / 2);
     window.clearTimeout(this.retryTimer);
     this.retryTimer = window.setTimeout(() => this.connect(), delay);
   }
@@ -122,6 +133,8 @@ export class JellyfinSocket {
 
   close() {
     this.closed = true;
+    window.removeEventListener('online', this.reconnectNow);
+    document.removeEventListener('visibilitychange', this.reconnectNow);
     window.clearTimeout(this.retryTimer);
     window.clearInterval(this.keepAliveTimer);
     const ws = this.ws;

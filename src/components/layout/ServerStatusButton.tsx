@@ -11,6 +11,8 @@ import { APP_NAME, APP_VERSION } from '@/config';
 import { t } from '@/i18n';
 import { episodeLabel, ticksToSeconds } from '@/lib/format';
 import { isNewerVersion } from '@/lib/version';
+import { useServerFeed } from '@/realtime/useServerFeed';
+import { readJson, writeJson } from '@/lib/storage';
 
 /** The scheduled task that scans every library. */
 const SCAN_TASK = 'RefreshLibrary';
@@ -22,25 +24,31 @@ interface Release {
   url: string;
 }
 
+/** After a failed lookup (GitHub's limit reached, offline), it isn't tried again for this long. */
+const RELEASE_RETRY_INTERVAL = 60 * 60 * 1000;
+
 /** The newest release of a GitHub project, remembered in this browser between page loads. */
 async function latestRelease(repo: string): Promise<Release | null> {
   const key = `jellyfied.latestRelease.${repo}`;
+  const stored = readJson(key);
+  const saved = stored && typeof stored === 'object' ? (stored as (Release | { failed: true }) & { at: number }) : null;
+  if (saved && 'failed' in saved) {
+    if (Date.now() - saved.at < RELEASE_RETRY_INTERVAL) return null;
+  } else if (saved && Date.now() - saved.at < RELEASE_CHECK_INTERVAL) return saved;
+  const remember = (value: Release | { failed: true }) => writeJson(key, { ...value, at: Date.now() });
+  let body: { tag_name?: string; html_url?: string };
   try {
-    const saved = JSON.parse(localStorage.getItem(key) ?? 'null') as (Release & { at: number }) | null;
-    if (saved && Date.now() - saved.at < RELEASE_CHECK_INTERVAL) return saved;
+    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!res.ok) throw new Error(String(res.status));
+    body = (await res.json()) as typeof body;
   } catch {
-    /* look it up again */
+    // Asking again on every page load would only keep the limit reached.
+    remember({ failed: true });
+    return null;
   }
-  const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
-  if (!res.ok) return null;
-  const body = (await res.json()) as { tag_name?: string; html_url?: string };
   if (!body.tag_name || !body.html_url) return null;
   const release = { version: body.tag_name.replace(/^v/i, ''), url: body.html_url };
-  try {
-    localStorage.setItem(key, JSON.stringify({ ...release, at: Date.now() }));
-  } catch {
-    /* ignore */
-  }
+  remember(release);
   return release;
 }
 
@@ -137,18 +145,25 @@ export function ServerStatusButton() {
     };
   }, [open]);
 
-  // The same queries as the dashboard, so the two share what they fetched. Checked more often while open.
+  // The same queries as the dashboard, so the two share what they fetched. The server pushes changes
+  // over the socket; without it, they are checked every few seconds, more often while open.
+  const sessionsLive = useServerFeed('Sessions');
+  const tasksLive = useServerFeed('ScheduledTasksInfo');
   const sessions = useQuery({
     queryKey: ['admin', 'sessions'],
-    queryFn: () => api.get<SessionInfo[]>('/Sessions', { activeWithinSeconds: 960 }),
-    refetchInterval: open ? 4000 : 15_000,
+    queryFn: () => api.getInBackground<SessionInfo[]>('/Sessions', { activeWithinSeconds: 960 }),
+    refetchInterval: () => (sessionsLive() ? 60_000 : open ? 4000 : 15_000),
   });
   const tasks = useQuery({
     queryKey: ['admin', 'tasks'],
-    queryFn: () => api.get<TaskInfo[]>('/ScheduledTasks', { isHidden: false }),
-    refetchInterval: open ? 3000 : 15_000,
+    queryFn: () => api.getInBackground<TaskInfo[]>('/ScheduledTasks', { isHidden: false }),
+    refetchInterval: () => (tasksLive() ? 60_000 : open ? 3000 : 15_000),
   });
-  const info = useQuery({ queryKey: ['admin', 'sysinfo'], queryFn: () => api.get<SystemInfo>('/System/Info'), refetchInterval: 60_000 });
+  const info = useQuery({
+    queryKey: ['admin', 'sysinfo'],
+    queryFn: () => api.getInBackground<SystemInfo>('/System/Info'),
+    refetchInterval: 60_000,
+  });
   const jellyfinRelease = useLatestRelease('jellyfin/jellyfin');
   const jellyfiedRelease = useLatestRelease('CharlieGolfX/jellyfied');
 

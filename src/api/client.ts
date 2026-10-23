@@ -28,6 +28,11 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** Called with a successful response before its body is read, e.g. for its ETag. */
   onResponse?: (response: Response) => void;
+  /**
+   * How the browser ranks the request against others. By default "high", ahead of the artwork
+   * that loads at the same time; "low" for what runs in the background (polling, syncing).
+   */
+  priority?: RequestPriority;
 }
 
 function headerSafe(value: string): string {
@@ -132,8 +137,7 @@ export class JellyfinApi {
         body,
         signal: opts.signal,
         keepalive: opts.keepalive,
-        // Ahead of the artwork that is loading at the same time.
-        priority: 'high',
+        priority: opts.priority ?? 'high',
       });
     } catch (err) {
       if ((err as Error).name === 'AbortError') throw err;
@@ -175,6 +179,11 @@ export class JellyfinApi {
 
   get<T = unknown>(path: string, query?: Query, signal?: AbortSignal): Promise<T> {
     return this.request<T>('GET', path, { query, signal });
+  }
+
+  /** A GET that nobody is waiting on (polling, syncing): it gives way to what the user asked for. */
+  getInBackground<T = unknown>(path: string, query?: Query): Promise<T> {
+    return this.request<T>('GET', path, { query, priority: 'low' });
   }
 
   post<T = unknown>(path: string, body?: unknown, query?: Query): Promise<T> {

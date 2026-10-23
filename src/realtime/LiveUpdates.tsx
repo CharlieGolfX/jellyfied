@@ -1,32 +1,35 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { MEDIA } from '@/api/queries';
-import { getActiveVideo } from '@/player/activePlayer';
+import { MEDIA, patchCachedUserData } from '@/api/queries';
+import type { UserItemData } from '@/api/types';
 import { useSocket } from './RealtimeProvider';
 
 /** Changes are collected for this long before the lists are fetched again. */
 export const REFRESH_DELAY = 1500;
-/**
- * While something is playing here, this browser's own progress reports come back as "user data
- * changed" every few seconds. The lists are then only refreshed this often.
- */
-export const PLAYING_REFRESH_DELAY = 60_000;
 
-/** How long to wait before refreshing, given how long ago the last refresh was. */
-export function refreshDelay(playing: boolean, sinceLast: number): number {
-  if (!playing) return REFRESH_DELAY;
-  return Math.max(REFRESH_DELAY, PLAYING_REFRESH_DELAY - sinceLast);
+/** What a "user data changed" message carries: each changed item's new user data. */
+interface UserDataChanged {
+  UserDataList?: (UserItemData & { ItemId?: string; Key?: string })[];
 }
 
-function isPlayingHere(): boolean {
-  const video = getActiveVideo()?.video;
-  if (video && !video.paused) return true;
-  return Array.from(document.querySelectorAll('audio')).some((a) => !a.paused);
+/** The changed fields of each item, by item id as the lists have it (no dashes, lower case). */
+export function userDataPatches(data: UserDataChanged | undefined): [string, Partial<UserItemData>][] {
+  const out: [string, Partial<UserItemData>][] = [];
+  for (const entry of data?.UserDataList ?? []) {
+    const { ItemId, Key: _key, ...patch } = entry;
+    if (ItemId) out.push([ItemId.replace(/-/g, '').toLowerCase(), patch]);
+  }
+  return out;
 }
 
 /**
  * Keeps what is on screen in step with the server: new and removed media (library scans), and
  * watched state, favourites and resume positions changed on other devices. Renders nothing.
+ *
+ * A library change fetches the lists again. Changed user data comes every few seconds while
+ * something plays (on any of the user's devices), and fetching every list again each time would mean
+ * every page of every long list; it is put straight into the cached lists instead, and they are only
+ * marked as out of date (Continue Watching, counts on shows), to be fetched when next shown.
  */
 export function LiveUpdates() {
   const socket = useSocket();
@@ -35,20 +38,18 @@ export function LiveUpdates() {
   useEffect(() => {
     if (!socket) return;
     let timer: number | undefined;
-    let last = 0;
     const schedule = () => {
       if (timer !== undefined) return;
-      timer = window.setTimeout(
-        () => {
-          timer = undefined;
-          last = Date.now();
-          void qc.invalidateQueries({ queryKey: [MEDIA] });
-        },
-        refreshDelay(isPlayingHere(), Date.now() - last),
-      );
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        void qc.invalidateQueries({ queryKey: [MEDIA] });
+      }, REFRESH_DELAY);
     };
     const offLibrary = socket.on('LibraryChanged', schedule);
-    const offUserData = socket.on('UserDataChanged', schedule);
+    const offUserData = socket.on<UserDataChanged>('UserDataChanged', (data) => {
+      for (const [id, patch] of userDataPatches(data)) patchCachedUserData(qc, id, patch);
+      void qc.invalidateQueries({ queryKey: [MEDIA], refetchType: 'none' });
+    });
     // Whatever happened while the connection was down was missed, so catch up when it returns.
     let first = true;
     const offOpen = socket.onOpen(() => {
