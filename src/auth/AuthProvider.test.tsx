@@ -128,15 +128,27 @@ describe('AuthProvider', () => {
     expect(auth.session).toBeNull();
   });
 
-  it('signs out when the server rejects the token', async () => {
-    fetchMock.mockResolvedValue(new Response('', { status: 401 }));
+  it('signs out when the server rejects the token, and keeps the account to sign in again', async () => {
+    fetchMock.mockImplementation(async () => new Response('', { status: 401 }));
     localStorage.setItem(SESSION_KEY, JSON.stringify(saved('ann')));
     mount();
     await act(async () => {
-      await auth.api!.get('/Users/Me').catch(() => {});
+      await auth.api!.get('/Items').catch(() => {});
     });
     expect(auth.session).toBeNull();
-    expect(loadAccounts()).toEqual([]);
+    expect(loadAccounts()).toEqual([{ ...saved('ann'), accessToken: '', expired: true }]);
+  });
+
+  it('stays signed in when only one request is turned away and the server still knows the token', async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      String(url).includes('/Users/Me') ? new Response('{"Id":"ann"}', { status: 200 }) : new Response('', { status: 401 }),
+    );
+    localStorage.setItem(SESSION_KEY, JSON.stringify(saved('ann')));
+    mount();
+    await act(async () => {
+      await auth.api!.get('/Items').catch(() => {});
+    });
+    expect(auth.session?.userId).toBe('ann');
   });
 
   it('forgets another account and signs it out with its own token', async () => {

@@ -20,13 +20,14 @@ const raw: RuntimeConfig = (typeof window !== 'undefined' && window.JELLYFIED_CO
  * Normalises a user-entered server address into an absolute base URL without a
  * trailing slash. Accepts "host:8096", "https://host/jellyfin/web/", "/jellyfin", etc.
  */
-export function normalizeServerUrl(input: string): string {
+export function normalizeServerUrl(input: string, pageProtocol = window.location.protocol): string {
   let value = input.trim();
   if (!value) return '';
   if (value.startsWith('/')) {
     value = window.location.origin + value;
   } else if (!/^https?:\/\//i.test(value)) {
-    value = `http://${value}`;
+    // Without a scheme, the page's own: a page on https may not talk to a server on http.
+    value = `${pageProtocol === 'https:' ? 'https' : 'http'}://${value}`;
   }
   const url = new URL(value);
   let path = url.pathname.replace(/\/+$/, '');

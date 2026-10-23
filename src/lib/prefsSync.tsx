@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import type { JellyfinApi } from '@/api/client';
 import { useApi, useSession } from '@/auth/AuthProvider';
 import { onFlushPrefs, onPrefChanged, prefPulled } from './prefsBus';
+import { readJson, readString, writeJson, writeString } from '@/lib/storage';
 
 /**
  * Preferences that follow the user to other browsers. They are kept in local storage as before,
@@ -19,6 +20,10 @@ export const SYNCED_KEYS = [
 ];
 
 const ENABLED_KEY = 'jellyfied.syncPrefs';
+/** The user the synced keys in local storage belong to. */
+const OWNER_KEY = 'jellyfied.prefsOwner';
+/** Where another user's synced keys wait while someone else uses this browser. */
+const PARKED_PREFIX = 'jellyfied.prefsOf.';
 const PREFS_ID = 'usersettings';
 const CLIENT = 'jellyfied';
 const PUSH_DELAY = 1500;
@@ -29,25 +34,12 @@ interface DisplayPreferences {
   [key: string]: unknown;
 }
 
-function readEnabled(): boolean {
-  try {
-    return localStorage.getItem(ENABLED_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-}
-
-let enabled = readEnabled();
+let enabled = readString(ENABLED_KEY) !== 'off';
 const enabledListeners = new Set<() => void>();
 
 export function setPrefsSyncEnabled(value: boolean) {
   enabled = value;
-  try {
-    if (value) localStorage.removeItem(ENABLED_KEY);
-    else localStorage.setItem(ENABLED_KEY, 'off');
-  } catch {
-    /* ignore */
-  }
+  writeString(ENABLED_KEY, value ? null : 'off');
   enabledListeners.forEach((l) => l());
 }
 
@@ -88,14 +80,39 @@ export function mergePrefs(
 
 function readLocal(): Record<string, string | null> {
   const out: Record<string, string | null> = {};
-  for (const key of SYNCED_KEYS) {
-    try {
-      out[key] = localStorage.getItem(key);
-    } catch {
-      out[key] = null;
-    }
-  }
+  for (const key of SYNCED_KEYS) out[key] = readString(key);
   return out;
+}
+
+/**
+ * Makes the synced keys in local storage those of `userId`. They are shared by everyone using the
+ * browser, so when another user signs in, the previous user's values are put aside and this user's
+ * own ones (if they used this browser before) come back. Without that, one profile's theme, home
+ * layout and remembered tracks would show up for the next one and be sent up to their account.
+ * Values from before owners were recorded count as the first user's. Returns the keys that changed.
+ */
+export function claimLocalPrefs(userId: string): string[] {
+  const owner = readString(OWNER_KEY);
+  // Nothing to swap, or storage that can't keep anything: then there is nothing to mix up either.
+  if (owner === userId || !writeString(OWNER_KEY, userId)) return [];
+  const current = readLocal();
+  if (owner) writeJson(PARKED_PREFIX + owner, current);
+  const parked = owner ? readJson(PARKED_PREFIX + userId) : current;
+  const mine = (parked && typeof parked === 'object' ? parked : {}) as Record<string, unknown>;
+  writeString(PARKED_PREFIX + userId, null);
+  const changed: string[] = [];
+  for (const key of SYNCED_KEYS) {
+    const value = typeof mine[key] === 'string' ? mine[key] : null;
+    if (value === current[key]) continue;
+    writeString(key, value);
+    changed.push(key);
+  }
+  return changed;
+}
+
+/** Drops what a forgotten account left put aside in this browser. */
+export function forgetLocalPrefs(userId: string) {
+  writeString(PARKED_PREFIX + userId, null);
 }
 
 function start(api: JellyfinApi, userId: string): () => void {
@@ -126,19 +143,12 @@ function start(api: JellyfinApi, userId: string): () => void {
 
   const pull = async () => {
     try {
-      const fetched = await api.get<DisplayPreferences>(`/DisplayPreferences/${PREFS_ID}`, query);
+      const fetched = await api.getInBackground<DisplayPreferences>(`/DisplayPreferences/${PREFS_ID}`, query);
       if (stopped || !fetched || typeof fetched !== 'object') return;
       dto = fetched;
       pulledAt = Date.now();
       const { apply, push: needsPush } = mergePrefs(fetched.CustomPrefs ?? {}, readLocal());
-      for (const [key, value] of Object.entries(apply)) {
-        try {
-          localStorage.setItem(key, value);
-        } catch {
-          continue;
-        }
-        prefPulled(key);
-      }
+      for (const [key, value] of Object.entries(apply)) if (writeString(key, value)) prefPulled(key);
       if (needsPush) schedulePush();
     } catch {
       /* offline, or a server without this endpoint: the preferences simply stay local */
@@ -174,6 +184,7 @@ export function PrefsSync() {
   const { userId } = useSession();
   const [on] = usePrefsSyncEnabled();
   useEffect(() => {
+    claimLocalPrefs(userId).forEach(prefPulled);
     if (!on) return;
     return start(api, userId);
   }, [api, userId, on]);

@@ -5,6 +5,8 @@ import { APP_VERSION, normalizeServerUrl } from './config';
 describe('normalizeServerUrl', () => {
   it('assumes http when no scheme is given', () => {
     expect(normalizeServerUrl('192.168.1.10:8096')).toBe('http://192.168.1.10:8096');
+    expect(normalizeServerUrl('jellyfin.example.com', 'https:')).toBe('https://jellyfin.example.com');
+    expect(normalizeServerUrl('http://jellyfin.example.com', 'https:')).toBe('http://jellyfin.example.com');
   });
 
   it('strips trailing slashes and the web UI path people tend to paste', () => {

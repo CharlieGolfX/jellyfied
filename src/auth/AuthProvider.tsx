@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { JellyfinApi } from '@/api/client';
+import { ApiError, JellyfinApi } from '@/api/client';
 import type { AuthenticationResult, UserDto } from '@/api/types';
 import { appPath } from '@/lib/basePath';
+import { forgetLocalPrefs } from '@/lib/prefsSync';
 import { clearPin, setPin } from './accountPin';
+import { readJson, writeJson, writeString } from '@/lib/storage';
 
 const SESSION_KEY = 'jellyfied.session';
 /** Every account signed in on this browser, the current one included, so users can switch without a password (see accountPin). */
@@ -19,6 +21,8 @@ export interface StoredSession {
   /** Empty in the list of saved accounts when a PIN has locked it away (see accountPin). */
   accessToken: string;
   sealed?: boolean;
+  /** The server stopped accepting its sign-in: it stays in the list, to be signed in again with the password. */
+  expired?: boolean;
 }
 
 interface AuthState {
@@ -45,7 +49,7 @@ export const sameAccount = (a: StoredSession, b: StoredSession) => a.userId === 
 
 function validSession(s: unknown): s is StoredSession {
   const v = s as Partial<StoredSession> | null;
-  return Boolean(v && typeof v === 'object' && (v.accessToken || v.sealed) && v.serverUrl && v.userId);
+  return Boolean(v && typeof v === 'object' && (v.accessToken || v.sealed || v.expired) && v.serverUrl && v.userId);
 }
 
 /** The saved accounts with `account` added or replaced (newest first), or removed. */
@@ -55,33 +59,19 @@ export function withAccount(accounts: StoredSession[], account: StoredSession, r
 }
 
 export function loadAccounts(): StoredSession[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter(validSession) : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJson(ACCOUNTS_KEY);
+  return Array.isArray(parsed) ? parsed.filter(validSession) : [];
 }
 
 function saveAccounts(accounts: StoredSession[]) {
-  try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-  } catch {
-    /* ignore */
-  }
+  writeJson(ACCOUNTS_KEY, accounts);
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 function loadSession(): StoredSession | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession;
-    return parsed.accessToken && parsed.serverUrl && parsed.userId ? parsed : null;
-  } catch {
-    return null;
-  }
+  const parsed = readJson(SESSION_KEY) as Partial<StoredSession> | null | undefined;
+  return parsed && typeof parsed === 'object' && parsed.accessToken && parsed.serverUrl && parsed.userId ? (parsed as StoredSession) : null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -102,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  /** What to do when the server rejects the token; set further down, once `clear` exists. */
+  /** What to do when the server rejects the token; set further down, once `expire` exists. */
   const unauthorized = useRef<() => void>(() => {});
   const api = useMemo(() => {
     if (!session) return null;
@@ -111,24 +101,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return client;
   }, [session]);
 
-  const clear = useCallback(() => {
+  /** Ends the session. Signing out forgets the account; a token the server rejected leaves it listed. */
+  const clear = useCallback(
+    (forget: boolean) => {
+      writeString(SESSION_KEY, null);
+      // The token is gone or no longer valid, so the account can't be switched to without a password any more.
+      if (session) {
+        const expired: StoredSession = { ...session, accessToken: '', sealed: undefined, expired: true };
+        updateAccounts((list) => (forget ? withAccount(list, session, true) : list.map((a) => (sameAccount(a, session) ? expired : a))));
+        clearPin(session);
+      }
+      setSession(null);
+      queryClient.clear();
+    },
+    [queryClient, session, updateAccounts],
+  );
+
+  // One request turned away can be something in front of Jellyfin (a proxy, forward authentication)
+  // or one misbehaving endpoint: only when the server also says no to "who am I" is the token dead.
+  const checking = useRef(false);
+  const expire = useCallback(async () => {
+    if (!session || checking.current) return;
+    checking.current = true;
     try {
-      localStorage.removeItem(SESSION_KEY);
-    } catch {
-      /* ignore */
+      await new JellyfinApi(session.serverUrl, session.accessToken, session.userId).get('/Users/Me');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) clear(false);
+    } finally {
+      checking.current = false;
     }
-    // The token is gone or no longer valid, so the account can't be switched to any more either.
-    if (session) {
-      updateAccounts((list) => withAccount(list, session, true));
-      clearPin(session);
-    }
-    setSession(null);
-    queryClient.clear();
-  }, [queryClient, session, updateAccounts]);
+  }, [session, clear]);
 
   useEffect(() => {
-    unauthorized.current = clear;
-  }, [clear]);
+    unauthorized.current = () => void expire();
+  }, [expire]);
 
   const completeLogin = useCallback(
     (serverUrl: string, serverName: string, result: AuthenticationResult) => {
@@ -140,12 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userName: result.User.Name,
         accessToken: result.AccessToken,
       };
-      try {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-        localStorage.setItem(LAST_SERVER_KEY, serverUrl);
-      } catch {
-        /* ignore */
-      }
+      writeJson(SESSION_KEY, next);
+      writeString(LAST_SERVER_KEY, serverUrl);
       updateAccounts((list) => withAccount(list, next));
       // Signing in with the password again starts over: the PIN locked away the previous sign-in.
       clearPin(next);
@@ -164,18 +166,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         /* token may already be invalid */
       }
     }
-    clear();
+    clear(true);
   }, [api, clear]);
 
   const switchAccount = useCallback((account: StoredSession, accessToken?: string) => {
     const token = accessToken ?? account.accessToken;
-    if (!token) return;
-    try {
-      // The session in use has its token in the clear; the saved account keeps it locked away.
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...account, accessToken: token, sealed: undefined }));
-    } catch {
+    if (!token) {
+      if (!account.expired) return;
+      // Signed in again with the password, on the sign-in screen.
+      if (!writeString(SESSION_KEY, null)) return;
+      writeString(LAST_SERVER_KEY, account.serverUrl);
+      window.location.assign(`${appPath('/login')}?user=${encodeURIComponent(account.userName)}`);
       return;
     }
+    // The session in use has its token in the clear; the saved account keeps it locked away.
+    if (!writeJson(SESSION_KEY, { ...account, accessToken: token, sealed: undefined })) return;
     window.location.assign(appPath('/'));
   }, []);
 
@@ -191,11 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const addAccount = useCallback(() => {
-    try {
-      localStorage.removeItem(SESSION_KEY);
-    } catch {
-      return;
-    }
+    if (!writeString(SESSION_KEY, null)) return;
     window.location.assign(appPath('/login'));
   }, []);
 
@@ -211,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       updateAccounts((list) => withAccount(list, account, true));
       clearPin(account);
+      forgetLocalPrefs(account.userId);
     },
     [updateAccounts],
   );

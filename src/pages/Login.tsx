@@ -17,14 +17,11 @@ import { Img } from '@/components/ui/States';
 import { errorMessage } from '@/components/ui/Toast';
 import { usePageTitle } from '@/lib/usePageTitle';
 import { useLatest } from '@/lib/useLatest';
+import { readString } from '@/lib/storage';
 
 function initialServer(): string {
   if (runtimeConfig.serverUrl) return runtimeConfig.serverUrl;
-  try {
-    return localStorage.getItem(LAST_SERVER_KEY) ?? '';
-  } catch {
-    return '';
-  }
+  return readString(LAST_SERVER_KEY) ?? '';
 }
 
 export default function LoginPage() {
@@ -95,6 +92,9 @@ export default function LoginPage() {
               <Spinner size={32} className="text-accent" />
               <span className="text-sm">{t('login.connecting')}</span>
             </div>
+          ) : (!info || !api) && runtimeConfig.lockServer ? (
+            // The server is set for this installation: when it doesn't answer, there is no other to pick.
+            <ServerUnavailable error={serverError} onRetry={() => connect(serverUrl)} />
           ) : !info || !api ? (
             <ServerStep
               value={serverInput}
@@ -127,6 +127,21 @@ export default function LoginPage() {
           </a>
         </p>
       </div>
+    </div>
+  );
+}
+
+function ServerUnavailable({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-semibold">{t('login.serverUnavailable')}</h1>
+        <p className="mt-1 text-sm text-muted">{t('login.serverUnavailableHelp')}</p>
+      </div>
+      {error && <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+      <Button variant="primary" size="lg" className="w-full justify-center" onClick={onRetry}>
+        {t('login.retry')}
+      </Button>
     </div>
   );
 }
@@ -242,6 +257,9 @@ function ProfileTile({
   );
 }
 
+/** How many Quick Connect checks in a row may fail (a dropped connection) before it is given up. */
+const QUICK_CONNECT_TRIES = 4;
+
 function LoginStep({
   api,
   info,
@@ -260,11 +278,13 @@ function LoginStep({
   const [users, setUsers] = useState<UserDto[]>([]);
   const [quickConnect, setQuickConnect] = useState(false);
   const [disclaimer, setDisclaimer] = useState('');
-  const [username, setUsername] = useState('');
+  // Back from an account whose sign-in ran out (see switchAccount): straight to its password.
+  const [returning] = useState(() => new URLSearchParams(window.location.search).get('user'));
+  const [username, setUsername] = useState(returning ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [manual, setManual] = useState(false);
+  const [manual, setManual] = useState(Boolean(returning));
   const [qc, setQc] = useState<QuickConnectResult | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const onAuthRef = useLatest(onAuthenticated);
@@ -306,29 +326,39 @@ function LoginStep({
     void login(username.trim(), password);
   };
 
-  // Quick Connect polling.
+  // Quick Connect polling: one request at a time, and a few failed ones in a row before giving up.
   useEffect(() => {
     if (!qc) return;
     let stopped = false;
-    const timer = window.setInterval(async () => {
+    let failures = 0;
+    let timer: number | undefined;
+    const poll = async () => {
       try {
         const state = await api.get<QuickConnectResult>('/QuickConnect/Connect', { secret: qc.Secret });
-        if (state.Authenticated && !stopped) {
-          stopped = true;
-          window.clearInterval(timer);
+        failures = 0;
+        if (stopped) return;
+        if (state.Authenticated) {
           const result = await api.post<AuthenticationResult>('/Users/AuthenticateWithQuickConnect', { Secret: qc.Secret });
+          if (stopped) return;
+          stopped = true;
           onAuthRef.current(result);
+          return;
         }
       } catch (err) {
-        stopped = true;
-        window.clearInterval(timer);
-        setQc(null);
-        setError(errorMessage(err));
+        if (stopped) return;
+        if (++failures >= QUICK_CONNECT_TRIES) {
+          stopped = true;
+          setQc(null);
+          setError(errorMessage(err));
+          return;
+        }
       }
-    }, 3000);
+      timer = window.setTimeout(() => void poll(), 3000);
+    };
+    timer = window.setTimeout(() => void poll(), 3000);
     return () => {
       stopped = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
     };
   }, [qc, api, onAuthRef]);
 
@@ -410,7 +440,7 @@ function LoginStep({
                 image={api.userImageUrl(a.userId, undefined, 192)}
                 label={t('login.continueAs', { name: a.userName })}
                 locked={Boolean(a.sealed)}
-                onPick={() => switchTo(a)}
+                onPick={() => (a.expired ? pickUser({ Name: a.userName, HasPassword: true } as UserDto) : switchTo(a))}
                 forgetLabel={t('login.signOutAccount', { name: a.userName })}
                 onForget={() => void forgetAccount(a)}
               />
