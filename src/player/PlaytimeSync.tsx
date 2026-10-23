@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useApi, useSession } from '@/auth/AuthProvider';
-import { syncPlaytime } from '@/lib/playtime';
+import { hasPendingPlaytime, syncPlaytime } from '@/lib/playtime';
 import { shareDaily } from '@/lib/statsCompare';
 import { usePickerSupported } from './syncplayPickerApi';
 
@@ -17,7 +17,8 @@ export function PlaytimeSync() {
   const canCompare = usePickerSupported();
   useEffect(() => {
     const sync = () =>
-      void syncPlaytime(api, userId)
+      // With nothing new played there is nothing to save, and no need to fetch the year of playtime.
+      void (hasPendingPlaytime(userId) ? syncPlaytime(api, userId) : Promise.resolve())
         .then(() => (canCompare ? shareDaily(api, userId) : undefined))
         .catch(() => {});
     const onHidden = () => document.visibilityState === 'hidden' && sync();

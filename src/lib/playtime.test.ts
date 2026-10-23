@@ -1,13 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JellyfinApi } from '@/api/client';
-import { oldestKept, playedThrough, prunePlaytime, recordPlayedThrough, recordPlaytime, syncPlaytime, type Playtime } from './playtime';
+import {
+  hasPendingPlaytime,
+  oldestKept,
+  playedThrough,
+  prunePlaytime,
+  recordPlayedThrough,
+  recordPlaytime,
+  syncPlaytime,
+  VERIFY_AFTER,
+  type Playtime,
+} from './playtime';
 
 const day = new Date(2026, 9, 21, 20);
 
 function fakeServer(initial: Record<string, string> = {}) {
   let stored = initial;
   const api = {
-    get: vi.fn(async () => ({ Id: 'jellyfied-playtime', CustomPrefs: stored })),
+    getInBackground: vi.fn(async () => ({ Id: 'jellyfied-playtime', CustomPrefs: stored })),
     post: vi.fn(async (_path: string, dto: { CustomPrefs: Record<string, string> }) => {
       stored = dto.CustomPrefs;
     }),
@@ -15,8 +25,16 @@ function fakeServer(initial: Record<string, string> = {}) {
   return { api, stored: () => stored };
 }
 
+const stripApplied = (raw: string) => {
+  const { applied: _applied, ...rest } = JSON.parse(raw) as Playtime;
+  return rest;
+};
+
 describe('playtime', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useRealTimers();
+  });
 
   it('counts a video as played once most of it has played, a song at half or four minutes', () => {
     expect(playedThrough('video', 70, 100)).toBe(false);
@@ -42,7 +60,7 @@ describe('playtime', () => {
       '2026-10-21': { v: 150, a: 200, ap: 1, i: { 'film-a': [150, 1] } },
     });
     expect(total.since).toBe('2026-10-20');
-    expect(JSON.parse(server.stored().playtime)).toEqual(total);
+    expect(stripApplied(server.stored().playtime)).toEqual(total);
     expect(localStorage.getItem('jellyfied.playtime.pending.u1')).toBeNull();
 
     // Nothing new: the account's copy is read, not written again.
@@ -50,11 +68,43 @@ describe('playtime', () => {
     expect(server.api.post).toHaveBeenCalledTimes(1);
   });
 
+  it('lets the batch go once a later read still shows it, and sends it again when another device overwrote it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    const server = fakeServer();
+    recordPlaytime('u1', 'film-a', 'video', 100, day);
+    await syncPlaytime(server.api, 'u1');
+    expect(hasPendingPlaytime('u1')).toBe(true);
+
+    // Another device saves what it read before this one's save: this one's share is gone.
+    const overwritten = { version: 2, days: { '2026-10-21': { v: 5, a: 0 } } };
+    await server.api.post('', { CustomPrefs: { playtime: JSON.stringify(overwritten) } });
+    await vi.advanceTimersByTimeAsync(VERIFY_AFTER);
+    expect(hasPendingPlaytime('u1')).toBe(true);
+
+    // Played some more meanwhile: the old batch goes first, again, and is not counted twice.
+    recordPlaytime('u1', 'film-a', 'video', 7, day);
+    let total = await syncPlaytime(server.api, 'u1');
+    expect(stripApplied(server.stored().playtime).days['2026-10-21'].v).toBe(105);
+    expect(total.days['2026-10-21'].v).toBe(112);
+    await syncPlaytime(server.api, 'u1');
+    expect(stripApplied(server.stored().playtime).days['2026-10-21'].v).toBe(105);
+
+    await vi.advanceTimersByTimeAsync(VERIFY_AFTER);
+    total = await syncPlaytime(server.api, 'u1');
+    expect(total.days['2026-10-21'].v).toBe(112);
+    await vi.advanceTimersByTimeAsync(VERIFY_AFTER);
+    expect(hasPendingPlaytime('u1')).toBe(false);
+    expect(stripApplied(server.stored().playtime).days['2026-10-21'].v).toBe(112);
+  });
+
   it('keeps what was played for the next time when saving fails', async () => {
     recordPlaytime('u1', 'film-a', 'video', 90, day);
-    const api = { get: vi.fn().mockRejectedValue(new Error('offline')) } as unknown as JellyfinApi;
+    const api = { getInBackground: vi.fn().mockRejectedValue(new Error('offline')) } as unknown as JellyfinApi;
     await expect(syncPlaytime(api, 'u1')).rejects.toThrow();
-    expect(JSON.parse(localStorage.getItem('jellyfied.playtime.pending.u1')!).days['2026-10-21'].v).toBe(90);
+    expect(hasPendingPlaytime('u1')).toBe(true);
+    const server = fakeServer();
+    await syncPlaytime(server.api, 'u1');
+    expect(stripApplied(server.stored().playtime).days['2026-10-21'].v).toBe(90);
   });
 
   it('reads what the first version stored, which had no days per title', async () => {

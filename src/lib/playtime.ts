@@ -1,4 +1,6 @@
 import type { JellyfinApi } from '@/api/client';
+import { generateId } from '@/api/device';
+import { readJson, readString, writeString } from '@/lib/storage';
 
 /**
  * How long this account has actually played things, measured by Jellyfied's own players while
@@ -12,6 +14,11 @@ import type { JellyfinApi } from '@/api/client';
  *
  * What is played is collected in local storage (so a closed tab loses nothing) and merged into the
  * account's copy now and then, one browser tab at a time.
+ *
+ * Display preferences can only be replaced as a whole, so two devices saving at the same moment
+ * would have the later one overwrite the earlier one's share. To not lose it, each share is sent as
+ * a batch with an id that the account's copy remembers. The batch is only let go once a later read
+ * shows its id; until then it is sent again, and the id keeps it from being counted twice.
  */
 
 export type MediaKind = 'video' | 'audio';
@@ -36,12 +43,20 @@ export interface Playtime {
   days: Record<string, PlaytimeDay>;
   /** When measuring started (YYYY-MM-DD). */
   since?: string;
+  /** The batches added in the last days, by id, with when (ms). */
+  applied?: Record<string, number>;
 }
 
 const PREFS_ID = 'jellyfied-playtime';
 const CLIENT = 'jellyfied';
 const FIELD = 'playtime';
 const pendingKey = (userId: string) => `jellyfied.playtime.pending.${userId}`;
+/** The batch on its way to the account (see above). */
+const batchKey = (userId: string) => `jellyfied.playtime.batch.${userId}`;
+/** How long the account's copy remembers a batch: far longer than one can take to be confirmed. */
+const APPLIED_FOR = 14 * 86400_000;
+/** How long after saving the account's copy is read again to see that the batch is still in it. */
+export const VERIFY_AFTER = 10_000;
 
 export const emptyPlaytime = (): Playtime => ({ version: 2, days: {} });
 
@@ -69,6 +84,9 @@ export function prunePlaytime(playtime: Playtime, now = new Date()): Playtime {
   const keep = oldestKept(now);
   for (const day of Object.keys(playtime.days)) if (day < keep) delete playtime.days[day];
   if (playtime.since && playtime.since < keep) playtime.since = keep;
+  const cutoff = now.getTime() - APPLIED_FOR;
+  for (const [id, at] of Object.entries(playtime.applied ?? {})) if (!(at >= cutoff)) delete playtime.applied![id];
+  if (playtime.applied && !Object.keys(playtime.applied).length) delete playtime.applied;
   return playtime;
 }
 
@@ -113,21 +131,34 @@ function upgrade(raw: unknown): Playtime {
 }
 
 function readPending(userId: string): Playtime {
-  try {
-    return upgrade(JSON.parse(localStorage.getItem(pendingKey(userId)) ?? 'null'));
-  } catch {
-    return emptyPlaytime();
-  }
+  return upgrade(readJson(pendingKey(userId)));
 }
 
 function writePending(userId: string, pending: Playtime) {
-  try {
-    if (Object.keys(pending.days).length) localStorage.setItem(pendingKey(userId), JSON.stringify(pending));
-    else localStorage.removeItem(pendingKey(userId));
-  } catch {
-    /* storage unavailable: it stays in memory until the next flush */
-  }
+  // Without storage, it stays in memory until the next save.
+  writeString(pendingKey(userId), Object.keys(pending.days).length ? JSON.stringify(pending) : null);
 }
+
+/** Whether this browser has played anything the account doesn't have yet. */
+export function hasPendingPlaytime(userId: string): boolean {
+  return readString(pendingKey(userId)) != null || readString(batchKey(userId)) != null;
+}
+
+interface Batch {
+  id: string;
+  playtime: Playtime;
+}
+
+function readBatch(userId: string): Batch | null {
+  const raw = readJson(batchKey(userId)) as Partial<Batch> | null | undefined;
+  return raw && typeof raw.id === 'string' ? { id: raw.id, playtime: upgrade(raw.playtime) } : null;
+}
+
+function writeBatch(userId: string, batch: Batch | null) {
+  writeString(batchKey(userId), batch ? JSON.stringify(batch) : null);
+}
+
+const isEmpty = (p: Playtime) => !Object.keys(p.days).length;
 
 /** Adds seconds played of a title, today. */
 export function recordPlaytime(userId: string, itemId: string, kind: MediaKind, seconds: number, now = new Date()) {
@@ -152,7 +183,7 @@ interface DisplayPreferences {
 }
 
 async function readServer(api: JellyfinApi, userId: string): Promise<{ dto: DisplayPreferences; playtime: Playtime }> {
-  const dto = await api.get<DisplayPreferences>(`/DisplayPreferences/${PREFS_ID}`, { userId, client: CLIENT });
+  const dto = await api.getInBackground<DisplayPreferences>(`/DisplayPreferences/${PREFS_ID}`, { userId, client: CLIENT });
   let playtime = emptyPlaytime();
   try {
     playtime = upgrade(JSON.parse(dto.CustomPrefs?.[FIELD] ?? 'null'));
@@ -168,40 +199,31 @@ function exclusively<T>(work: () => Promise<T>): Promise<T> {
   return locks ? (locks.request('jellyfied-playtime', work) as Promise<T>) : work();
 }
 
-/** Takes what was saved out of what is pending, leaving what was played in the meantime. */
-function subtract(now: Playtime, saved: Playtime) {
-  for (const [day, t] of Object.entries(saved.days)) {
-    const d = now.days[day];
-    if (!d) continue;
-    d.v -= t.v;
-    d.a -= t.a;
-    if (t.ap) d.ap = (d.ap ?? 0) - t.ap;
-    for (const [id, [s, n]] of Object.entries(t.i ?? {})) {
-      const item = d.i?.[id];
-      if (!item) continue;
-      item[0] -= s;
-      item[1] -= n;
-      if (item[0] <= 0.01 && item[1] <= 0) delete d.i![id];
-    }
-    if (d.i && !Object.keys(d.i).length) delete d.i;
-    if (!d.ap) delete d.ap;
-    if (d.v <= 0.01 && d.a <= 0.01 && !d.ap && !d.i) delete now.days[day];
-  }
-  delete now.since;
-}
-
 /**
  * Adds what this browser has played since last time to the account's copy (dropping what is now
- * more than a year old), and returns the account's totals. What could not be saved is kept for
- * the next time. `extra` are other settings kept in the same place, such as taking part in
- * comparisons, written along.
+ * more than a year old), and returns the account's totals with anything played since. What could
+ * not be saved is kept for the next time. `extra` are other settings kept in the same place, such
+ * as taking part in comparisons, written along.
  */
 export function syncPlaytime(api: JellyfinApi, userId: string, extra?: Record<string, string | null>): Promise<Playtime> {
   return exclusively(async () => {
-    const pending = readPending(userId);
+    // A batch from before that wasn't confirmed yet goes first; what was played since waits for the next one.
+    let batch = readBatch(userId);
+    if (!batch) {
+      const pending = readPending(userId);
+      if (!isEmpty(pending)) {
+        batch = { id: generateId(), playtime: pending };
+        writeBatch(userId, batch);
+        writePending(userId, emptyPlaytime());
+      }
+    }
     const { dto, playtime } = await readServer(api, userId);
     const before = JSON.stringify(playtime);
-    const merged = prunePlaytime(mergePlaytime(playtime, pending));
+    if (batch && !playtime.applied?.[batch.id]) {
+      mergePlaytime(playtime, batch.playtime);
+      (playtime.applied ??= {})[batch.id] = Date.now();
+    }
+    const merged = prunePlaytime(playtime);
     const changedSettings = extra && Object.entries(extra).some(([k, v]) => (dto.CustomPrefs?.[k] ?? null) !== v);
     if (JSON.stringify(merged) !== before || changedSettings) {
       await api.post(
@@ -210,11 +232,23 @@ export function syncPlaytime(api: JellyfinApi, userId: string, extra?: Record<st
         { userId, client: CLIENT },
       );
     }
-    const now = readPending(userId);
-    subtract(now, pending);
-    writePending(userId, now);
-    return merged;
+    if (batch) {
+      const id = batch.id;
+      window.setTimeout(() => void confirmBatch(api, userId, id).catch(() => {}), VERIFY_AFTER);
+    }
+    const total = mergePlaytime(structuredClone(merged), readPending(userId));
+    delete total.applied;
+    return total;
   });
+}
+
+/**
+ * Lets the batch go once the account's copy, read a while after saving it, still has it. If another
+ * device overwrote it in the meantime, the batch stays and is sent again with the next save.
+ */
+export async function confirmBatch(api: JellyfinApi, userId: string, id: string) {
+  const { playtime } = await readServer(api, userId);
+  if (playtime.applied?.[id] && readBatch(userId)?.id === id) writeBatch(userId, null);
 }
 
 /** A setting kept with the playtime (see syncPlaytime's `extra`). */
